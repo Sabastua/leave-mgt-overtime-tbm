@@ -15,27 +15,139 @@ async function getOrigin(): Promise<string> {
 }
 
 export type LoginState = {
-  step: "email" | "sent";
+  mode: "password" | "link" | "sent";
   email: string;
   error?: string;
+  info?: string;
 };
 
 const NOT_ALLOWED =
   "This email is not authorised to access the Leave Management system.";
 
 /**
+ * Signs in an allow-listed user with email + password, or sets up their
+ * password on first sign-in if they haven't created one yet.
+ */
+async function signInOrSetupPassword(
+  email: string,
+  password: string,
+): Promise<LoginState> {
+  if (!email) {
+    return {
+      mode: "password",
+      email,
+      error: "Please enter your Safaricom email address.",
+    };
+  }
+  if (!isAllowedEmail(email)) {
+    return { mode: "password", email, error: NOT_ALLOWED };
+  }
+  if (!password || password.length < 6) {
+    return {
+      mode: "password",
+      email,
+      error: "Password must be at least 6 characters.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  // 1. Try signing in with existing credentials
+  const signInAttempt = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (!signInAttempt.error && signInAttempt.data.session) {
+    redirect("/");
+  }
+
+  // 2. If the user already exists in auth.users from a previous OTP attempt
+  //    without a password (or unconfirmed), claim the initial password via RPC
+  //    if the migration has been run.
+  const { data: claimStatus } = await supabase.rpc("claim_initial_password", {
+    p_email: email,
+    p_password: password,
+  });
+
+  if (claimStatus === "password_set" || claimStatus === "confirmed") {
+    const retry = await supabase.auth.signInWithPassword({ email, password });
+    if (!retry.error && retry.data.session) {
+      redirect("/");
+    }
+  }
+
+  if (claimStatus === "has_password") {
+    return {
+      mode: "password",
+      email,
+      error:
+        "Incorrect password for this account. Try again or use 'Email me a sign-in link'.",
+    };
+  }
+
+  // 3. Otherwise, create the account for the first time with this password.
+  const signUpAttempt = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${await getOrigin()}/auth/callback`,
+    },
+  });
+
+  if (signUpAttempt.error) {
+    // If user already registered and has a password, report invalid password
+    if (
+      signUpAttempt.error.message.toLowerCase().includes("already registered")
+    ) {
+      return {
+        mode: "password",
+        email,
+        error:
+          "Incorrect password for this account. Try again or use 'Email me a sign-in link'.",
+      };
+    }
+    return {
+      mode: "password",
+      email,
+      error: signUpAttempt.error.message,
+    };
+  }
+
+  if (signUpAttempt.data.session) {
+    redirect("/");
+  }
+
+  // If signUp didn't return a session (e.g. Confirm Email is enabled in Supabase
+  // and the auto-confirm SQL trigger was just applied), try claim + signIn once more.
+  await supabase.rpc("claim_initial_password", {
+    p_email: email,
+    p_password: password,
+  });
+  const finalSignIn = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (!finalSignIn.error && finalSignIn.data.session) {
+    redirect("/");
+  }
+
+  return {
+    mode: "password",
+    email,
+    info: "Account created! If you aren't signed in yet, run `supabase/migrations/0002_leave_management.sql` in the Supabase SQL Editor (or disable 'Confirm email' under Authentication -> Providers -> Email) and click Sign in again.",
+  };
+}
+
+/**
  * Sends a magic sign-in link to an allow-listed email.
- *
- * The project uses Supabase's default "Magic Link" email template (which is
- * locked on new free-tier projects without custom SMTP), so the email contains
- * a link only — no numeric code. The link lands on /auth/callback.
  */
 async function sendLink(email: string): Promise<LoginState> {
   if (!email) {
-    return { step: "email", email, error: "Please enter your email address." };
+    return { mode: "link", email, error: "Please enter your email address." };
   }
   if (!isAllowedEmail(email)) {
-    return { step: "email", email, error: NOT_ALLOWED };
+    return { mode: "link", email, error: NOT_ALLOWED };
   }
 
   const supabase = await createClient();
@@ -50,12 +162,12 @@ async function sendLink(email: string): Promise<LoginState> {
   if (error) {
     const message =
       error.status === 429
-        ? "Too many sign-in emails requested. Please wait a minute and try again."
+        ? "Supabase free-tier email limit reached (max 2 emails/hour). Use the Password tab above to sign in immediately without email."
         : error.message;
-    return { step: "email", email, error: message };
+    return { mode: "link", email, error: message };
   }
 
-  return { step: "sent", email };
+  return { mode: "sent", email };
 }
 
 /** Single entry point for the login form, dispatching on the `intent` field. */
@@ -63,15 +175,27 @@ export async function loginAction(
   prev: LoginState,
   formData: FormData,
 ): Promise<LoginState> {
-  switch (formData.get("intent")) {
-    case "reset":
-      return { step: "email", email: prev.email };
+  const intent = String(formData.get("intent") ?? "password");
+  const emailInput = normalizeEmail(
+    String(formData.get("email") ?? prev.email ?? ""),
+  );
+
+  switch (intent) {
+    case "switch-to-link":
+      return { mode: "link", email: emailInput };
+    case "switch-to-password":
+      return { mode: "password", email: emailInput };
+    case "send-link":
+      return sendLink(emailInput);
     case "resend": {
       const result = await sendLink(prev.email);
-      return result.error ? { ...result, step: "sent" } : result;
+      return result.error ? { ...result, mode: "sent" } : result;
     }
-    default:
-      return sendLink(normalizeEmail(String(formData.get("email") ?? "")));
+    case "password":
+    default: {
+      const password = String(formData.get("password") ?? "");
+      return signInOrSetupPassword(emailInput, password);
+    }
   }
 }
 
