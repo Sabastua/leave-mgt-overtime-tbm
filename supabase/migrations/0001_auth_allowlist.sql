@@ -43,3 +43,7 @@ drop trigger if exists enforce_auth_allowlist on auth.users;
 create trigger enforce_auth_allowlist
   before insert or update of email on auth.users
   for each row execute function public.enforce_auth_allowlist();
+
+-- SECURITY DEFINER functions in `public` are executable by everyone by default.
+-- It is only meant to run as a trigger, so remove direct execute access.
+revoke execute on function public.enforce_auth_allowlist() from public, anon, authenticated;

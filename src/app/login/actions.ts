@@ -1,8 +1,18 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { isAllowedEmail, normalizeEmail } from "@/lib/auth/allowed-users";
+
+async function getOrigin(): Promise<string> {
+  const h = await headers();
+  const origin = h.get("origin");
+  if (origin) return origin;
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
+}
 
 export type LoginState = {
   step: "email" | "code";
@@ -31,7 +41,11 @@ export async function sendCode(
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true },
+    options: {
+      shouldCreateUser: true,
+      // Where the magic link (if the email contains one) lands.
+      emailRedirectTo: `${await getOrigin()}/auth/callback`,
+    },
   });
 
   if (error) {
@@ -41,7 +55,7 @@ export async function sendCode(
   return {
     step: "code",
     email,
-    message: `We sent a sign-in code to ${email}.`,
+    message: `We sent a sign-in email to ${email}. Enter the code from it, or open the link in this browser.`,
   };
 }
 
