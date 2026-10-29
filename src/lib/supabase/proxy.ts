@@ -40,7 +40,7 @@ export async function updateSession(request: NextRequest) {
   const claims = data?.claims;
   const email = typeof claims?.email === "string" ? claims.email : null;
 
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
@@ -55,6 +55,17 @@ export async function updateSession(request: NextRequest) {
     response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
     return redirect;
   };
+
+  // If Supabase redirected the magic link to the Site URL (e.g. "/?code=…")
+  // instead of /auth/callback, forward it so the code is still exchanged.
+  const code = searchParams.get("code");
+  if (code && pathname !== "/auth/callback") {
+    return redirectTo("/auth/callback", { code });
+  }
+  // Supabase reports expired/used links as ?error=…&error_code=… on the redirect.
+  if (searchParams.has("error_code") && pathname !== "/login") {
+    return redirectTo("/login", { error: "link_invalid" });
+  }
 
   // Signed in but not on the allowlist -> kill the session.
   if (claims && !isAllowedEmail(email)) {
