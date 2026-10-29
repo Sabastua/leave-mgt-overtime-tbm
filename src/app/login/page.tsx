@@ -1,19 +1,15 @@
+import { Suspense } from "react";
 import { LoginForm } from "./login-form";
 
 const ERRORS: Record<string, string> = {
   unauthorized:
     "Your account is not authorised to access the Leave Management system.",
-  link_invalid: "That sign-in link is invalid or has expired. Request a new code.",
+  link_invalid: "That sign-in link is invalid or has expired. Request a new one.",
 };
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const { error } = await searchParams;
-  const initialError = typeof error === "string" ? ERRORS[error] : undefined;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+export default function LoginPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg ring-1 ring-black/5">
@@ -26,8 +22,17 @@ export default async function LoginPage({
             Sign in with your Safaricom email
           </p>
         </div>
-        <LoginForm initialError={initialError} />
+        {/* searchParams is request data, so read it behind a boundary. */}
+        <Suspense fallback={<LoginForm />}>
+          <LoginFormWithError searchParams={searchParams} />
+        </Suspense>
       </div>
     </main>
   );
+}
+
+async function LoginFormWithError({ searchParams }: { searchParams: SearchParams }) {
+  const { error } = await searchParams;
+  const initialError = typeof error === "string" ? ERRORS[error] : undefined;
+  return <LoginForm initialError={initialError} />;
 }
