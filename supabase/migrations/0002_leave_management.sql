@@ -44,9 +44,6 @@ grant select on public.allowed_users to authenticated;
 -- setup logs the user in immediately without waiting for a confirmation email.
 create or replace function public.enforce_auth_allowlist()
 returns trigger
-language plpgsql
-security definer
-set search_path = ''
 as $$
 begin
   if new.email is null
@@ -64,7 +61,7 @@ begin
 
   return new;
 end;
-$$;
+$$ language plpgsql security definer set search_path = '';
 
 drop trigger if exists enforce_auth_allowlist on auth.users;
 create trigger enforce_auth_allowlist
@@ -82,9 +79,6 @@ create or replace function public.claim_initial_password(
   p_password text
 )
 returns text
-language plpgsql
-security definer
-set search_path = ''
 as $$
 declare
   v_email text := lower(trim(p_email));
@@ -128,7 +122,7 @@ begin
 
   return 'has_password';
 end;
-$$;
+$$ language plpgsql security definer set search_path = '';
 
 grant execute on function public.claim_initial_password(text, text) to anon, authenticated;
 
@@ -197,10 +191,6 @@ alter table public.leave_requests enable row level security;
 -- Helper: check if the current JWT belongs to an approver
 create or replace function public.is_current_user_approver()
 returns boolean
-language sql
-stable
-security invoker
-set search_path = ''
 as $$
   select exists (
     select 1
@@ -208,7 +198,7 @@ as $$
     where a.email = lower(coalesce((select auth.jwt() ->> 'email'), ''))
       and a.role = 'approver'
   );
-$$;
+$$ language sql stable security invoker set search_path = '';
 
 -- Everyone on the team can view leave requests (supports team visibility & balances)
 drop policy if exists "Team members can view all leave requests" on public.leave_requests;
