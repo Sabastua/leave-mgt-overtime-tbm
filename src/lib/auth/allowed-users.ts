@@ -70,3 +70,10 @@ export function isAllowedEmail(email: string | null | undefined): boolean {
 export function isApproverRole(role: string | null | undefined): boolean {
   return role === "approver";
 }
+
+export function isApproverEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const normalized = normalizeEmail(email);
+  const cfg = (TEAM_MEMBERS as Record<string, TeamMemberConfig>)[normalized];
+  return cfg?.role === "approver";
+}

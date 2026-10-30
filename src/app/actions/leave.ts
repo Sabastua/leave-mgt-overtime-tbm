@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
   isAllowedEmail,
+  isApproverEmail,
   normalizeEmail,
 } from "@/lib/auth/allowed-users";
 import {
@@ -104,14 +105,18 @@ export async function reviewLeaveRequest(formData: FormData): Promise<void> {
     redirect("/login");
   }
 
-  const { data: member } = await supabase
-    .from("allowed_users")
-    .select("role, is_active")
-    .eq("email", email)
-    .single();
+  const isStaticApprover = isApproverEmail(email);
 
-  if (!member || !member.is_active || member.role !== "approver") {
-    redirect("/login");
+  if (!isStaticApprover) {
+    const { data: member } = await supabase
+      .from("allowed_users")
+      .select("role")
+      .eq("email", email)
+      .single();
+
+    if (!member || member.role !== "approver") {
+      redirect("/login");
+    }
   }
 
   const requestId = String(formData.get("request_id") ?? "");

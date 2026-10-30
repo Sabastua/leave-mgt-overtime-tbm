@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeEmail, isApproverRole, type UserRole } from "@/lib/auth/allowed-users";
+import {
+  normalizeEmail,
+  isApproverRole,
+  isApproverEmail,
+  type UserRole,
+} from "@/lib/auth/allowed-users";
 
 export type TeamActionState = {
   error?: string;
@@ -21,13 +26,19 @@ async function ensureApprover() {
     redirect("/login");
   }
 
+  // Check static approver configuration first
+  if (isApproverEmail(email)) {
+    return { supabase, userEmail: email };
+  }
+
+  // Check database role
   const { data: member } = await supabase
     .from("allowed_users")
-    .select("role, is_active")
+    .select("role")
     .eq("email", email)
     .single();
 
-  if (!member || !member.is_active || !isApproverRole(member.role)) {
+  if (!member || !isApproverRole(member.role)) {
     throw new Error("Unauthorized: Only approvers/managers can manage team members.");
   }
 

@@ -1,7 +1,13 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { isAllowedEmail, type AllowedUser } from "@/lib/auth/allowed-users";
+import {
+  isAllowedEmail,
+  isApproverEmail,
+  TEAM_MEMBERS,
+  type AllowedUser,
+  type UserRole,
+} from "@/lib/auth/allowed-users";
 import {
   computeUserBalances,
   DEFAULT_LEAVE_TYPES,
@@ -91,18 +97,52 @@ async function LeaveDashboard() {
       .order("overtime_date", { ascending: false }),
   ]);
 
-  const teamMembers: AllowedUser[] = (dbMembers as AllowedUser[]) ?? [];
-  const currentMember = teamMembers.find(
-    (m) => m.email.toLowerCase() === email
-  ) ?? {
+  // Initialize roster with static team configuration
+  const memberMap = new Map<string, AllowedUser>();
+  for (const [mEmail, cfg] of Object.entries(TEAM_MEMBERS)) {
+    memberMap.set(mEmail.toLowerCase(), {
+      email: mEmail,
+      full_name: cfg.fullName,
+      role: cfg.role,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    });
+  }
+
+  // Overlay any database-managed team members
+  if (dbMembers && Array.isArray(dbMembers)) {
+    for (const m of dbMembers as AllowedUser[]) {
+      if (m && m.email) {
+        const lower = m.email.toLowerCase();
+        const existing = memberMap.get(lower);
+        memberMap.set(lower, {
+          ...existing,
+          ...m,
+          full_name: m.full_name || existing?.full_name || lower.split("@")[0],
+          role: m.role || existing?.role || "staff",
+          is_active: m.is_active ?? true,
+        });
+      }
+    }
+  }
+
+  const teamMembers: AllowedUser[] = Array.from(memberMap.values());
+  const fallbackConfig = (
+    TEAM_MEMBERS as Record<string, { fullName: string; role: UserRole }>
+  )[email];
+
+  const currentMember = memberMap.get(email) ?? {
     email,
-    full_name: email.split("@")[0],
-    role: "staff",
+    full_name: fallbackConfig?.fullName ?? email.split("@")[0],
+    role: fallbackConfig?.role ?? "staff",
     is_active: true,
     created_at: new Date().toISOString(),
   };
 
-  const isApprover = currentMember.role === "approver";
+  const isApprover =
+    currentMember.role === "approver" ||
+    isApproverEmail(email) ||
+    fallbackConfig?.role === "approver";
   const schemaReady = !requestsError && !overtimeError;
   const leaveTypes: LeaveType[] =
     dbLeaveTypes && dbLeaveTypes.length > 0
