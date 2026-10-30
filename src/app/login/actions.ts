@@ -15,7 +15,7 @@ async function getOrigin(): Promise<string> {
 }
 
 export type LoginState = {
-  mode: "password" | "link" | "sent";
+  mode: "password" | "link" | "sent" | "reset";
   email: string;
   error?: string;
   info?: string;
@@ -170,6 +170,67 @@ async function sendLink(email: string): Promise<LoginState> {
   return { mode: "sent", email };
 }
 
+/**
+ * Sets or resets the password directly for any allow-listed team member.
+ */
+async function resetTeamPassword(
+  email: string,
+  password: string,
+): Promise<LoginState> {
+  if (!email || !isAllowedEmail(email)) {
+    return { mode: "reset", email, error: NOT_ALLOWED };
+  }
+  if (!password || password.length < 6) {
+    return {
+      mode: "reset",
+      email,
+      error: "New password must be at least 6 characters.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  const { data: claimStatus, error: rpcError } = await supabase.rpc(
+    "claim_initial_password",
+    {
+      p_email: email,
+      p_password: password,
+    },
+  );
+
+  if (rpcError) {
+    return { mode: "reset", email, error: rpcError.message };
+  }
+
+  if (claimStatus === "no_user") {
+    // If user has not been created in auth.users yet, sign them up directly
+    const signUpAttempt = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${await getOrigin()}/auth/callback`,
+      },
+    });
+    if (signUpAttempt.error) {
+      return { mode: "reset", email, error: signUpAttempt.error.message };
+    }
+    if (signUpAttempt.data.session) {
+      redirect("/");
+    }
+  }
+
+  const signIn = await supabase.auth.signInWithPassword({ email, password });
+  if (!signIn.error && signIn.data.session) {
+    redirect("/");
+  }
+
+  return {
+    mode: "password",
+    email,
+    info: "Password updated successfully. Please sign in with your new password.",
+  };
+}
+
 /** Single entry point for the login form, dispatching on the `intent` field. */
 export async function loginAction(
   prev: LoginState,
@@ -185,6 +246,12 @@ export async function loginAction(
       return { mode: "link", email: emailInput };
     case "switch-to-password":
       return { mode: "password", email: emailInput };
+    case "switch-to-reset":
+      return { mode: "reset", email: emailInput };
+    case "reset-password": {
+      const password = String(formData.get("password") ?? "");
+      return resetTeamPassword(emailInput, password);
+    }
     case "send-link":
       return sendLink(emailInput);
     case "resend": {

@@ -195,6 +195,95 @@ export function LoginForm({ initialError }: { initialError?: string }) {
           <button type="submit" disabled={pending} className={buttonClass}>
             {pending ? "Signing in…" : "Sign in"}
           </button>
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => {
+                const form = new FormData();
+                form.append("intent", "switch-to-reset");
+                form.append("email", selectedEmail);
+                action(form);
+              }}
+              className="text-xs text-gray-500 hover:text-brand underline"
+            >
+              Forgot password or need to reset?
+            </button>
+          </div>
+        </form>
+      ) : state.mode === "reset" ? (
+        <form action={action} className="space-y-4">
+          <input type="hidden" name="intent" value="reset-password" />
+          <div className="rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
+            <strong>Reset Password:</strong> Enter your new password below. It will update your account immediately and sign you in.
+          </div>
+
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Safaricom email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={selectedEmail}
+              onChange={(e) => setSelectedEmail(e.target.value)}
+              placeholder="smacharia6@safaricom.co.ke"
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700"
+            >
+              New Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              minLength={6}
+              required
+              placeholder="Enter at least 6 characters"
+              className={inputClass}
+            />
+          </div>
+
+          {error && (
+            <p
+              role="alert"
+              className="rounded-lg bg-red-50 p-2.5 text-xs text-red-700"
+            >
+              {error}
+            </p>
+          )}
+
+          <button type="submit" disabled={pending} className={buttonClass}>
+            {pending ? "Updating…" : "Set New Password & Sign In"}
+          </button>
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => {
+                const form = new FormData();
+                form.append("intent", "switch-to-password");
+                form.append("email", selectedEmail);
+                action(form);
+              }}
+              className="text-xs text-gray-500 hover:text-brand underline"
+            >
+              Back to Sign in
+            </button>
+          </div>
         </form>
       ) : (
         <form action={action} className="space-y-4">
