@@ -3,13 +3,13 @@
 import { useState } from "react";
 import type { LeaveType, LeaveRequest, LeaveBalanceSummary } from "@/lib/leave/types";
 import type { OvertimeRecord, OvertimeStats } from "@/lib/overtime/types";
-import type { TeamMemberConfig } from "@/lib/auth/allowed-users";
+import type { AllowedUser } from "@/lib/auth/allowed-users";
 import { LeaveRequestForm } from "@/components/leave/leave-request-form";
 import { OvertimeRequestForm } from "@/components/overtime/overtime-request-form";
+import { TeamManagement } from "@/components/team/team-management";
 import { reviewLeaveRequest, cancelLeaveRequest } from "@/app/actions/leave";
 import { reviewOvertimeRequest, cancelOvertimeRequest } from "@/app/actions/overtime";
 import { signOut } from "@/app/login/actions";
-import { ALLOWED_EMAILS, TEAM_MEMBERS } from "@/lib/auth/allowed-users";
 import { computeUserBalances } from "@/lib/leave/types";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -28,8 +28,9 @@ const COLOR_ACCENT: Record<string, { bar: string; badge: string }> = {
 
 type Props = {
   currentUserEmail: string;
-  member: TeamMemberConfig;
+  currentMember: AllowedUser;
   isApprover: boolean;
+  teamMembers: AllowedUser[];
   leaveTypes: LeaveType[];
   allLeaveRequests: LeaveRequest[];
   allOvertimeRecords: OvertimeRecord[];
@@ -41,8 +42,9 @@ type Props = {
 
 export function DashboardShell({
   currentUserEmail,
-  member,
+  currentMember,
   isApprover,
+  teamMembers,
   leaveTypes,
   allLeaveRequests,
   allOvertimeRecords,
@@ -51,7 +53,7 @@ export function DashboardShell({
   currentYear,
   schemaReady,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"leave" | "overtime" | "team">("leave");
+  const [activeTab, setActiveTab] = useState<"leave" | "overtime" | "team" | "members">("leave");
 
   const myLeaveRequests = allLeaveRequests.filter(
     (r) => r.user_email.toLowerCase() === currentUserEmail
@@ -63,6 +65,7 @@ export function DashboardShell({
   );
   const pendingOvertimeApprovals = allOvertimeRecords.filter((r) => r.status === "pending");
 
+  const memberMap = new Map(teamMembers.map((m) => [m.email.toLowerCase(), m]));
   const leaveTypeMap = new Map(leaveTypes.map((t) => [t.code, t]));
 
   return (
@@ -77,14 +80,16 @@ export function DashboardShell({
             <div>
               <span className="font-bold text-gray-900">Leave &amp; Overtime System</span>
               <span className="ml-2 rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-semibold text-brand-dark">
-                {member.title}
+                {currentMember.role === "approver" ? "Approver / Manager" : "Team Member"}
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm font-semibold text-gray-900">{member.fullName}</p>
+              <p className="text-sm font-semibold text-gray-900">
+                {currentMember.full_name || currentUserEmail}
+              </p>
               <p className="text-xs text-gray-500">{currentUserEmail}</p>
             </div>
             <form action={signOut}>
@@ -143,6 +148,19 @@ export function DashboardShell({
             >
               👥 Team Calendar &amp; Balances
             </button>
+
+            {isApprover && (
+              <button
+                onClick={() => setActiveTab("members")}
+                className={`border-b-2 py-3 px-1 transition ${
+                  activeTab === "members"
+                    ? "border-brand text-brand font-semibold"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                }`}
+              >
+                ⚙️ Team Management
+              </button>
+            )}
           </nav>
         </div>
       </header>
@@ -152,17 +170,14 @@ export function DashboardShell({
           <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             <p className="font-semibold">Notice: Database Setup</p>
             <p className="mt-1 text-xs text-amber-800">
-              Run <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">0003_overtime_management.sql</code> in your Supabase SQL Editor if you encounter table errors.
+              Run <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">0005_team_management_rls.sql</code> in your Supabase SQL Editor to enable in-app team administration.
             </p>
           </div>
         )}
 
-        {/* ============================================================== */}
         {/* TAB 1: LEAVE MANAGEMENT */}
-        {/* ============================================================== */}
         {activeTab === "leave" && (
           <div className="space-y-8">
-            {/* Balances Section */}
             <section>
               <div className="mb-3 flex items-baseline justify-between">
                 <h1 className="text-xl font-bold text-gray-900">
@@ -217,7 +232,6 @@ export function DashboardShell({
               </div>
             </section>
 
-            {/* Approver Queue for Leave */}
             {isApprover && (
               <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
                 <div className="mb-4 flex items-center justify-between">
@@ -239,10 +253,10 @@ export function DashboardShell({
                 ) : (
                   <div className="divide-y divide-gray-100">
                     {pendingLeaveApprovals.map((req) => {
-                      const applicant = TEAM_MEMBERS[req.user_email as keyof typeof TEAM_MEMBERS];
+                      const applicant = memberMap.get(req.user_email.toLowerCase());
                       const lType = leaveTypeMap.get(req.leave_type);
                       const relief = req.handover_email
-                        ? TEAM_MEMBERS[req.handover_email as keyof typeof TEAM_MEMBERS]
+                        ? memberMap.get(req.handover_email.toLowerCase())
                         : null;
 
                       return (
@@ -253,7 +267,7 @@ export function DashboardShell({
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-semibold text-gray-900">
-                                {applicant?.fullName ?? req.user_email}
+                                {applicant?.full_name ?? req.user_email}
                               </span>
                               <span className="text-xs text-gray-500">({req.user_email})</span>
                               <span className="rounded-md bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand-dark">
@@ -267,7 +281,7 @@ export function DashboardShell({
                               📅 {req.start_date} → {req.end_date}
                               {relief && (
                                 <span className="ml-3 text-gray-500">
-                                  🤝 Relief: {relief.fullName}
+                                  🤝 Relief: {relief.full_name}
                                 </span>
                               )}
                             </p>
@@ -312,13 +326,13 @@ export function DashboardShell({
               </section>
             )}
 
-            {/* Apply & History */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
               <div className="lg:col-span-5">
                 <LeaveRequestForm
                   currentUserEmail={currentUserEmail}
                   leaveTypes={leaveTypes}
                   balances={myBalances}
+                  teamMembers={teamMembers}
                 />
               </div>
 
@@ -336,7 +350,7 @@ export function DashboardShell({
                       {myLeaveRequests.map((req) => {
                         const lType = leaveTypeMap.get(req.leave_type);
                         const reviewer = req.reviewed_by
-                          ? TEAM_MEMBERS[req.reviewed_by as keyof typeof TEAM_MEMBERS]
+                          ? memberMap.get(req.reviewed_by.toLowerCase())
                           : null;
 
                         return (
@@ -366,7 +380,7 @@ export function DashboardShell({
                               )}
                               {reviewer && (
                                 <p className="text-xs text-gray-400">
-                                  Reviewed by {reviewer.fullName}
+                                  Reviewed by {reviewer.full_name || reviewer.email}
                                   {req.reviewer_note ? `: "${req.reviewer_note}"` : ""}
                                 </p>
                               )}
@@ -394,12 +408,9 @@ export function DashboardShell({
           </div>
         )}
 
-        {/* ============================================================== */}
         {/* TAB 2: OVERTIME TRACKER */}
-        {/* ============================================================== */}
         {activeTab === "overtime" && (
           <div className="space-y-8">
-            {/* Overtime KPI Cards */}
             <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
                 <span className="text-xs font-semibold uppercase text-gray-500">
@@ -442,7 +453,6 @@ export function DashboardShell({
               </div>
             </section>
 
-            {/* Approver Queue for Overtime */}
             {isApprover && (
               <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
                 <div className="mb-4 flex items-center justify-between">
@@ -464,7 +474,7 @@ export function DashboardShell({
                 ) : (
                   <div className="divide-y divide-gray-100">
                     {pendingOvertimeApprovals.map((claim) => {
-                      const claimant = TEAM_MEMBERS[claim.user_email as keyof typeof TEAM_MEMBERS];
+                      const claimant = memberMap.get(claim.user_email.toLowerCase());
                       return (
                         <div
                           key={claim.id}
@@ -473,7 +483,7 @@ export function DashboardShell({
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-semibold text-gray-900">
-                                {claimant?.fullName ?? claim.user_email}
+                                {claimant?.full_name ?? claim.user_email}
                               </span>
                               <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-800">
                                 {claim.hours} hours
@@ -529,7 +539,6 @@ export function DashboardShell({
               </section>
             )}
 
-            {/* Overtime Form + Claims History */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
               <div className="lg:col-span-5">
                 <OvertimeRequestForm />
@@ -548,7 +557,7 @@ export function DashboardShell({
                     <div className="divide-y divide-gray-100">
                       {myOvertimeRecords.map((item) => {
                         const reviewer = item.reviewed_by
-                          ? TEAM_MEMBERS[item.reviewed_by as keyof typeof TEAM_MEMBERS]
+                          ? memberMap.get(item.reviewed_by.toLowerCase())
                           : null;
 
                         return (
@@ -578,7 +587,7 @@ export function DashboardShell({
                               <p className="text-xs text-gray-600">{item.task_summary}</p>
                               {reviewer && (
                                 <p className="text-xs text-gray-400">
-                                  Reviewed by {reviewer.fullName}
+                                  Reviewed by {reviewer.full_name || reviewer.email}
                                   {item.reviewer_note ? `: "${item.reviewer_note}"` : ""}
                                 </p>
                               )}
@@ -606,12 +615,9 @@ export function DashboardShell({
           </div>
         )}
 
-        {/* ============================================================== */}
         {/* TAB 3: TEAM CALENDAR & BALANCES */}
-        {/* ============================================================== */}
         {activeTab === "team" && (
           <div className="space-y-8">
-            {/* Team Leave Calendar Schedule */}
             <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
               <h2 className="text-lg font-bold text-gray-900">Upcoming Team Leave Schedule</h2>
               <p className="mb-4 text-xs text-gray-500">
@@ -627,17 +633,17 @@ export function DashboardShell({
                   {allLeaveRequests
                     .filter((r) => r.status === "approved")
                     .map((item) => {
-                      const person = TEAM_MEMBERS[item.user_email as keyof typeof TEAM_MEMBERS];
+                      const person = memberMap.get(item.user_email.toLowerCase());
                       const lType = leaveTypeMap.get(item.leave_type);
                       const relief = item.handover_email
-                        ? TEAM_MEMBERS[item.handover_email as keyof typeof TEAM_MEMBERS]
+                        ? memberMap.get(item.handover_email.toLowerCase())
                         : null;
 
                       return (
                         <div key={item.id} className="flex flex-col justify-between py-3 sm:flex-row sm:items-center">
                           <div>
                             <span className="font-semibold text-gray-900">
-                              {person?.fullName ?? item.user_email}
+                              {person?.full_name ?? item.user_email}
                             </span>
                             <span className="ml-2 rounded-md bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand-dark">
                               {lType?.name ?? item.leave_type}
@@ -648,7 +654,7 @@ export function DashboardShell({
                           </div>
                           {relief && (
                             <span className="mt-2 text-xs text-gray-500 sm:mt-0">
-                              Relief / Handover: <strong className="text-gray-700">{relief.fullName}</strong>
+                              Relief / Handover: <strong className="text-gray-700">{relief.full_name}</strong>
                             </span>
                           )}
                         </div>
@@ -658,11 +664,10 @@ export function DashboardShell({
               )}
             </section>
 
-            {/* Team Balances Table */}
             <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
               <h2 className="text-lg font-bold text-gray-900">Team Leave Entitlements Summary ({currentYear})</h2>
               <p className="mb-4 text-xs text-gray-500">
-                Remaining working days for each team member.
+                Remaining working days for all active team members.
               </p>
 
               <div className="overflow-x-auto">
@@ -679,48 +684,54 @@ export function DashboardShell({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {ALLOWED_EMAILS.map((memberEmail) => {
-                      const info = TEAM_MEMBERS[memberEmail];
-                      const bals = computeUserBalances(
-                        leaveTypes,
-                        allLeaveRequests,
-                        memberEmail,
-                        currentYear
-                      );
-                      return (
-                        <tr key={memberEmail}>
-                          <td className="py-2.5 pr-3">
-                            <div className="font-semibold text-gray-900">{info.fullName}</div>
-                            <div className="text-[11px] text-gray-400">{memberEmail}</div>
-                          </td>
-                          <td className="px-2 py-2.5">
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                info.role === "approver"
-                                  ? "bg-brand/10 text-brand-dark"
-                                  : "bg-gray-100 text-gray-700"
-                              }`}
-                            >
-                              {info.role === "approver" ? "Approver" : "Staff"}
-                            </span>
-                          </td>
-                          {bals.map((b) => (
-                            <td
-                              key={b.leaveType.code}
-                              className="px-2 py-2.5 text-right font-mono font-semibold text-gray-800"
-                            >
-                              {b.remaining}
-                              <span className="font-normal text-gray-400">/{b.entitled}</span>
+                    {teamMembers
+                      .filter((m) => m.is_active)
+                      .map((member) => {
+                        const bals = computeUserBalances(
+                          leaveTypes,
+                          allLeaveRequests,
+                          member.email,
+                          currentYear
+                        );
+                        return (
+                          <tr key={member.email}>
+                            <td className="py-2.5 pr-3">
+                              <div className="font-semibold text-gray-900">{member.full_name || member.email}</div>
+                              <div className="text-[11px] text-gray-400">{member.email}</div>
                             </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
+                            <td className="px-2 py-2.5">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                  member.role === "approver"
+                                    ? "bg-brand/10 text-brand-dark"
+                                    : "bg-gray-100 text-gray-700"
+                                }`}
+                              >
+                                {member.role === "approver" ? "Approver" : "Staff"}
+                              </span>
+                            </td>
+                            {bals.map((b) => (
+                              <td
+                                key={b.leaveType.code}
+                                className="px-2 py-2.5 text-right font-mono font-semibold text-gray-800"
+                              >
+                                {b.remaining}
+                                <span className="font-normal text-gray-400">/{b.entitled}</span>
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>
             </section>
           </div>
+        )}
+
+        {/* TAB 4: TEAM MANAGEMENT (APPROVERS ONLY) */}
+        {activeTab === "members" && isApprover && (
+          <TeamManagement currentUserEmail={currentUserEmail} members={teamMembers} />
         )}
       </main>
     </div>

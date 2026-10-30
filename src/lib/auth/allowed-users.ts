@@ -1,9 +1,13 @@
-/**
- * The only email addresses permitted to sign in to the Leave Management system.
- *
- * This list is enforced in the app and in the database by the trigger defined in
- * `supabase/migrations/0001_auth_allowlist.sql` (and updated in `0002_leave_management.sql`).
- */
+export type UserRole = "approver" | "staff";
+
+export type AllowedUser = {
+  email: string;
+  full_name: string;
+  role: UserRole;
+  is_active: boolean;
+  created_at: string;
+};
+
 export const ALLOWED_EMAILS = [
   "akiminda@safaricom.co.ke",
   "brkimani@safaricom.co.ke",
@@ -12,8 +16,6 @@ export const ALLOWED_EMAILS = [
 ] as const;
 
 export type AllowedEmail = (typeof ALLOWED_EMAILS)[number];
-
-export type UserRole = "approver" | "staff";
 
 export type TeamMemberConfig = {
   email: AllowedEmail;
@@ -49,26 +51,22 @@ export const TEAM_MEMBERS: Record<AllowedEmail, TeamMemberConfig> = {
   },
 };
 
+export const FALLBACK_ALLOWED_EMAILS = ALLOWED_EMAILS;
+
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export function isAllowedEmail(
-  email: string | null | undefined,
-): email is AllowedEmail {
+/** Check if email is Safaricom domain or on the fallback list */
+export function isAllowedEmail(email: string | null | undefined): boolean {
   if (!email) return false;
-  return (ALLOWED_EMAILS as readonly string[]).includes(normalizeEmail(email));
-}
-
-export function getMemberConfig(
-  email: string | null | undefined,
-): TeamMemberConfig | null {
-  if (!email) return null;
   const normalized = normalizeEmail(email);
-  if (!isAllowedEmail(normalized)) return null;
-  return TEAM_MEMBERS[normalized];
+  return (
+    normalized.endsWith("@safaricom.co.ke") ||
+    (ALLOWED_EMAILS as readonly string[]).includes(normalized)
+  );
 }
 
-export function isApproverEmail(email: string | null | undefined): boolean {
-  return getMemberConfig(email)?.role === "approver";
+export function isApproverRole(role: string | null | undefined): boolean {
+  return role === "approver";
 }

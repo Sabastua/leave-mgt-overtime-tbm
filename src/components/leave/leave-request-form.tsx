@@ -7,7 +7,7 @@ import {
   type LeaveBalanceSummary,
   type LeaveType,
 } from "@/lib/leave/types";
-import { ALLOWED_EMAILS, TEAM_MEMBERS } from "@/lib/auth/allowed-users";
+import type { AllowedUser } from "@/lib/auth/allowed-users";
 
 const initialState: ActionState = {};
 
@@ -15,10 +15,12 @@ export function LeaveRequestForm({
   currentUserEmail,
   leaveTypes,
   balances,
+  teamMembers,
 }: {
   currentUserEmail: string;
   leaveTypes: LeaveType[];
   balances: LeaveBalanceSummary[];
+  teamMembers: AllowedUser[];
 }) {
   const [state, action, pending] = useActionState(
     submitLeaveRequest,
@@ -39,8 +41,8 @@ export function LeaveRequestForm({
   const exceedsBalance =
     selectedBalance !== undefined && workingDays > selectedBalance.remaining;
 
-  const reliefOptions = ALLOWED_EMAILS.filter(
-    (e) => e !== currentUserEmail.toLowerCase(),
+  const reliefOptions = teamMembers.filter(
+    (m) => m.email.toLowerCase() !== currentUserEmail.toLowerCase() && m.is_active,
   );
 
   return (
@@ -158,9 +160,9 @@ export function LeaveRequestForm({
             className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
           >
             <option value="">— Optional: select team member —</option>
-            {reliefOptions.map((email) => (
-              <option key={email} value={email}>
-                {TEAM_MEMBERS[email].fullName} ({email})
+            {reliefOptions.map((member) => (
+              <option key={member.email} value={member.email}>
+                {member.full_name || member.email} ({member.email})
               </option>
             ))}
           </select>

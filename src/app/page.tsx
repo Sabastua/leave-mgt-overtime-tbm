@@ -1,11 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  getMemberConfig,
-  isAllowedEmail,
-  isApproverEmail,
-} from "@/lib/auth/allowed-users";
+import { isAllowedEmail, type AllowedUser } from "@/lib/auth/allowed-users";
 import {
   computeUserBalances,
   DEFAULT_LEAVE_TYPES,
@@ -70,15 +66,17 @@ async function LeaveDashboard() {
     redirect("/login");
   }
 
-  const member = getMemberConfig(email)!;
-  const isApprover = isApproverEmail(email);
-
-  // Fetch Leave Types, Leave Requests, and Overtime Records concurrently
+  // Fetch Team Members, Leave Types, Leave Requests, and Overtime Records concurrently
   const [
+    { data: dbMembers },
     { data: dbLeaveTypes },
     { data: dbRequests, error: requestsError },
     { data: dbOvertime, error: overtimeError },
   ] = await Promise.all([
+    supabase
+      .from("allowed_users")
+      .select("*")
+      .order("created_at", { ascending: true }),
     supabase
       .from("leave_types")
       .select("*")
@@ -93,6 +91,18 @@ async function LeaveDashboard() {
       .order("overtime_date", { ascending: false }),
   ]);
 
+  const teamMembers: AllowedUser[] = (dbMembers as AllowedUser[]) ?? [];
+  const currentMember = teamMembers.find(
+    (m) => m.email.toLowerCase() === email
+  ) ?? {
+    email,
+    full_name: email.split("@")[0],
+    role: "staff",
+    is_active: true,
+    created_at: new Date().toISOString(),
+  };
+
+  const isApprover = currentMember.role === "approver";
   const schemaReady = !requestsError && !overtimeError;
   const leaveTypes: LeaveType[] =
     dbLeaveTypes && dbLeaveTypes.length > 0
@@ -115,8 +125,9 @@ async function LeaveDashboard() {
   return (
     <DashboardShell
       currentUserEmail={email}
-      member={member}
+      currentMember={currentMember}
       isApprover={isApprover}
+      teamMembers={teamMembers}
       leaveTypes={leaveTypes}
       allLeaveRequests={allRequests}
       allOvertimeRecords={allOvertime}
