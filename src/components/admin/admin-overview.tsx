@@ -14,6 +14,8 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ChartBarIcon,
+  ArrowDownTrayIcon,
+  MagnifyingGlassIcon,
 } from "@/components/ui/icons";
 
 type Props = {
@@ -31,8 +33,7 @@ export function AdminOverview({
   overtimeRecords,
   currentYear,
 }: Props) {
-  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
-
+  const [memberSearch, setMemberSearch] = useState("");
   const todayStr = new Date().toISOString().slice(0, 10);
   const activeMembers = teamMembers.filter((m) => m.is_active);
   const memberMap = new Map(teamMembers.map((m) => [m.email.toLowerCase(), m]));
@@ -48,13 +49,7 @@ export function AdminOverview({
     (r) => r.status === "approved" && r.start_date <= todayStr && r.end_date >= todayStr
   );
 
-  // 3. Upcoming leaves in next 14 days
-  const upcomingLeaves = leaveRequests.filter((r) => {
-    if (r.status !== "approved") return false;
-    return r.start_date > todayStr;
-  });
-
-  // 4. Calculate total team metrics for current year
+  // 3. Calculate total team metrics for current year
   const approvedYearLeaves = leaveRequests.filter(
     (r) =>
       r.status === "approved" &&
@@ -79,7 +74,7 @@ export function AdminOverview({
     .filter((r) => r.compensatory_choice === "time_off_in_lieu")
     .reduce((sum, r) => sum + Number(r.hours), 0);
 
-  // 5. Leave Type Distribution Breakdown
+  // 4. Leave Type Distribution Breakdown
   const daysByType: Record<string, number> = {};
   leaveTypes.forEach((t) => {
     daysByType[t.code] = 0;
@@ -88,7 +83,7 @@ export function AdminOverview({
     daysByType[r.leave_type] = (daysByType[r.leave_type] || 0) + r.working_days;
   });
 
-  // 6. Monthly trend (months 1 to 12)
+  // 5. Monthly trend (months 1 to 12)
   const monthlyDays = Array(12).fill(0);
   approvedYearLeaves.forEach((r) => {
     const monthIndex = new Date(r.start_date).getMonth();
@@ -100,8 +95,137 @@ export function AdminOverview({
 
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+  // Filter team members in entitlements table
+  const filteredMembers = activeMembers.filter((m) => {
+    if (!memberSearch) return true;
+    const term = memberSearch.toLowerCase();
+    return (
+      m.email.toLowerCase().includes(term) ||
+      (m.full_name && m.full_name.toLowerCase().includes(term))
+    );
+  });
+
+  // CSV Export functions
+  function exportLeaveCSV() {
+    const headers = [
+      "Request ID",
+      "Employee Name",
+      "Employee Email",
+      "Leave Type",
+      "Start Date",
+      "End Date",
+      "Working Days",
+      "Handover Person",
+      "Status",
+      "Reason",
+      "Reviewed By",
+      "Reviewed At",
+    ];
+
+    const rows = leaveRequests.map((r) => {
+      const member = memberMap.get(r.user_email.toLowerCase());
+      const type = leaveTypeMap.get(r.leave_type);
+      return [
+        r.id,
+        `"${member?.full_name || ""}"`,
+        r.user_email,
+        type?.name || r.leave_type,
+        r.start_date,
+        r.end_date,
+        r.working_days,
+        r.handover_email || "",
+        r.status,
+        `"${(r.reason || "").replace(/"/g, '""')}"`,
+        r.reviewed_by || "",
+        r.reviewed_at || "",
+      ];
+    });
+
+    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `Safaricom_Leave_Report_${currentYear}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function exportOvertimeCSV() {
+    const headers = [
+      "Record ID",
+      "Employee Name",
+      "Employee Email",
+      "Date Worked",
+      "Hours",
+      "Compensatory Choice",
+      "Ticket Reference",
+      "Task Summary",
+      "Status",
+      "Reviewed By",
+      "Reviewed At",
+    ];
+
+    const rows = overtimeRecords.map((r) => {
+      const member = memberMap.get(r.user_email.toLowerCase());
+      return [
+        r.id,
+        `"${member?.full_name || ""}"`,
+        r.user_email,
+        r.overtime_date,
+        r.hours,
+        r.compensatory_choice,
+        r.ticket_ref || "",
+        `"${(r.task_summary || "").replace(/"/g, '""')}"`,
+        r.status,
+        r.reviewed_by || "",
+        r.reviewed_at || "",
+      ];
+    });
+
+    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `Safaricom_Overtime_Report_${currentYear}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   return (
     <div className="space-y-8">
+      {/* Top Controls & Exports */}
+      <div className="flex flex-col gap-3 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Admin Metrics &amp; Analytics</h1>
+          <p className="text-xs text-gray-500">
+            Real-time department leave balances, team utilization, and approval workflows
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportLeaveCSV}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-2xs transition hover:bg-gray-50"
+            title="Download full leave requests report as CSV"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4 text-gray-500" />
+            <span>Export Leaves</span>
+          </button>
+          <button
+            onClick={exportOvertimeCSV}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-2xs transition hover:bg-gray-50"
+            title="Download full overtime claims report as CSV"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4 text-gray-500" />
+            <span>Export Overtime</span>
+          </button>
+        </div>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* On Leave Today */}
@@ -404,15 +528,28 @@ export function AdminOverview({
         </section>
       </div>
 
-      {/* Team Entitlements & Balances Table with Progress Bars */}
+      {/* Team Entitlements & Balances Table with Search and Progress Bars */}
       <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">
-            Team Leave Entitlements &amp; Remaining Days ({currentYear})
-          </h2>
-          <p className="text-xs text-gray-500">
-            Comprehensive leave tracking and remaining allowances for all {activeMembers.length} team members
-          </p>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">
+              Team Leave Entitlements &amp; Remaining Days ({currentYear})
+            </h2>
+            <p className="text-xs text-gray-500">
+              Allowance balances for all active team members
+            </p>
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              value={memberSearch}
+              onChange={(e) => setMemberSearch(e.target.value)}
+              placeholder="Search member..."
+              className="block w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -429,7 +566,7 @@ export function AdminOverview({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {activeMembers.map((member) => {
+              {filteredMembers.map((member) => {
                 const bals = computeUserBalances(
                   leaveTypes,
                   leaveRequests,
@@ -517,7 +654,7 @@ export function AdminOverview({
         </div>
       </section>
 
-      {/* Pending Approvals Management Queue */}
+      {/* Pending Approvals Management Queue with Remarks */}
       <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -546,7 +683,7 @@ export function AdminOverview({
                   key={request.id}
                   className="rounded-xl border border-amber-200 bg-amber-50/40 p-4"
                 >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-gray-900">
@@ -572,24 +709,28 @@ export function AdminOverview({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <form action={reviewLeaveRequest} className="inline-flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <form action={reviewLeaveRequest} className="flex flex-wrap items-center gap-2">
                         <input type="hidden" name="request_id" value={request.id} />
-                        <input type="hidden" name="decision" value="approved" />
+                        <input
+                          type="text"
+                          name="reviewer_note"
+                          placeholder="Note (optional)"
+                          className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs shadow-2xs focus:border-brand focus:outline-none"
+                        />
                         <button
                           type="submit"
+                          name="decision"
+                          value="approved"
                           className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700"
                         >
                           <CheckCircleIcon className="h-4 w-4" />
                           Approve
                         </button>
-                      </form>
-
-                      <form action={reviewLeaveRequest} className="inline-flex gap-2">
-                        <input type="hidden" name="request_id" value={request.id} />
-                        <input type="hidden" name="decision" value="rejected" />
                         <button
                           type="submit"
+                          name="decision"
+                          value="rejected"
                           className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-red-700"
                         >
                           <XCircleIcon className="h-4 w-4" />
@@ -610,7 +751,7 @@ export function AdminOverview({
                   key={record.id}
                   className="rounded-xl border border-blue-200 bg-blue-50/40 p-4"
                 >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-gray-900">
@@ -629,24 +770,28 @@ export function AdminOverview({
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <form action={reviewOvertimeRequest} className="inline-flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <form action={reviewOvertimeRequest} className="flex flex-wrap items-center gap-2">
                         <input type="hidden" name="record_id" value={record.id} />
-                        <input type="hidden" name="decision" value="approved" />
+                        <input
+                          type="text"
+                          name="reviewer_note"
+                          placeholder="Note (optional)"
+                          className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs shadow-2xs focus:border-brand focus:outline-none"
+                        />
                         <button
                           type="submit"
+                          name="decision"
+                          value="approved"
                           className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700"
                         >
                           <CheckCircleIcon className="h-4 w-4" />
                           Approve
                         </button>
-                      </form>
-
-                      <form action={reviewOvertimeRequest} className="inline-flex gap-2">
-                        <input type="hidden" name="record_id" value={record.id} />
-                        <input type="hidden" name="decision" value="rejected" />
                         <button
                           type="submit"
+                          name="decision"
+                          value="rejected"
                           className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-red-700"
                         >
                           <XCircleIcon className="h-4 w-4" />

@@ -21,6 +21,7 @@ import {
   CogIcon,
   CheckCircleIcon,
   XCircleIcon,
+  InformationCircleIcon,
 } from "@/components/ui/icons";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -68,15 +69,25 @@ export function DashboardShell({
     "leave" | "overtime" | "calendar" | "admin" | "team"
   >("leave");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [leaveStatusFilter, setLeaveStatusFilter] = useState<string>("all");
+  const [overtimeStatusFilter, setOvertimeStatusFilter] = useState<string>("all");
 
   const myLeaveRequests = allLeaveRequests.filter(
     (r) => r.user_email.toLowerCase() === currentUserEmail
   );
+  const filteredLeaveRequests = myLeaveRequests.filter((r) => {
+    if (leaveStatusFilter === "all") return true;
+    return r.status === leaveStatusFilter;
+  });
   const pendingLeaveApprovals = allLeaveRequests.filter((r) => r.status === "pending");
 
   const myOvertimeRecords = allOvertimeRecords.filter(
     (r) => r.user_email.toLowerCase() === currentUserEmail
   );
+  const filteredOvertimeRecords = myOvertimeRecords.filter((r) => {
+    if (overtimeStatusFilter === "all") return true;
+    return r.status === overtimeStatusFilter;
+  });
   const pendingOvertimeApprovals = allOvertimeRecords.filter((r) => r.status === "pending");
 
   const memberMap = new Map(teamMembers.map((m) => [m.email.toLowerCase(), m]));
@@ -301,12 +312,69 @@ export function DashboardShell({
               teamMembers={teamMembers}
             />
 
+            {/* Policy Reference Card */}
+            <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <InformationCircleIcon className="h-5 w-5 text-brand" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">
+                  Safaricom Leave Policy Guidelines
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs text-gray-600">
+                <div className="rounded-xl bg-white p-3 border border-gray-200">
+                  <span className="font-bold text-gray-900 block">Annual Leave (21d)</span>
+                  <span className="text-[11px] text-gray-500">
+                    Plan in advance with your designated handover colleague. Weekends are automatically excluded.
+                  </span>
+                </div>
+                <div className="rounded-xl bg-white p-3 border border-gray-200">
+                  <span className="font-bold text-gray-900 block">Sick Leave (14d)</span>
+                  <span className="text-[11px] text-gray-500">
+                    Medical and recovery leave. Submit medical slip for absence exceeding 2 consecutive days.
+                  </span>
+                </div>
+                <div className="rounded-xl bg-white p-3 border border-gray-200">
+                  <span className="font-bold text-gray-900 block">Compassionate (5d)</span>
+                  <span className="text-[11px] text-gray-500">
+                    For family bereavement or urgent critical emergencies. Inform manager as soon as practical.
+                  </span>
+                </div>
+                <div className="rounded-xl bg-white p-3 border border-gray-200">
+                  <span className="font-bold text-gray-900 block">Study / Exams (5d)</span>
+                  <span className="text-[11px] text-gray-500">
+                    Granted for recognized certifications, university exams, or pre-approved professional courses.
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* My Leave Requests Table */}
             <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-              <h2 className="mb-4 text-lg font-bold text-gray-900">My Leave History</h2>
-              {myLeaveRequests.length === 0 ? (
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-lg font-bold text-gray-900">My Leave History</h2>
+                <div className="flex items-center gap-1">
+                  {(["all", "pending", "approved", "rejected"] as const).map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => setLeaveStatusFilter(status)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize transition ${
+                        leaveStatusFilter === status
+                          ? "bg-brand text-white shadow-2xs"
+                          : "border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {filteredLeaveRequests.length === 0 ? (
                 <p className="py-6 text-center text-sm text-gray-500">
-                  You have not submitted any leave requests yet.
+                  {leaveStatusFilter === "all"
+                    ? "You have not submitted any leave requests yet."
+                    : `No ${leaveStatusFilter} leave requests found.`}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -323,7 +391,7 @@ export function DashboardShell({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {myLeaveRequests.map((r) => {
+                      {filteredLeaveRequests.map((r) => {
                         const type = leaveTypeMap.get(r.leave_type);
                         const handover = memberMap.get(r.handover_email?.toLowerCase() || "");
                         return (
@@ -439,10 +507,31 @@ export function DashboardShell({
 
             {/* My Overtime Claims History Table */}
             <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-              <h2 className="mb-4 text-lg font-bold text-gray-900">My Overtime Claims</h2>
-              {myOvertimeRecords.length === 0 ? (
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-lg font-bold text-gray-900">My Overtime Claims</h2>
+                <div className="flex items-center gap-1">
+                  {(["all", "pending", "approved", "rejected"] as const).map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => setOvertimeStatusFilter(status)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize transition ${
+                        overtimeStatusFilter === status
+                          ? "bg-brand text-white shadow-2xs"
+                          : "border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {filteredOvertimeRecords.length === 0 ? (
                 <p className="py-6 text-center text-sm text-gray-500">
-                  You have not logged any overtime claims yet.
+                  {overtimeStatusFilter === "all"
+                    ? "You have not logged any overtime claims yet."
+                    : `No ${overtimeStatusFilter} overtime claims found.`}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -458,7 +547,7 @@ export function DashboardShell({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {myOvertimeRecords.map((record) => (
+                      {filteredOvertimeRecords.map((record) => (
                         <tr key={record.id} className="hover:bg-gray-50/50">
                           <td className="py-3 pr-4 font-mono font-medium text-gray-900">
                             {record.overtime_date}
