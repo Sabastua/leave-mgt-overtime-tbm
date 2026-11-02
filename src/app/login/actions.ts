@@ -55,6 +55,35 @@ export async function loginAction(
   redirect("/");
 }
 
+export type PasswordUpdateState = {
+  error?: string;
+  success?: string;
+};
+
+export async function updateMyPassword(
+  _prev: PasswordUpdateState,
+  formData: FormData
+): Promise<PasswordUpdateState> {
+  const newPassword = String(formData.get("new_password") ?? "").trim();
+  const confirmPassword = String(formData.get("confirm_password") ?? "").trim();
+
+  if (!newPassword || newPassword.length < 6) {
+    return { error: "New password must be at least 6 characters." };
+  }
+  if (newPassword !== confirmPassword) {
+    return { error: "Passwords do not match." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: "Your password has been updated successfully." };
+}
+
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();

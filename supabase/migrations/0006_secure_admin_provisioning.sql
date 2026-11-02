@@ -116,6 +116,7 @@ as $$
 declare
   v_email text := lower(trim(p_email));
   v_user_id uuid;
+  v_full_name text;
   v_caller text := lower(auth.jwt() ->> 'email');
   v_is_approver boolean := false;
 begin
@@ -147,8 +148,8 @@ begin
 
   if v_user_id is null then
     -- If user is in allowed_users but not yet in auth.users, create their auth account
-    select full_name into p_password from public.allowed_users where email = v_email;
-    return public.admin_provision_user(v_email, p_password, coalesce(p_password, split_part(v_email, '@', 1)), 'staff');
+    select full_name into v_full_name from public.allowed_users where email = v_email;
+    return public.admin_provision_user(v_email, p_password, coalesce(v_full_name, split_part(v_email, '@', 1)), 'staff');
   end if;
 
   update auth.users

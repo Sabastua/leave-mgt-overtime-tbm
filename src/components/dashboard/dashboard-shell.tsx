@@ -9,6 +9,7 @@ import { OvertimeRequestForm } from "@/components/overtime/overtime-request-form
 import { TeamCalendar } from "@/components/calendar/team-calendar";
 import { AdminOverview } from "@/components/admin/admin-overview";
 import { TeamManagement } from "@/components/team/team-management";
+import { ChangePasswordModal } from "@/components/dashboard/change-password-modal";
 import { reviewLeaveRequest, cancelLeaveRequest } from "@/app/actions/leave";
 import { reviewOvertimeRequest, cancelOvertimeRequest } from "@/app/actions/overtime";
 import { signOut } from "@/app/login/actions";
@@ -66,6 +67,7 @@ export function DashboardShell({
   const [activeTab, setActiveTab] = useState<
     "leave" | "overtime" | "calendar" | "admin" | "team"
   >("leave");
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const myLeaveRequests = allLeaveRequests.filter(
     (r) => r.user_email.toLowerCase() === currentUserEmail
@@ -97,13 +99,21 @@ export function DashboardShell({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="text-right">
               <p className="text-sm font-semibold text-gray-900">
                 {currentMember.full_name || currentUserEmail}
               </p>
               <p className="text-xs text-gray-500">{currentUserEmail}</p>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsPasswordModalOpen(true)}
+              className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
+              title="Change your password"
+            >
+              Password
+            </button>
             <form action={signOut}>
               <button
                 type="submit"
@@ -534,6 +544,12 @@ export function DashboardShell({
             members={teamMembers}
           />
         )}
+
+        {/* Change Password Modal */}
+        <ChangePasswordModal
+          isOpen={isPasswordModalOpen}
+          onClose={() => setIsPasswordModalOpen(false)}
+        />
       </main>
     </div>
   );
