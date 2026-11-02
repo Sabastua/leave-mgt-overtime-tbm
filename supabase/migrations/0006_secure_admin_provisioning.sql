@@ -1,10 +1,16 @@
 -- =============================================================================
 -- 0006_secure_admin_provisioning.sql
--- Secure admin-only user provisioning and password management
--- Eliminates public password claiming and external email rate limits
+-- Run the ENTIRE script below (make sure no partial text is highlighted)
 -- =============================================================================
 
--- 1. Admin Provision User (creates or updates allowed_users and auth.users)
+-- Ensure pgcrypto extension is available
+create extension if not exists pgcrypto with schema extensions;
+
+-- Ensure is_active column exists
+alter table public.allowed_users
+  add column if not exists is_active boolean not null default true;
+
+-- 1. Function: admin_provision_user
 create or replace function public.admin_provision_user(
   p_email text,
   p_password text,
@@ -16,7 +22,7 @@ as $$
 declare
   v_email text := lower(trim(p_email));
   v_user_id uuid;
-  v_caller text := lower(auth.jwt() ->> 'email');
+  v_caller text := lower(coalesce(auth.jwt() ->> 'email', ''));
   v_is_approver boolean := false;
 begin
   if length(coalesce(p_password, '')) < 6 then
@@ -31,19 +37,19 @@ begin
     raise exception 'Role must be either staff or approver';
   end if;
 
-  -- Verify caller is an approver
-  if v_caller is not null then
-    select exists (
-      select 1 from public.allowed_users
-      where email = v_caller and role = 'approver' and is_active = true
-    ) into v_is_approver;
-
-    if not v_is_approver and v_caller in (
+  -- Validate that caller is an authorized approver
+  if v_caller <> '' then
+    if v_caller in (
       'smacharia6@safaricom.co.ke',
       'akiminda@safaricom.co.ke',
       'brkimani@safaricom.co.ke'
     ) then
       v_is_approver := true;
+    else
+      select exists (
+        select 1 from public.allowed_users
+        where email = v_caller and role = 'approver' and is_active = true
+      ) into v_is_approver;
     end if;
 
     if not v_is_approver then
@@ -51,7 +57,7 @@ begin
     end if;
   end if;
 
-  -- 1. Insert or update in allowed_users
+  -- Insert or update allowed_users directory
   insert into public.allowed_users (email, full_name, role, is_active)
   values (v_email, trim(p_full_name), p_role, true)
   on conflict (email) do update
@@ -59,11 +65,10 @@ begin
       role = excluded.role,
       is_active = true;
 
-  -- 2. Provision in auth.users
+  -- Provision credentials in auth.users
   select id into v_user_id from auth.users where lower(email) = v_email limit 1;
 
   if v_user_id is not null then
-    -- Existing user: set new password and confirm email
     update auth.users
     set encrypted_password = extensions.crypt(p_password, extensions.gen_salt('bf')),
         email_confirmed_at = coalesce(email_confirmed_at, now()),
@@ -71,7 +76,6 @@ begin
         updated_at = now()
     where id = v_user_id;
   else
-    -- New user: create auth account directly
     v_user_id := gen_random_uuid();
     insert into auth.users (
       instance_id,
@@ -102,11 +106,11 @@ begin
 
   return 'success';
 end;
-$$ language plpgsql security definer set search_path = '';
+$$ language plpgsql security definer set search_path = public, auth, extensions;
 
 grant execute on function public.admin_provision_user(text, text, text, text) to authenticated;
 
--- 2. Admin Reset User Password
+-- 2. Function: admin_reset_user_password
 create or replace function public.admin_reset_user_password(
   p_email text,
   p_password text
@@ -117,26 +121,26 @@ declare
   v_email text := lower(trim(p_email));
   v_user_id uuid;
   v_full_name text;
-  v_caller text := lower(auth.jwt() ->> 'email');
+  v_caller text := lower(coalesce(auth.jwt() ->> 'email', ''));
   v_is_approver boolean := false;
 begin
   if length(coalesce(p_password, '')) < 6 then
     raise exception 'Password must be at least 6 characters.';
   end if;
 
-  -- Verify caller is an approver
-  if v_caller is not null then
-    select exists (
-      select 1 from public.allowed_users
-      where email = v_caller and role = 'approver' and is_active = true
-    ) into v_is_approver;
-
-    if not v_is_approver and v_caller in (
+  -- Validate that caller is an authorized approver
+  if v_caller <> '' then
+    if v_caller in (
       'smacharia6@safaricom.co.ke',
       'akiminda@safaricom.co.ke',
       'brkimani@safaricom.co.ke'
     ) then
       v_is_approver := true;
+    else
+      select exists (
+        select 1 from public.allowed_users
+        where email = v_caller and role = 'approver' and is_active = true
+      ) into v_is_approver;
     end if;
 
     if not v_is_approver then
@@ -147,7 +151,6 @@ begin
   select id into v_user_id from auth.users where lower(email) = v_email limit 1;
 
   if v_user_id is null then
-    -- If user is in allowed_users but not yet in auth.users, create their auth account
     select full_name into v_full_name from public.allowed_users where email = v_email;
     return public.admin_provision_user(v_email, p_password, coalesce(v_full_name, split_part(v_email, '@', 1)), 'staff');
   end if;
@@ -160,9 +163,9 @@ begin
 
   return 'success';
 end;
-$$ language plpgsql security definer set search_path = '';
+$$ language plpgsql security definer set search_path = public, auth, extensions;
 
 grant execute on function public.admin_reset_user_password(text, text) to authenticated;
 
--- Revoke public claim_initial_password to prevent unauthorized password overwriting
+-- 3. Revoke public claim_initial_password to block unauthorized access
 revoke execute on function public.claim_initial_password(text, text) from anon;
