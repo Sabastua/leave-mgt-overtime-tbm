@@ -1,16 +1,25 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { AllowedUser } from "@/lib/auth/allowed-users";
 import {
   addTeamMember,
+  resetTeamMemberPassword,
   updateTeamMemberRole,
   toggleTeamMemberStatus,
   removeTeamMember,
   type TeamActionState,
 } from "@/app/actions/team";
+import {
+  UsersIcon,
+  PlusIcon,
+  KeyIcon,
+  TrashIcon,
+  ShieldCheckIcon,
+} from "@/components/ui/icons";
 
-const initialState: TeamActionState = {};
+const initialAddState: TeamActionState = {};
+const initialResetState: TeamActionState = {};
 
 export function TeamManagement({
   currentUserEmail,
@@ -19,21 +28,34 @@ export function TeamManagement({
   currentUserEmail: string;
   members: AllowedUser[];
 }) {
-  const [state, action, pending] = useActionState(addTeamMember, initialState);
+  const [addState, addAction, addPending] = useActionState(addTeamMember, initialAddState);
+  const [resetState, resetAction, resetPending] = useActionState(
+    resetTeamMemberPassword,
+    initialResetState
+  );
+
+  const [activePasswordResetEmail, setActivePasswordResetEmail] = useState<string | null>(
+    null
+  );
 
   return (
     <div className="space-y-8">
       {/* Add New Team Member Form */}
       <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Add New Team Member</h2>
-          <p className="text-xs text-gray-500">
-            Authorise a colleague to access the Leave &amp; Overtime system. They will be able to set their own password and sign in immediately.
-          </p>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <PlusIcon className="h-5 w-5 text-brand" />
+              <h2 className="text-lg font-bold text-gray-900">Add New Team Member</h2>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Create and provision credentials for a colleague. They can log in immediately with the assigned Safaricom email and password.
+            </p>
+          </div>
         </div>
 
-        <form action={action} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form action={addAction} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <label
                 htmlFor="full_name"
@@ -73,7 +95,7 @@ export function TeamManagement({
                 htmlFor="role"
                 className="block text-xs font-semibold uppercase tracking-wide text-gray-600"
               >
-                System Role
+                Role
               </label>
               <select
                 id="role"
@@ -81,77 +103,155 @@ export function TeamManagement({
                 defaultValue="staff"
                 className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
               >
-                <option value="staff">Staff (Can apply for leave &amp; overtime)</option>
-                <option value="approver">Approver (Can approve/reject claims &amp; manage team)</option>
+                <option value="staff">Staff (Leave &amp; Overtime)</option>
+                <option value="approver">Approver / Manager</option>
               </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-xs font-semibold uppercase tracking-wide text-gray-600"
+              >
+                Initial Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="text"
+                required
+                minLength={6}
+                placeholder="Min 6 characters"
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+              />
             </div>
           </div>
 
-          {state.error && (
-            <p
+          {addState.error && (
+            <div
               role="alert"
-              className="rounded-lg bg-red-50 p-3 text-xs font-medium text-red-700"
+              className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700"
             >
-              {state.error}
-            </p>
+              {addState.error}
+            </div>
           )}
 
-          {state.success && (
-            <p
+          {addState.success && (
+            <div
               role="status"
-              className="rounded-lg bg-emerald-50 p-3 text-xs font-medium text-emerald-800"
+              className="rounded-lg border border-green-200 bg-green-50 p-3 text-xs font-medium text-green-700"
             >
-              {state.success}
-            </p>
+              {addState.success}
+            </div>
           )}
 
-          <button
-            type="submit"
-            disabled={pending}
-            className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white shadow-xs transition hover:bg-brand-dark disabled:opacity-50"
-          >
-            {pending ? "Adding…" : "Add Team Member"}
-          </button>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={addPending}
+              className="rounded-lg bg-brand px-5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-dark focus:ring-2 focus:ring-brand disabled:opacity-60"
+            >
+              {addPending ? "Provisioning..." : "Add & Provision Member"}
+            </button>
+          </div>
         </form>
       </section>
 
-      {/* Team Roster & Permissions Table */}
+      {/* Password Reset Modal / Drawer */}
+      {activePasswordResetEmail && (
+        <section className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 shadow-xs">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <KeyIcon className="h-5 w-5 text-blue-700" />
+              <h3 className="text-sm font-bold text-gray-900">
+                Reset Password for {activePasswordResetEmail}
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActivePasswordResetEmail(null)}
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <form action={resetAction} className="space-y-3">
+            <input type="hidden" name="email" value={activePasswordResetEmail} />
+            <div className="max-w-md">
+              <label
+                htmlFor="new_password"
+                className="block text-xs font-semibold uppercase tracking-wide text-gray-600"
+              >
+                New Password (minimum 6 characters)
+              </label>
+              <input
+                id="new_password"
+                name="new_password"
+                type="text"
+                required
+                minLength={6}
+                placeholder="Enter new password"
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:outline-none"
+              />
+            </div>
+
+            {resetState.error && (
+              <p className="text-xs text-red-600 font-medium">{resetState.error}</p>
+            )}
+            {resetState.success && (
+              <p className="text-xs text-green-700 font-medium">{resetState.success}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={resetPending}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 disabled:opacity-60"
+            >
+              {resetPending ? "Updating Password..." : "Save New Password"}
+            </button>
+          </form>
+        </section>
+      )}
+
+      {/* Team Roster Management Table */}
       <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
         <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Team Directory &amp; Permissions</h2>
-            <p className="text-xs text-gray-500">
-              Manage system permissions, toggle access, or remove departed team members.
-            </p>
+          <div className="flex items-center gap-2">
+            <UsersIcon className="h-5 w-5 text-brand" />
+            <h2 className="text-lg font-bold text-gray-900">
+              Team Directory &amp; Credentials ({members.length})
+            </h2>
           </div>
-          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-700">
-            {members.length} Total Members
+          <span className="text-xs text-gray-500">
+            {members.filter((m) => m.is_active).length} active members
           </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-gray-200 text-gray-500">
-                <th className="py-3 pr-4 font-semibold">Name &amp; Email</th>
-                <th className="px-3 py-3 font-semibold">Role</th>
-                <th className="px-3 py-3 font-semibold">Status</th>
-                <th className="px-3 py-3 text-right font-semibold">Actions</th>
+              <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
+                <th className="py-3 pr-4">Team Member</th>
+                <th className="px-3 py-3">Role</th>
+                <th className="px-3 py-3">Status</th>
+                <th className="px-3 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {members.map((member) => {
-                const isSelf = member.email.toLowerCase() === currentUserEmail.toLowerCase();
+                const isSelf =
+                  member.email.toLowerCase() === currentUserEmail.toLowerCase();
 
                 return (
-                  <tr key={member.email} className={!member.is_active ? "opacity-60 bg-gray-50" : ""}>
+                  <tr key={member.email} className="hover:bg-gray-50/50">
                     <td className="py-3.5 pr-4">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-gray-900">
                           {member.full_name || member.email}
                         </span>
                         {isSelf && (
-                          <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
+                          <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
                             You
                           </span>
                         )}
@@ -166,11 +266,8 @@ export function TeamManagement({
                           name="role"
                           defaultValue={member.role}
                           onChange={(e) => e.target.form?.requestSubmit()}
-                          className={`rounded-md border text-xs px-2 py-1 font-semibold focus:outline-none ${
-                            member.role === "approver"
-                              ? "border-brand/40 bg-brand/10 text-brand-dark"
-                              : "border-gray-200 bg-gray-50 text-gray-700"
-                          }`}
+                          disabled={isSelf}
+                          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-800 shadow-2xs focus:border-brand focus:outline-none disabled:opacity-60"
                         >
                           <option value="staff">Staff</option>
                           <option value="approver">Approver</option>
@@ -180,19 +277,35 @@ export function TeamManagement({
 
                     <td className="px-3 py-3.5">
                       <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           member.is_active
-                            ? "bg-emerald-50 text-emerald-800"
-                            : "bg-red-50 text-red-700"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-gray-100 text-gray-500"
                         }`}
                       >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            member.is_active ? "bg-emerald-500" : "bg-gray-400"
+                          }`}
+                        />
                         {member.is_active ? "Active" : "Deactivated"}
                       </span>
                     </td>
 
-                    <td className="px-3 py-3.5 text-right space-x-2">
-                      {!isSelf && (
-                        <>
+                    <td className="px-3 py-3.5 text-right">
+                      <div className="inline-flex items-center gap-2">
+                        {/* Reset Password Button */}
+                        <button
+                          type="button"
+                          onClick={() => setActivePasswordResetEmail(member.email)}
+                          className="flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-2xs transition hover:bg-gray-50"
+                        >
+                          <KeyIcon className="h-3.5 w-3.5 text-gray-500" />
+                          <span>Reset Password</span>
+                        </button>
+
+                        {/* Toggle Active/Inactive */}
+                        {!isSelf && (
                           <form action={toggleTeamMemberStatus} className="inline-block">
                             <input type="hidden" name="email" value={member.email} />
                             <input
@@ -202,32 +315,43 @@ export function TeamManagement({
                             />
                             <button
                               type="submit"
-                              className="rounded border border-gray-200 px-2 py-1 text-[11px] font-medium text-gray-600 hover:bg-gray-100"
+                              className={`rounded-md border px-2.5 py-1 text-xs font-semibold transition ${
+                                member.is_active
+                                  ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                                  : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                              }`}
                             >
-                              {member.is_active ? "Deactivate" : "Reactivate"}
+                              {member.is_active ? "Deactivate" : "Activate"}
                             </button>
                           </form>
+                        )}
 
-                          <form action={removeTeamMember} className="inline-block">
+                        {/* Delete member */}
+                        {!isSelf && (
+                          <form
+                            action={removeTeamMember}
+                            onSubmit={(e) => {
+                              if (
+                                !confirm(
+                                  `Are you sure you want to remove ${member.full_name || member.email}?`
+                                )
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                            className="inline-block"
+                          >
                             <input type="hidden" name="email" value={member.email} />
                             <button
                               type="submit"
-                              onClick={(e) => {
-                                if (
-                                  !confirm(
-                                    `Are you sure you want to remove ${member.full_name || member.email}?`
-                                  )
-                                ) {
-                                  e.preventDefault();
-                                }
-                              }}
-                              className="rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100"
+                              title="Delete member"
+                              className="rounded-md border border-red-200 p-1 text-red-600 transition hover:bg-red-50"
                             >
-                              Remove
+                              <TrashIcon className="h-4 w-4" />
                             </button>
                           </form>
-                        </>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

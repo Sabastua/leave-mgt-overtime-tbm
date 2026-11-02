@@ -6,17 +6,27 @@ import type { OvertimeRecord, OvertimeStats } from "@/lib/overtime/types";
 import type { AllowedUser } from "@/lib/auth/allowed-users";
 import { LeaveRequestForm } from "@/components/leave/leave-request-form";
 import { OvertimeRequestForm } from "@/components/overtime/overtime-request-form";
+import { TeamCalendar } from "@/components/calendar/team-calendar";
+import { AdminOverview } from "@/components/admin/admin-overview";
 import { TeamManagement } from "@/components/team/team-management";
 import { reviewLeaveRequest, cancelLeaveRequest } from "@/app/actions/leave";
 import { reviewOvertimeRequest, cancelOvertimeRequest } from "@/app/actions/overtime";
 import { signOut } from "@/app/login/actions";
-import { computeUserBalances } from "@/lib/leave/types";
+import {
+  CalendarIcon,
+  ClockIcon,
+  UsersIcon,
+  ChartBarIcon,
+  CogIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from "@/components/ui/icons";
 
 const STATUS_BADGE: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-800 ring-amber-600/20",
-  approved: "bg-emerald-50 text-emerald-800 ring-emerald-600/20",
-  rejected: "bg-red-50 text-red-700 ring-red-600/20",
-  cancelled: "bg-gray-100 text-gray-600 ring-gray-500/20",
+  pending: "bg-amber-50 text-amber-800 ring-1 ring-amber-600/20",
+  approved: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600/20",
+  rejected: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
+  cancelled: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/20",
 };
 
 const COLOR_ACCENT: Record<string, { bar: string; badge: string }> = {
@@ -53,7 +63,9 @@ export function DashboardShell({
   currentYear,
   schemaReady,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"leave" | "overtime" | "team" | "members">("leave");
+  const [activeTab, setActiveTab] = useState<
+    "leave" | "overtime" | "calendar" | "admin" | "team"
+  >("leave");
 
   const myLeaveRequests = allLeaveRequests.filter(
     (r) => r.user_email.toLowerCase() === currentUserEmail
@@ -78,7 +90,7 @@ export function DashboardShell({
               L
             </div>
             <div>
-              <span className="font-bold text-gray-900">Leave &amp; Overtime System</span>
+              <span className="font-bold text-gray-900">Leave &amp; Overtime Management</span>
               <span className="ml-2 rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-semibold text-brand-dark">
                 {currentMember.role === "approver" ? "Approver / Manager" : "Team Member"}
               </span>
@@ -105,60 +117,88 @@ export function DashboardShell({
 
         {/* Tab Navigation */}
         <div className="mx-auto max-w-6xl px-4">
-          <nav className="-mb-px flex space-x-6 text-sm font-medium">
+          <nav className="-mb-px flex flex-wrap space-x-6 text-sm font-medium">
+            {/* Tab 1: Leave Requests */}
             <button
               onClick={() => setActiveTab("leave")}
-              className={`border-b-2 py-3 px-1 transition ${
+              className={`flex items-center gap-2 border-b-2 py-3 px-1 transition ${
                 activeTab === "leave"
                   ? "border-brand text-brand font-semibold"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
               }`}
             >
-              🏖️ Leave Management
+              <CalendarIcon className="h-4 w-4" />
+              <span>Leave Requests</span>
               {pendingLeaveApprovals.length > 0 && isApprover && (
-                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">
+                <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">
                   {pendingLeaveApprovals.length}
                 </span>
               )}
             </button>
 
+            {/* Tab 2: Overtime Claims */}
             <button
               onClick={() => setActiveTab("overtime")}
-              className={`border-b-2 py-3 px-1 transition ${
+              className={`flex items-center gap-2 border-b-2 py-3 px-1 transition ${
                 activeTab === "overtime"
                   ? "border-brand text-brand font-semibold"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
               }`}
             >
-              ⏱️ Overtime Claims
+              <ClockIcon className="h-4 w-4" />
+              <span>Overtime Claims</span>
               {pendingOvertimeApprovals.length > 0 && isApprover && (
-                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-900">
+                <span className="ml-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-900">
                   {pendingOvertimeApprovals.length}
                 </span>
               )}
             </button>
 
+            {/* Tab 3: Team Calendar */}
             <button
-              onClick={() => setActiveTab("team")}
-              className={`border-b-2 py-3 px-1 transition ${
-                activeTab === "team"
+              onClick={() => setActiveTab("calendar")}
+              className={`flex items-center gap-2 border-b-2 py-3 px-1 transition ${
+                activeTab === "calendar"
                   ? "border-brand text-brand font-semibold"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
               }`}
             >
-              👥 Team Calendar &amp; Balances
+              <CalendarIcon className="h-4 w-4" />
+              <span>Team Calendar</span>
             </button>
 
+            {/* Tab 4: Admin & Analytics (Approvers only) */}
             {isApprover && (
               <button
-                onClick={() => setActiveTab("members")}
-                className={`border-b-2 py-3 px-1 transition ${
-                  activeTab === "members"
+                onClick={() => setActiveTab("admin")}
+                className={`flex items-center gap-2 border-b-2 py-3 px-1 transition ${
+                  activeTab === "admin"
                     ? "border-brand text-brand font-semibold"
                     : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
                 }`}
               >
-                ⚙️ Team Management
+                <ChartBarIcon className="h-4 w-4" />
+                <span>Admin &amp; Metrics</span>
+                {(pendingLeaveApprovals.length > 0 || pendingOvertimeApprovals.length > 0) && (
+                  <span className="ml-1 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-bold text-brand-dark">
+                    {pendingLeaveApprovals.length + pendingOvertimeApprovals.length}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Tab 5: Team Management (Approvers only) */}
+            {isApprover && (
+              <button
+                onClick={() => setActiveTab("team")}
+                className={`flex items-center gap-2 border-b-2 py-3 px-1 transition ${
+                  activeTab === "team"
+                    ? "border-brand text-brand font-semibold"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                }`}
+              >
+                <UsersIcon className="h-4 w-4" />
+                <span>Team Management</span>
               </button>
             )}
           </nav>
@@ -170,14 +210,15 @@ export function DashboardShell({
           <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             <p className="font-semibold">Notice: Database Setup</p>
             <p className="mt-1 text-xs text-amber-800">
-              Run <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">0005_team_management_rls.sql</code> in your Supabase SQL Editor to enable in-app team administration.
+              Run <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">0006_secure_admin_provisioning.sql</code> in your Supabase SQL Editor.
             </p>
           </div>
         )}
 
-        {/* TAB 1: LEAVE MANAGEMENT */}
+        {/* TAB 1: LEAVE REQUESTS */}
         {activeTab === "leave" && (
           <div className="space-y-8">
+            {/* My Leave Balances with Progress Bars */}
             <section>
               <div className="mb-3 flex items-baseline justify-between">
                 <h1 className="text-xl font-bold text-gray-900">
@@ -189,10 +230,8 @@ export function DashboardShell({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {myBalances.map(({ leaveType, entitled, approved, pending, remaining }) => {
                   const accent = COLOR_ACCENT[leaveType.color] ?? COLOR_ACCENT.emerald;
-                  const usedPct =
-                    entitled > 0
-                      ? Math.min(100, Math.round(((approved + pending) / entitled) * 100))
-                      : 0;
+                  const remainingPercent =
+                    entitled > 0 ? Math.round((remaining / entitled) * 100) : 0;
 
                   return (
                     <div
@@ -214,17 +253,29 @@ export function DashboardShell({
                         </p>
                       </div>
 
+                      {/* Progress Bar of Remaining Allowance */}
                       <div className="mt-4">
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                        <div className="flex justify-between text-[11px] text-gray-500 mb-1">
+                          <span>{approved}d taken</span>
+                          <span className="font-semibold">{remainingPercent}% available</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
                           <div
-                            className={`h-full rounded-full ${accent.bar}`}
-                            style={{ width: `${usedPct}%` }}
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              remainingPercent > 50
+                                ? "bg-emerald-500"
+                                : remainingPercent > 20
+                                ? "bg-amber-500"
+                                : "bg-red-500"
+                            }`}
+                            style={{ width: `${remainingPercent}%` }}
                           />
                         </div>
-                        <div className="mt-2 flex justify-between text-xs text-gray-500">
-                          <span>Approved: {approved}d</span>
-                          <span>Pending: {pending}d</span>
-                        </div>
+                        {pending > 0 && (
+                          <div className="mt-1 text-right text-[10px] text-amber-700">
+                            {pending}d pending approval
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -232,506 +283,256 @@ export function DashboardShell({
               </div>
             </section>
 
-            {isApprover && (
-              <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">Pending Leave Approvals</h2>
-                    <p className="text-xs text-gray-500">
-                      Review and approve or decline requests from the team.
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">
-                    {pendingLeaveApprovals.length} pending
-                  </span>
-                </div>
+            {/* Apply for Leave Form */}
+            <LeaveRequestForm
+              currentUserEmail={currentUserEmail}
+              leaveTypes={leaveTypes}
+              balances={myBalances}
+              teamMembers={teamMembers}
+            />
 
-                {pendingLeaveApprovals.length === 0 ? (
-                  <p className="rounded-xl bg-gray-50 py-6 text-center text-sm text-gray-500">
-                    No pending leave requests waiting for approval.
-                  </p>
-                ) : (
-                  <div className="divide-y divide-gray-100">
-                    {pendingLeaveApprovals.map((req) => {
-                      const applicant = memberMap.get(req.user_email.toLowerCase());
-                      const lType = leaveTypeMap.get(req.leave_type);
-                      const relief = req.handover_email
-                        ? memberMap.get(req.handover_email.toLowerCase())
-                        : null;
-
-                      return (
-                        <div
-                          key={req.id}
-                          className="flex flex-col justify-between gap-4 py-4 md:flex-row md:items-center"
-                        >
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-semibold text-gray-900">
-                                {applicant?.full_name ?? req.user_email}
-                              </span>
-                              <span className="text-xs text-gray-500">({req.user_email})</span>
-                              <span className="rounded-md bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand-dark">
-                                {lType?.name ?? req.leave_type}
-                              </span>
-                              <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-800">
-                                {req.working_days} working {req.working_days === 1 ? "day" : "days"}
-                              </span>
-                            </div>
-                            <p className="text-xs font-medium text-gray-700">
-                              📅 {req.start_date} → {req.end_date}
-                              {relief && (
-                                <span className="ml-3 text-gray-500">
-                                  🤝 Relief: {relief.full_name}
-                                </span>
-                              )}
-                            </p>
-                            {req.reason && (
-                              <p className="text-xs text-gray-600">&ldquo;{req.reason}&rdquo;</p>
-                            )}
-                          </div>
-
-                          <form
-                            action={reviewLeaveRequest}
-                            className="flex flex-wrap items-center gap-2"
-                          >
-                            <input type="hidden" name="request_id" value={req.id} />
-                            <input
-                              type="text"
-                              name="reviewer_note"
-                              placeholder="Optional comment…"
-                              className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
-                            />
-                            <button
-                              type="submit"
-                              name="decision"
-                              value="approved"
-                              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-dark"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              type="submit"
-                              name="decision"
-                              value="rejected"
-                              className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
-                            >
-                              Reject
-                            </button>
-                          </form>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
-            )}
-
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-              <div className="lg:col-span-5">
-                <LeaveRequestForm
-                  currentUserEmail={currentUserEmail}
-                  leaveTypes={leaveTypes}
-                  balances={myBalances}
-                  teamMembers={teamMembers}
-                />
-              </div>
-
-              <div className="lg:col-span-7">
-                <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-                  <h2 className="text-lg font-bold text-gray-900">My Leave Applications</h2>
-                  <p className="mb-4 text-xs text-gray-500">Track all your submitted leave requests.</p>
-
-                  {myLeaveRequests.length === 0 ? (
-                    <p className="rounded-xl bg-gray-50 py-8 text-center text-sm text-gray-500">
-                      No leave requests submitted yet.
-                    </p>
-                  ) : (
-                    <div className="divide-y divide-gray-100">
-                      {myLeaveRequests.map((req) => {
-                        const lType = leaveTypeMap.get(req.leave_type);
-                        const reviewer = req.reviewed_by
-                          ? memberMap.get(req.reviewed_by.toLowerCase())
-                          : null;
-
-                        return (
-                          <div
-                            key={req.id}
-                            className="flex flex-col justify-between gap-3 py-3.5 sm:flex-row sm:items-center"
-                          >
-                            <div className="space-y-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-sm font-semibold text-gray-900">
-                                  {lType?.name ?? req.leave_type}
-                                </span>
-                                <span
-                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${STATUS_BADGE[req.status]}`}
-                                >
-                                  {req.status}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {req.working_days} working {req.working_days === 1 ? "day" : "days"}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-600">
-                                {req.start_date} → {req.end_date}
-                              </p>
-                              {req.reason && (
-                                <p className="text-xs text-gray-500">&ldquo;{req.reason}&rdquo;</p>
-                              )}
-                              {reviewer && (
-                                <p className="text-xs text-gray-400">
-                                  Reviewed by {reviewer.full_name || reviewer.email}
-                                  {req.reviewer_note ? `: "${req.reviewer_note}"` : ""}
-                                </p>
-                              )}
-                            </div>
-
-                            {req.status === "pending" && (
-                              <form action={cancelLeaveRequest}>
-                                <input type="hidden" name="request_id" value={req.id} />
-                                <button
-                                  type="submit"
-                                  className="rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                                >
-                                  Cancel
-                                </button>
-                              </form>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: OVERTIME TRACKER */}
-        {activeTab === "overtime" && (
-          <div className="space-y-8">
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
-                <span className="text-xs font-semibold uppercase text-gray-500">
-                  Approved Overtime
-                </span>
-                <p className="mt-2 text-3xl font-bold text-gray-900">
-                  {myOvertimeStats.totalHoursApproved} <span className="text-sm font-normal text-gray-500">hrs</span>
-                </p>
-                <span className="mt-1 block text-xs text-emerald-600">Total approved this year</span>
-              </div>
-
-              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
-                <span className="text-xs font-semibold uppercase text-gray-500">
-                  Pending Approval
-                </span>
-                <p className="mt-2 text-3xl font-bold text-amber-700">
-                  {myOvertimeStats.totalHoursPending} <span className="text-sm font-normal text-gray-500">hrs</span>
-                </p>
-                <span className="mt-1 block text-xs text-gray-400">Awaiting manager review</span>
-              </div>
-
-              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
-                <span className="text-xs font-semibold uppercase text-gray-500">
-                  Paid Overtime
-                </span>
-                <p className="mt-2 text-3xl font-bold text-blue-700">
-                  {myOvertimeStats.paidHoursApproved} <span className="text-sm font-normal text-gray-500">hrs</span>
-                </p>
-                <span className="mt-1 block text-xs text-gray-400">Approved for remuneration</span>
-              </div>
-
-              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
-                <span className="text-xs font-semibold uppercase text-gray-500">
-                  TOIL / Comp Time
-                </span>
-                <p className="mt-2 text-3xl font-bold text-purple-700">
-                  {myOvertimeStats.toilHoursApproved} <span className="text-sm font-normal text-gray-500">hrs</span>
-                </p>
-                <span className="mt-1 block text-xs text-gray-400">Time Off in Lieu accrued</span>
-              </div>
-            </section>
-
-            {isApprover && (
-              <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">Pending Overtime Claims</h2>
-                    <p className="text-xs text-gray-500">
-                      Approve or reject extra hours claimed by team members.
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-900">
-                    {pendingOvertimeApprovals.length} pending
-                  </span>
-                </div>
-
-                {pendingOvertimeApprovals.length === 0 ? (
-                  <p className="rounded-xl bg-gray-50 py-6 text-center text-sm text-gray-500">
-                    No overtime claims awaiting approval.
-                  </p>
-                ) : (
-                  <div className="divide-y divide-gray-100">
-                    {pendingOvertimeApprovals.map((claim) => {
-                      const claimant = memberMap.get(claim.user_email.toLowerCase());
-                      return (
-                        <div
-                          key={claim.id}
-                          className="flex flex-col justify-between gap-4 py-4 md:flex-row md:items-center"
-                        >
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-semibold text-gray-900">
-                                {claimant?.full_name ?? claim.user_email}
-                              </span>
-                              <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-800">
-                                {claim.hours} hours
-                              </span>
-                              <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
-                                {claim.compensatory_choice === "time_off_in_lieu" ? "TOIL" : "Paid"}
-                              </span>
-                              {claim.ticket_ref && (
-                                <span className="rounded-md bg-purple-50 px-2 py-0.5 text-xs font-mono text-purple-700">
-                                  {claim.ticket_ref}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs font-medium text-gray-700">
-                              📅 Worked on {claim.overtime_date}
-                            </p>
-                            <p className="text-xs text-gray-600">&ldquo;{claim.task_summary}&rdquo;</p>
-                          </div>
-
-                          <form
-                            action={reviewOvertimeRequest}
-                            className="flex flex-wrap items-center gap-2"
-                          >
-                            <input type="hidden" name="record_id" value={claim.id} />
-                            <input
-                              type="text"
-                              name="reviewer_note"
-                              placeholder="Approval comment…"
-                              className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 focus:border-brand focus:outline-none"
-                            />
-                            <button
-                              type="submit"
-                              name="decision"
-                              value="approved"
-                              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-dark"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              type="submit"
-                              name="decision"
-                              value="rejected"
-                              className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
-                            >
-                              Reject
-                            </button>
-                          </form>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
-            )}
-
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-              <div className="lg:col-span-5">
-                <OvertimeRequestForm />
-              </div>
-
-              <div className="lg:col-span-7">
-                <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-                  <h2 className="text-lg font-bold text-gray-900">My Overtime History</h2>
-                  <p className="mb-4 text-xs text-gray-500">Record of hours submitted and their review status.</p>
-
-                  {myOvertimeRecords.length === 0 ? (
-                    <p className="rounded-xl bg-gray-50 py-8 text-center text-sm text-gray-500">
-                      No overtime logged yet.
-                    </p>
-                  ) : (
-                    <div className="divide-y divide-gray-100">
-                      {myOvertimeRecords.map((item) => {
-                        const reviewer = item.reviewed_by
-                          ? memberMap.get(item.reviewed_by.toLowerCase())
-                          : null;
-
-                        return (
-                          <div
-                            key={item.id}
-                            className="flex flex-col justify-between gap-3 py-3.5 sm:flex-row sm:items-center"
-                          >
-                            <div className="space-y-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-sm font-bold text-gray-900">
-                                  {item.hours} hrs on {item.overtime_date}
-                                </span>
-                                <span
-                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${STATUS_BADGE[item.status]}`}
-                                >
-                                  {item.status}
-                                </span>
-                                <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 font-medium">
-                                  {item.compensatory_choice === "time_off_in_lieu" ? "TOIL" : "Paid"}
-                                </span>
-                                {item.ticket_ref && (
-                                  <span className="font-mono text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
-                                    {item.ticket_ref}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-gray-600">{item.task_summary}</p>
-                              {reviewer && (
-                                <p className="text-xs text-gray-400">
-                                  Reviewed by {reviewer.full_name || reviewer.email}
-                                  {item.reviewer_note ? `: "${item.reviewer_note}"` : ""}
-                                </p>
-                              )}
-                            </div>
-
-                            {item.status === "pending" && (
-                              <form action={cancelOvertimeRequest}>
-                                <input type="hidden" name="record_id" value={item.id} />
-                                <button
-                                  type="submit"
-                                  className="rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                                >
-                                  Cancel
-                                </button>
-                              </form>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: TEAM CALENDAR & BALANCES */}
-        {activeTab === "team" && (
-          <div className="space-y-8">
+            {/* My Leave Requests Table */}
             <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-              <h2 className="text-lg font-bold text-gray-900">Upcoming Team Leave Schedule</h2>
-              <p className="mb-4 text-xs text-gray-500">
-                Approved and scheduled time-off across the team to plan work coverage.
-              </p>
-
-              {allLeaveRequests.filter((r) => r.status === "approved").length === 0 ? (
-                <p className="rounded-xl bg-gray-50 py-8 text-center text-sm text-gray-500">
-                  No upcoming approved leave scheduled yet.
+              <h2 className="mb-4 text-lg font-bold text-gray-900">My Leave History</h2>
+              {myLeaveRequests.length === 0 ? (
+                <p className="py-6 text-center text-sm text-gray-500">
+                  You have not submitted any leave requests yet.
                 </p>
               ) : (
-                <div className="divide-y divide-gray-100">
-                  {allLeaveRequests
-                    .filter((r) => r.status === "approved")
-                    .map((item) => {
-                      const person = memberMap.get(item.user_email.toLowerCase());
-                      const lType = leaveTypeMap.get(item.leave_type);
-                      const relief = item.handover_email
-                        ? memberMap.get(item.handover_email.toLowerCase())
-                        : null;
-
-                      return (
-                        <div key={item.id} className="flex flex-col justify-between py-3 sm:flex-row sm:items-center">
-                          <div>
-                            <span className="font-semibold text-gray-900">
-                              {person?.full_name ?? item.user_email}
-                            </span>
-                            <span className="ml-2 rounded-md bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand-dark">
-                              {lType?.name ?? item.leave_type}
-                            </span>
-                            <p className="mt-1 text-xs text-gray-600">
-                              📅 {item.start_date} → {item.end_date} ({item.working_days} working days)
-                            </p>
-                          </div>
-                          {relief && (
-                            <span className="mt-2 text-xs text-gray-500 sm:mt-0">
-                              Relief / Handover: <strong className="text-gray-700">{relief.full_name}</strong>
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-            </section>
-
-            <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-              <h2 className="text-lg font-bold text-gray-900">Team Leave Entitlements Summary ({currentYear})</h2>
-              <p className="mb-4 text-xs text-gray-500">
-                Remaining working days for all active team members.
-              </p>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-gray-500">
-                      <th className="py-2.5 pr-3 font-semibold">Team Member</th>
-                      <th className="px-2 py-2.5 font-semibold">Role</th>
-                      {leaveTypes.map((lt) => (
-                        <th key={lt.code} className="px-2 py-2.5 text-right font-semibold">
-                          {lt.name.replace(" Leave", "")}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {teamMembers
-                      .filter((m) => m.is_active)
-                      .map((member) => {
-                        const bals = computeUserBalances(
-                          leaveTypes,
-                          allLeaveRequests,
-                          member.email,
-                          currentYear
-                        );
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
+                        <th className="py-2.5 pr-4">Type</th>
+                        <th className="px-3 py-2.5">Start</th>
+                        <th className="px-3 py-2.5">End</th>
+                        <th className="px-3 py-2.5">Working Days</th>
+                        <th className="px-3 py-2.5">Relief Colleague</th>
+                        <th className="px-3 py-2.5">Status</th>
+                        <th className="px-3 py-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {myLeaveRequests.map((r) => {
+                        const type = leaveTypeMap.get(r.leave_type);
+                        const handover = memberMap.get(r.handover_email?.toLowerCase() || "");
                         return (
-                          <tr key={member.email}>
-                            <td className="py-2.5 pr-3">
-                              <div className="font-semibold text-gray-900">{member.full_name || member.email}</div>
-                              <div className="text-[11px] text-gray-400">{member.email}</div>
+                          <tr key={r.id} className="hover:bg-gray-50/50">
+                            <td className="py-3 pr-4 font-semibold text-gray-900">
+                              {type?.name ?? r.leave_type}
                             </td>
-                            <td className="px-2 py-2.5">
+                            <td className="px-3 py-3 font-mono">{r.start_date}</td>
+                            <td className="px-3 py-3 font-mono">{r.end_date}</td>
+                            <td className="px-3 py-3 font-semibold">{r.working_days}</td>
+                            <td className="px-3 py-3 text-gray-600">
+                              {handover ? handover.full_name : r.handover_email || "—"}
+                            </td>
+                            <td className="px-3 py-3">
                               <span
-                                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                  member.role === "approver"
-                                    ? "bg-brand/10 text-brand-dark"
-                                    : "bg-gray-100 text-gray-700"
+                                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                  STATUS_BADGE[r.status] ?? "bg-gray-100 text-gray-700"
                                 }`}
                               >
-                                {member.role === "approver" ? "Approver" : "Staff"}
+                                {r.status.toUpperCase()}
                               </span>
                             </td>
-                            {bals.map((b) => (
-                              <td
-                                key={b.leaveType.code}
-                                className="px-2 py-2.5 text-right font-mono font-semibold text-gray-800"
-                              >
-                                {b.remaining}
-                                <span className="font-normal text-gray-400">/{b.entitled}</span>
-                              </td>
-                            ))}
+                            <td className="px-3 py-3 text-right">
+                              {r.status === "pending" && (
+                                <form action={cancelLeaveRequest} className="inline">
+                                  <input type="hidden" name="request_id" value={r.id} />
+                                  <button
+                                    type="submit"
+                                    className="text-xs text-red-600 hover:text-red-800 font-semibold"
+                                  >
+                                    Cancel
+                                  </button>
+                                </form>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
-                  </tbody>
-                </table>
-              </div>
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
           </div>
         )}
 
-        {/* TAB 4: TEAM MANAGEMENT (APPROVERS ONLY) */}
-        {activeTab === "members" && isApprover && (
-          <TeamManagement currentUserEmail={currentUserEmail} members={teamMembers} />
+        {/* TAB 2: OVERTIME CLAIMS */}
+        {activeTab === "overtime" && (
+          <div className="space-y-8">
+            {/* My Overtime Summary with Progress Bars */}
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Approved Hours ({currentYear})
+                </span>
+                <p className="mt-2 text-3xl font-bold text-gray-900">
+                  {myOvertimeStats.totalHoursApproved.toFixed(1)} <span className="text-sm font-normal text-gray-500">hrs</span>
+                </p>
+                <div className="mt-3">
+                  <div className="flex justify-between text-[11px] text-gray-600 mb-1">
+                    <span className="font-semibold text-blue-700">{myOvertimeStats.paidHoursApproved.toFixed(1)}h Paid</span>
+                    <span className="font-semibold text-purple-700">{myOvertimeStats.toilHoursApproved.toFixed(1)}h TOIL</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 flex">
+                    <div
+                      className="bg-blue-500"
+                      style={{
+                        width: `${
+                          myOvertimeStats.totalHoursApproved > 0
+                            ? (myOvertimeStats.paidHoursApproved / myOvertimeStats.totalHoursApproved) * 100
+                            : 50
+                        }%`,
+                      }}
+                    />
+                    <div
+                      className="bg-purple-500"
+                      style={{
+                        width: `${
+                          myOvertimeStats.totalHoursApproved > 0
+                            ? (myOvertimeStats.toilHoursApproved / myOvertimeStats.totalHoursApproved) * 100
+                            : 50
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Pending Claim Hours
+                </span>
+                <p className="mt-2 text-3xl font-bold text-amber-700">
+                  {myOvertimeStats.totalHoursPending.toFixed(1)} <span className="text-sm font-normal text-gray-500">hrs</span>
+                </p>
+                <p className="mt-2 text-xs text-gray-500">Awaiting approver review</p>
+              </div>
+
+              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  TOIL Accumulated
+                </span>
+                <p className="mt-2 text-3xl font-bold text-purple-700">
+                  {(myOvertimeStats.toilHoursApproved / 8).toFixed(1)}{" "}
+                  <span className="text-sm font-normal text-gray-500">days equivalent</span>
+                </p>
+                <p className="mt-2 text-xs text-gray-500">Calculated as 8 working hours = 1 day</p>
+              </div>
+            </section>
+
+            {/* Overtime Request Form */}
+            <OvertimeRequestForm />
+
+            {/* My Overtime Claims History Table */}
+            <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
+              <h2 className="mb-4 text-lg font-bold text-gray-900">My Overtime Claims</h2>
+              {myOvertimeRecords.length === 0 ? (
+                <p className="py-6 text-center text-sm text-gray-500">
+                  You have not logged any overtime claims yet.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
+                        <th className="py-2.5 pr-4">Date Worked</th>
+                        <th className="px-3 py-2.5">Hours</th>
+                        <th className="px-3 py-2.5">Preference</th>
+                        <th className="px-3 py-2.5">Task &amp; Reference</th>
+                        <th className="px-3 py-2.5">Status</th>
+                        <th className="px-3 py-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {myOvertimeRecords.map((record) => (
+                        <tr key={record.id} className="hover:bg-gray-50/50">
+                          <td className="py-3 pr-4 font-mono font-medium text-gray-900">
+                            {record.overtime_date}
+                          </td>
+                          <td className="px-3 py-3 font-semibold">{record.hours}h</td>
+                          <td className="px-3 py-3">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                record.compensatory_choice === "paid"
+                                  ? "bg-blue-50 text-blue-800"
+                                  : "bg-purple-50 text-purple-800"
+                              }`}
+                            >
+                              {record.compensatory_choice.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="font-medium text-gray-900">
+                              {record.task_summary}
+                            </div>
+                            {record.ticket_ref && (
+                              <div className="text-[11px] font-mono text-gray-400">
+                                Ref: {record.ticket_ref}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-3">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                STATUS_BADGE[record.status] ?? "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                              {record.status.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            {record.status === "pending" && (
+                              <form action={cancelOvertimeRequest} className="inline">
+                                <input type="hidden" name="record_id" value={record.id} />
+                                <button
+                                  type="submit"
+                                  className="text-xs text-red-600 hover:text-red-800 font-semibold"
+                                >
+                                  Cancel
+                                </button>
+                              </form>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {/* TAB 3: TEAM CALENDAR */}
+        {activeTab === "calendar" && (
+          <TeamCalendar
+            teamMembers={teamMembers}
+            leaveRequests={allLeaveRequests}
+            leaveTypes={leaveTypes}
+          />
+        )}
+
+        {/* TAB 4: ADMIN & METRICS (APPROVERS ONLY) */}
+        {activeTab === "admin" && isApprover && (
+          <AdminOverview
+            teamMembers={teamMembers}
+            leaveRequests={allLeaveRequests}
+            leaveTypes={leaveTypes}
+            overtimeRecords={allOvertimeRecords}
+            currentYear={currentYear}
+          />
+        )}
+
+        {/* TAB 5: TEAM MANAGEMENT (APPROVERS ONLY) */}
+        {activeTab === "team" && isApprover && (
+          <TeamManagement
+            currentUserEmail={currentUserEmail}
+            members={teamMembers}
+          />
         )}
       </main>
     </div>
