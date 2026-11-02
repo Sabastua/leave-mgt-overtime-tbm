@@ -149,18 +149,32 @@ async function LeaveDashboard() {
       ? (dbLeaveTypes as LeaveType[])
       : DEFAULT_LEAVE_TYPES;
 
-  const allRequests: LeaveRequest[] = (dbRequests as LeaveRequest[]) ?? [];
-  const allOvertime: OvertimeRecord[] = (dbOvertime as OvertimeRecord[]) ?? [];
+  const rawRequests: LeaveRequest[] = (dbRequests as LeaveRequest[]) ?? [];
+  const rawOvertime: OvertimeRecord[] = (dbOvertime as OvertimeRecord[]) ?? [];
   const currentYear = new Date().getFullYear();
+
+  // Strict role-based server-side data isolation:
+  // - Approvers receive all requests and overtime records for metrics, approval queues, and auditing.
+  // - Staff members ONLY receive their own overtime records (confidential), and for leaves,
+  //   only their own requests plus approved leaves for team calendar planning.
+  const allRequests: LeaveRequest[] = isApprover
+    ? rawRequests
+    : rawRequests.filter(
+        (r) => r.user_email.toLowerCase() === email || r.status === "approved"
+      );
+
+  const allOvertime: OvertimeRecord[] = isApprover
+    ? rawOvertime
+    : rawOvertime.filter((r) => r.user_email.toLowerCase() === email);
 
   const myBalances = computeUserBalances(
     leaveTypes,
-    allRequests,
+    rawRequests,
     email,
     currentYear
   );
 
-  const myOvertimeStats = computeOvertimeStats(allOvertime, email);
+  const myOvertimeStats = computeOvertimeStats(rawOvertime, email);
 
   return (
     <DashboardShell
