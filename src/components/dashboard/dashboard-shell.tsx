@@ -10,6 +10,7 @@ import { TeamCalendar } from "@/components/calendar/team-calendar";
 import { AdminOverview } from "@/components/admin/admin-overview";
 import { TeamManagement } from "@/components/team/team-management";
 import { ChangePasswordModal } from "@/components/dashboard/change-password-modal";
+import { OvertimeReceiptModal } from "@/components/overtime/overtime-receipt-modal";
 import { reviewLeaveRequest, cancelLeaveRequest } from "@/app/actions/leave";
 import { reviewOvertimeRequest, cancelOvertimeRequest } from "@/app/actions/overtime";
 import { signOut } from "@/app/login/actions";
@@ -69,6 +70,7 @@ export function DashboardShell({
     "leave" | "overtime" | "calendar" | "admin" | "team"
   >("leave");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [selectedReceiptRecord, setSelectedReceiptRecord] = useState<OvertimeRecord | null>(null);
   const [leaveStatusFilter, setLeaveStatusFilter] = useState<string>("all");
   const [overtimeStatusFilter, setOvertimeStatusFilter] = useState<string>("all");
 
@@ -257,7 +259,7 @@ export function DashboardShell({
                   return (
                     <div
                       key={leaveType.code}
-                      className="flex flex-col justify-between rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5"
+                      className="flex flex-col justify-between rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition-all duration-300 hover:shadow-md hover:-translate-y-1"
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2">
@@ -443,7 +445,7 @@ export function DashboardShell({
           <div className="space-y-8">
             {/* My Overtime Summary with Progress Bars */}
             <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
+              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
                 <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Approved Hours ({currentYear})
                 </span>
@@ -480,7 +482,7 @@ export function DashboardShell({
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
+              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
                 <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Pending Claim Hours
                 </span>
@@ -490,7 +492,7 @@ export function DashboardShell({
                 <p className="mt-2 text-xs text-gray-500">Awaiting approver review</p>
               </div>
 
-              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
+              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
                 <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   TOIL Accumulated
                 </span>
@@ -503,7 +505,10 @@ export function DashboardShell({
             </section>
 
             {/* Overtime Request Form */}
-            <OvertimeRequestForm />
+            <OvertimeRequestForm
+              currentUserEmail={currentUserEmail}
+              currentUserName={currentMember.full_name || currentUserEmail}
+            />
 
             {/* My Overtime Claims History Table */}
             <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
@@ -584,17 +589,26 @@ export function DashboardShell({
                             </span>
                           </td>
                           <td className="px-3 py-3 text-right">
-                            {record.status === "pending" && (
-                              <form action={cancelOvertimeRequest} className="inline">
-                                <input type="hidden" name="record_id" value={record.id} />
-                                <button
-                                  type="submit"
-                                  className="text-xs text-red-600 hover:text-red-800 font-semibold"
-                                >
-                                  Cancel
-                                </button>
-                              </form>
-                            )}
+                            <div className="inline-flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedReceiptRecord(record)}
+                                className="text-xs text-brand hover:text-brand-dark font-semibold transition"
+                              >
+                                Receipt
+                              </button>
+                              {record.status === "pending" && (
+                                <form action={cancelOvertimeRequest} className="inline">
+                                  <input type="hidden" name="record_id" value={record.id} />
+                                  <button
+                                    type="submit"
+                                    className="text-xs text-red-600 hover:text-red-800 font-semibold"
+                                  >
+                                    Cancel
+                                  </button>
+                                </form>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -639,6 +653,15 @@ export function DashboardShell({
           isOpen={isPasswordModalOpen}
           onClose={() => setIsPasswordModalOpen(false)}
         />
+
+        {/* Printable Overtime Receipt Modal */}
+        {selectedReceiptRecord && (
+          <OvertimeReceiptModal
+            record={selectedReceiptRecord}
+            employeeName={currentMember.full_name || currentUserEmail}
+            onClose={() => setSelectedReceiptRecord(null)}
+          />
+        )}
       </main>
     </div>
   );
