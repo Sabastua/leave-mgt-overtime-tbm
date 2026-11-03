@@ -78,6 +78,9 @@ export function DashboardShell({
   const [overtimeStatusFilter, setOvertimeStatusFilter] = useState<string>("all");
   const [expandedLeaveId, setExpandedLeaveId] = useState<string | null>(null);
   const [leaveSearchQuery, setLeaveSearchQuery] = useState("");
+  const [expandedOvertimeId, setExpandedOvertimeId] = useState<string | null>(null);
+  const [overtimeSearchQuery, setOvertimeSearchQuery] = useState("");
+  const [prefillOvertimeClaim, setPrefillOvertimeClaim] = useState<OvertimeRecord | null>(null);
 
   const memberMap = new Map(teamMembers.map((m) => [m.email.toLowerCase(), m]));
   const leaveTypeMap = new Map(leaveTypes.map((t) => [t.code, t]));
@@ -104,8 +107,16 @@ export function DashboardShell({
     (r) => r.user_email.toLowerCase() === currentUserEmail
   );
   const filteredOvertimeRecords = myOvertimeRecords.filter((r) => {
-    if (overtimeStatusFilter === "all") return true;
-    return r.status === overtimeStatusFilter;
+    if (overtimeStatusFilter !== "all" && r.status !== overtimeStatusFilter) return false;
+    if (overtimeSearchQuery.trim()) {
+      const q = overtimeSearchQuery.toLowerCase();
+      const matchesDate = r.overtime_date.includes(q);
+      const matchesTask = r.task_summary.toLowerCase().includes(q);
+      const matchesTicket = (r.ticket_ref || "").toLowerCase().includes(q);
+      const matchesPref = r.compensatory_choice.toLowerCase().includes(q);
+      return matchesDate || matchesTask || matchesTicket || matchesPref;
+    }
+    return true;
   });
   const pendingOvertimeApprovals = allOvertimeRecords.filter((r) => r.status === "pending");
 
@@ -609,45 +620,65 @@ export function DashboardShell({
               </div>
             </section>
 
-            {/* Overtime Request Form */}
+            {/* Overtime Request Form with Smart Calculator & Shift Templates */}
             <OvertimeRequestForm
               currentUserEmail={currentUserEmail}
               currentUserName={currentMember.full_name || currentUserEmail}
+              prefillClaim={prefillOvertimeClaim}
+              onClearPrefill={() => setPrefillOvertimeClaim(null)}
             />
 
             {/* My Overtime Claims History Table */}
             <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-lg font-bold text-gray-900">My Overtime Claims</h2>
-                <div className="flex items-center gap-1">
-                  {(["all", "pending", "approved", "rejected"] as const).map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => setOvertimeStatusFilter(status)}
-                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize transition ${
-                        overtimeStatusFilter === status
-                          ? "bg-brand text-white shadow-2xs"
-                          : "border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">My Overtime Claims</h2>
+                  <p className="text-xs text-gray-500">Track approved hours, printable vouchers, and manager authorizations.</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search claims or ticket ref…"
+                      value={overtimeSearchQuery}
+                      onChange={(e) => setOvertimeSearchQuery(e.target.value)}
+                      className="rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-3 text-xs text-gray-900 shadow-2xs transition focus:border-brand focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {(["all", "pending", "approved", "rejected"] as const).map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => setOvertimeStatusFilter(status)}
+                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize transition ${
+                          overtimeStatusFilter === status
+                            ? "bg-brand text-white shadow-2xs"
+                            : "border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
+                        }`}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               {filteredOvertimeRecords.length === 0 ? (
                 <p className="py-6 text-center text-sm text-gray-500">
-                  {overtimeStatusFilter === "all"
+                  {overtimeStatusFilter === "all" && !overtimeSearchQuery
                     ? "You have not logged any overtime claims yet."
-                    : `No ${overtimeStatusFilter} overtime claims found.`}
+                    : "No overtime claims match your search or status filter."}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
+                        <th className="py-2.5 pr-2 w-6"></th>
                         <th className="py-2.5 pr-4">Date Worked</th>
                         <th className="px-3 py-2.5">Hours</th>
                         <th className="px-3 py-2.5">Preference</th>
@@ -657,66 +688,154 @@ export function DashboardShell({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {filteredOvertimeRecords.map((record) => (
-                        <tr key={record.id} className="hover:bg-gray-50/50">
-                          <td className="py-3 pr-4 font-mono font-medium text-gray-900">
-                            {record.overtime_date}
-                          </td>
-                          <td className="px-3 py-3 font-semibold">{record.hours}h</td>
-                          <td className="px-3 py-3">
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                record.compensatory_choice === "paid"
-                                  ? "bg-blue-50 text-blue-800"
-                                  : "bg-purple-50 text-purple-800"
-                              }`}
-                            >
-                              {record.compensatory_choice.toUpperCase()}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="font-medium text-gray-900">
-                              {record.task_summary}
-                            </div>
-                            {record.ticket_ref && (
-                              <div className="text-[11px] font-mono text-gray-400">
-                                Ref: {record.ticket_ref}
+                      {filteredOvertimeRecords.map((record) => {
+                        const isExpanded = expandedOvertimeId === record.id;
+
+                        return (
+                          <tr key={record.id} className="group">
+                            <td colSpan={7} className="p-0">
+                              <div className="hover:bg-gray-50/60 transition flex flex-col">
+                                <div className="flex items-center w-full px-2 py-3">
+                                  <div className="w-6 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedOvertimeId(isExpanded ? null : record.id)}
+                                      className="rounded p-1 text-gray-400 hover:text-gray-700 transition"
+                                      title={isExpanded ? "Collapse shift details" : "Expand shift details"}
+                                    >
+                                      {isExpanded ? (
+                                        <ChevronUpIcon className="h-3.5 w-3.5" />
+                                      ) : (
+                                        <ChevronDownIcon className="h-3.5 w-3.5" />
+                                      )}
+                                    </button>
+                                  </div>
+
+                                  <div className="w-28 pr-4 font-mono font-medium text-gray-900">
+                                    {record.overtime_date}
+                                  </div>
+
+                                  <div className="w-20 px-3 font-semibold text-gray-900 font-mono">
+                                    {record.hours}h
+                                  </div>
+
+                                  <div className="w-28 px-3">
+                                    <span
+                                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                        record.compensatory_choice === "paid"
+                                          ? "bg-blue-50 text-blue-800"
+                                          : "bg-purple-50 text-purple-800"
+                                      }`}
+                                    >
+                                      {record.compensatory_choice === "paid" ? "PAID" : "TOIL"}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex-1 px-3 truncate">
+                                    <span className="font-medium text-gray-900">
+                                      {record.task_summary.split("\n")[0]}
+                                    </span>
+                                    {record.ticket_ref && (
+                                      <span className="ml-2 font-mono text-[11px] text-gray-400">
+                                        Ref: {record.ticket_ref}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="w-28 px-3">
+                                    <span
+                                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                                        STATUS_BADGE[record.status] ?? "bg-gray-100 text-gray-700"
+                                      }`}
+                                    >
+                                      {record.status.toUpperCase()}
+                                    </span>
+                                  </div>
+
+                                  <div className="w-36 px-3 text-right">
+                                    <div className="inline-flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setPrefillOvertimeClaim(record);
+                                          document.getElementById("overtime-claim-form-section")?.scrollIntoView({ behavior: "smooth" });
+                                        }}
+                                        className="text-xs text-blue-600 hover:text-blue-800 font-semibold transition active:scale-95"
+                                        title="Repeat claim using this template"
+                                      >
+                                        Repeat
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedReceiptRecord(record)}
+                                        className="text-xs text-brand hover:text-brand-dark font-semibold transition active:scale-95"
+                                      >
+                                        Receipt
+                                      </button>
+                                      {record.status === "pending" && (
+                                        <form action={cancelOvertimeRequest} className="inline">
+                                          <input type="hidden" name="record_id" value={record.id} />
+                                          <button
+                                            type="submit"
+                                            className="text-xs text-red-600 hover:text-red-800 font-semibold active:scale-95 transition"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </form>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Expanded Shift Detail View */}
+                                {isExpanded && (
+                                  <div className="bg-gray-50/80 px-8 py-3.5 border-t border-gray-100 text-xs animate-in fade-in">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      <div>
+                                        <span className="text-[10px] uppercase font-bold text-gray-400 block mb-0.5">
+                                          Detailed Shift &amp; Task Notes:
+                                        </span>
+                                        <div className="text-gray-800 bg-white p-2.5 rounded-lg border border-gray-200 whitespace-pre-wrap font-mono text-[11px]">
+                                          {record.task_summary}
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <span className="text-[10px] uppercase font-bold text-gray-400 block mb-0.5">
+                                          Manager Review &amp; Payroll Authorization:
+                                        </span>
+                                        <div className="bg-white p-2.5 rounded-lg border border-gray-200 space-y-1">
+                                          <div className="flex items-center justify-between text-[11px]">
+                                            <span className="text-gray-500">Reviewer:</span>
+                                            <span className="font-semibold text-gray-900">
+                                              {record.reviewed_by || "Pending Review (F. Mbuthia)"}
+                                            </span>
+                                          </div>
+                                          {record.reviewed_at && (
+                                            <div className="flex items-center justify-between text-[11px]">
+                                              <span className="text-gray-500">Authorization Date:</span>
+                                              <span className="font-mono text-gray-700">{record.reviewed_at.slice(0, 10)}</span>
+                                            </div>
+                                          )}
+                                          {record.reviewer_note && (
+                                            <div className="pt-1 border-t border-gray-100 text-gray-700">
+                                              <span className="font-semibold text-gray-800">Remarks: </span>
+                                              <span>{record.reviewer_note}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="mt-2 text-[10px] text-gray-400 text-right">
+                                      Claim ID: SAF-OT-{record.id.slice(0, 8).toUpperCase()} • Submitted: {record.created_at ? record.created_at.slice(0, 19).replace("T", " ") : "—"}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </td>
-                          <td className="px-3 py-3">
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                STATUS_BADGE[record.status] ?? "bg-gray-100 text-gray-700"
-                              }`}
-                            >
-                              {record.status.toUpperCase()}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <div className="inline-flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedReceiptRecord(record)}
-                                className="text-xs text-brand hover:text-brand-dark font-semibold transition"
-                              >
-                                Receipt
-                              </button>
-                              {record.status === "pending" && (
-                                <form action={cancelOvertimeRequest} className="inline">
-                                  <input type="hidden" name="record_id" value={record.id} />
-                                  <button
-                                    type="submit"
-                                    className="text-xs text-red-600 hover:text-red-800 font-semibold"
-                                  >
-                                    Cancel
-                                  </button>
-                                </form>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
