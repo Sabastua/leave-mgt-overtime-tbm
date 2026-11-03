@@ -118,6 +118,57 @@ export async function reviewOvertimeRequest(formData: FormData): Promise<void> {
   revalidatePath("/");
 }
 
+export async function batchReviewOvertimeRequests(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const email = user?.email ? normalizeEmail(user.email) : null;
+  if (!user || !email) {
+    redirect("/login");
+  }
+
+  const isStaticApprover = isApproverEmail(email);
+  if (!isStaticApprover) {
+    const { data: member } = await supabase
+      .from("allowed_users")
+      .select("role")
+      .eq("email", email)
+      .single();
+
+    if (!member || member.role !== "approver") {
+      redirect("/login");
+    }
+  }
+
+  const recordIdsRaw = String(formData.get("record_ids") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  const reviewerNote = String(formData.get("reviewer_note") ?? "").trim();
+
+  const recordIds = recordIdsRaw
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  if (recordIds.length === 0 || (decision !== "approved" && decision !== "rejected")) {
+    return;
+  }
+
+  await supabase
+    .from("overtime_records")
+    .update({
+      status: decision,
+      reviewed_by: email,
+      reviewed_at: new Date().toISOString(),
+      reviewer_note: reviewerNote || `Batch ${decision} by manager`,
+    })
+    .in("id", recordIds)
+    .eq("status", "pending");
+
+  revalidatePath("/");
+}
+
 export async function cancelOvertimeRequest(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const {

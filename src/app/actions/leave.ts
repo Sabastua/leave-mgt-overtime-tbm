@@ -140,6 +140,57 @@ export async function reviewLeaveRequest(formData: FormData): Promise<void> {
   revalidatePath("/");
 }
 
+export async function batchReviewLeaveRequests(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const email = user?.email ? normalizeEmail(user.email) : null;
+  if (!user || !email) {
+    redirect("/login");
+  }
+
+  const isStaticApprover = isApproverEmail(email);
+  if (!isStaticApprover) {
+    const { data: member } = await supabase
+      .from("allowed_users")
+      .select("role")
+      .eq("email", email)
+      .single();
+
+    if (!member || member.role !== "approver") {
+      redirect("/login");
+    }
+  }
+
+  const requestIdsRaw = String(formData.get("request_ids") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  const reviewerNote = String(formData.get("reviewer_note") ?? "").trim();
+
+  const requestIds = requestIdsRaw
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  if (requestIds.length === 0 || (decision !== "approved" && decision !== "rejected")) {
+    return;
+  }
+
+  await supabase
+    .from("leave_requests")
+    .update({
+      status: decision,
+      reviewed_by: email,
+      reviewed_at: new Date().toISOString(),
+      reviewer_note: reviewerNote || `Batch ${decision} by manager`,
+    })
+    .in("id", requestIds)
+    .eq("status", "pending");
+
+  revalidatePath("/");
+}
+
 export async function cancelLeaveRequest(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const {

@@ -5,8 +5,8 @@ import type { LeaveRequest, LeaveType } from "@/lib/leave/types";
 import type { OvertimeRecord } from "@/lib/overtime/types";
 import type { AllowedUser } from "@/lib/auth/allowed-users";
 import { computeUserBalances } from "@/lib/leave/types";
-import { reviewLeaveRequest } from "@/app/actions/leave";
-import { reviewOvertimeRequest } from "@/app/actions/overtime";
+import { reviewLeaveRequest, batchReviewLeaveRequests } from "@/app/actions/leave";
+import { reviewOvertimeRequest, batchReviewOvertimeRequests } from "@/app/actions/overtime";
 import {
   UsersIcon,
   CalendarIcon,
@@ -38,6 +38,15 @@ export function AdminOverview({
   const activeMembers = teamMembers.filter((m) => m.is_active);
   const memberMap = new Map(teamMembers.map((m) => [m.email.toLowerCase(), m]));
   const leaveTypeMap = new Map(leaveTypes.map((t) => [t.code, t]));
+
+  // Approval Center State
+  const [approvalTab, setApprovalTab] = useState<"all" | "leaves" | "overtime">("all");
+  const [selectedLeaveBatch, setSelectedLeaveBatch] = useState<string[]>([]);
+  const [selectedOvertimeBatch, setSelectedOvertimeBatch] = useState<string[]>([]);
+  const [leaveNotes, setLeaveNotes] = useState<Record<string, string>>({});
+  const [overtimeNotes, setOvertimeNotes] = useState<Record<string, string>>({});
+  const [batchLeaveNote, setBatchLeaveNote] = useState("");
+  const [batchOvertimeNote, setBatchOvertimeNote] = useState("");
 
   // 1. Pending Approvals
   const pendingLeaves = leaveRequests.filter((r) => r.status === "pending");
@@ -654,155 +663,489 @@ export function AdminOverview({
         </div>
       </section>
 
-      {/* Pending Approvals Management Queue with Remarks */}
+      {/* Manager Approval & Review Center */}
       <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">
-              Pending Approvals Queue ({totalPending})
-            </h2>
-            <p className="text-xs text-gray-500">
-              Review and decision pending leave and overtime requests
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-brand text-white text-xs font-black">
+                M
+              </span>
+              <h2 className="text-lg font-bold text-gray-900">
+                Manager Approval Center
+              </h2>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              1-Click Decisions, Quick-Canned Feedback Presets &amp; Multi-Select Batch Approvals
             </p>
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setApprovalTab("all")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                approvalTab === "all"
+                  ? "bg-brand text-white shadow-2xs"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              All Pending ({totalPending})
+            </button>
+            <button
+              type="button"
+              onClick={() => setApprovalTab("leaves")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                approvalTab === "leaves"
+                  ? "bg-amber-600 text-white shadow-2xs"
+                  : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+              }`}
+            >
+              Leaves ({pendingLeaves.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setApprovalTab("overtime")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                approvalTab === "overtime"
+                  ? "bg-blue-600 text-white shadow-2xs"
+                  : "bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200"
+              }`}
+            >
+              Overtime ({pendingOvertime.length})
+            </button>
           </div>
         </div>
 
         {totalPending === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center text-xs text-gray-500">
-            All clear! No pending leave or overtime requests awaiting your review.
+            All clear! No pending leave requests or overtime claims awaiting review.
           </div>
         ) : (
-          <div className="space-y-4">
-            {pendingLeaves.map((request) => {
-              const requester = memberMap.get(request.user_email.toLowerCase());
-              const type = leaveTypeMap.get(request.leave_type);
-              const handover = memberMap.get(request.handover_email?.toLowerCase() || "");
+          <div className="space-y-6">
+            {/* 1. LEAVE APPROVALS QUEUE */}
+            {(approvalTab === "all" || approvalTab === "leaves") && pendingLeaves.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-amber-900">
+                      Pending Leave Requests ({pendingLeaves.length})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedLeaveBatch.length === pendingLeaves.length) {
+                          setSelectedLeaveBatch([]);
+                        } else {
+                          setSelectedLeaveBatch(pendingLeaves.map((r) => r.id));
+                        }
+                      }}
+                      className="text-[11px] font-semibold text-blue-600 hover:underline"
+                    >
+                      {selectedLeaveBatch.length === pendingLeaves.length
+                        ? "Deselect All"
+                        : "Select All"}
+                    </button>
+                  </div>
 
-              return (
-                <div
-                  key={request.id}
-                  className="rounded-xl border border-amber-200 bg-amber-50/40 p-4"
-                >
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-900">
-                          {requester?.full_name || request.user_email}
-                        </span>
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                          Leave: {type?.name || request.leave_type}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-gray-600">
-                        {request.start_date} to {request.end_date} (
-                        <strong>{request.working_days} working days</strong>)
-                      </p>
-                      {request.handover_email && (
-                        <p className="mt-0.5 text-xs text-gray-500">
-                          Relief: {handover ? handover.full_name : request.handover_email}
-                        </p>
-                      )}
-                      {request.reason && (
-                        <p className="mt-1 text-xs italic text-gray-600">
-                          &quot;{request.reason}&quot;
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <form action={reviewLeaveRequest} className="flex flex-wrap items-center gap-2">
-                        <input type="hidden" name="request_id" value={request.id} />
+                  {/* Batch Actions Bar for Leaves */}
+                  {selectedLeaveBatch.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-2 border border-amber-200 animate-in fade-in">
+                      <span className="text-xs font-bold text-amber-900">
+                        {selectedLeaveBatch.length} Selected
+                      </span>
+                      <form action={batchReviewLeaveRequests} className="flex flex-wrap items-center gap-1.5">
+                        <input
+                          type="hidden"
+                          name="request_ids"
+                          value={selectedLeaveBatch.join(",")}
+                        />
                         <input
                           type="text"
                           name="reviewer_note"
-                          placeholder="Note (optional)"
-                          className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs shadow-2xs focus:border-brand focus:outline-none"
+                          value={batchLeaveNote}
+                          onChange={(e) => setBatchLeaveNote(e.target.value)}
+                          placeholder="Batch review note…"
+                          className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
                         />
                         <button
                           type="submit"
                           name="decision"
                           value="approved"
-                          className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700"
+                          className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-2xs transition hover:bg-emerald-700 active:scale-95"
                         >
-                          <CheckCircleIcon className="h-4 w-4" />
-                          Approve
+                          <CheckCircleIcon className="h-3.5 w-3.5" />
+                          <span>Approve ({selectedLeaveBatch.length})</span>
                         </button>
                         <button
                           type="submit"
                           name="decision"
                           value="rejected"
-                          className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-red-700"
+                          className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-2xs transition hover:bg-red-700 active:scale-95"
                         >
-                          <XCircleIcon className="h-4 w-4" />
-                          Reject
+                          <XCircleIcon className="h-3.5 w-3.5" />
+                          <span>Reject ({selectedLeaveBatch.length})</span>
                         </button>
                       </form>
                     </div>
-                  </div>
+                  )}
                 </div>
-              );
-            })}
 
-            {pendingOvertime.map((record) => {
-              const requester = memberMap.get(record.user_email.toLowerCase());
+                {/* Individual Leave Cards */}
+                <div className="space-y-3">
+                  {pendingLeaves.map((request) => {
+                    const requester = memberMap.get(request.user_email.toLowerCase());
+                    const type = leaveTypeMap.get(request.leave_type);
+                    const handover = memberMap.get(request.handover_email?.toLowerCase() || "");
+                    const isSelected = selectedLeaveBatch.includes(request.id);
 
-              return (
-                <div
-                  key={record.id}
-                  className="rounded-xl border border-blue-200 bg-blue-50/40 p-4"
-                >
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-900">
-                          {requester?.full_name || record.user_email}
-                        </span>
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                          Overtime ({record.compensatory_choice.toUpperCase()})
-                        </span>
+                    // Compute live balance context for manager
+                    const applicantBalances = computeUserBalances(
+                      leaveTypes,
+                      leaveRequests,
+                      request.user_email,
+                      currentYear
+                    );
+                    const bal = applicantBalances.find((b) => b.leaveType.code === request.leave_type);
+
+                    const cannedPresets = [
+                      "Approved, relief confirmed",
+                      "Approved per team schedule",
+                      "Approved, enjoy your leave",
+                      "Rejected: Team coverage constraint",
+                    ];
+
+                    return (
+                      <div
+                        key={request.id}
+                        className={`rounded-2xl border p-4 transition-all duration-200 ${
+                          isSelected
+                            ? "border-amber-400 bg-amber-50/70 ring-1 ring-amber-400/30"
+                            : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-xs"
+                        }`}
+                      >
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedLeaveBatch((prev) => [...prev, request.id]);
+                                } else {
+                                  setSelectedLeaveBatch((prev) =>
+                                    prev.filter((id) => id !== request.id)
+                                  );
+                                }
+                              }}
+                              className="mt-1 h-4 w-4 rounded accent-brand cursor-pointer"
+                            />
+
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-bold text-gray-900 text-sm">
+                                  {requester?.full_name || request.user_email}
+                                </span>
+                                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+                                  {type?.name || request.leave_type}
+                                </span>
+                                {bal && (
+                                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
+                                    {bal.remaining}d available
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className="mt-1 text-xs text-gray-600">
+                                <span className="font-mono font-semibold">{request.start_date}</span> to{" "}
+                                <span className="font-mono font-semibold">{request.end_date}</span> (
+                                <strong className="text-gray-900">{request.working_days} working days</strong>)
+                              </p>
+
+                              {request.handover_email && (
+                                <p className="mt-0.5 text-xs text-gray-500">
+                                  <span className="font-semibold text-gray-600">Relief Colleague:</span>{" "}
+                                  {handover ? handover.full_name : request.handover_email}
+                                </p>
+                              )}
+
+                              {request.reason && (
+                                <p className="mt-1.5 text-xs italic text-gray-700 bg-gray-50 p-2 rounded-lg border border-gray-100 font-mono text-[11px]">
+                                  &quot;{request.reason}&quot;
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quick Canned Remarks & Decision Actions */}
+                          <div className="flex flex-col gap-2 w-full lg:w-auto lg:items-end">
+                            {/* Canned feedback presets */}
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="text-[10px] uppercase font-bold text-gray-400">
+                                Canned:
+                              </span>
+                              {cannedPresets.map((preset) => (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  onClick={() =>
+                                    setLeaveNotes((prev) => ({ ...prev, [request.id]: preset }))
+                                  }
+                                  className="rounded bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-700 hover:bg-gray-200 transition"
+                                >
+                                  {preset.split(":")[0]}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Review Form */}
+                            <form action={reviewLeaveRequest} className="flex flex-wrap items-center gap-2">
+                              <input type="hidden" name="request_id" value={request.id} />
+                              <input
+                                type="text"
+                                name="reviewer_note"
+                                value={leaveNotes[request.id] || ""}
+                                onChange={(e) =>
+                                  setLeaveNotes((prev) => ({
+                                    ...prev,
+                                    [request.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder="Decision remarks…"
+                                className="w-full sm:w-56 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+                              />
+                              <button
+                                type="submit"
+                                name="decision"
+                                value="approved"
+                                className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-emerald-700 active:scale-95"
+                              >
+                                <CheckCircleIcon className="h-4 w-4" />
+                                <span>Approve</span>
+                              </button>
+                              <button
+                                type="submit"
+                                name="decision"
+                                value="rejected"
+                                className="flex items-center gap-1 rounded-lg bg-red-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-red-700 active:scale-95"
+                              >
+                                <XCircleIcon className="h-4 w-4" />
+                                <span>Reject</span>
+                              </button>
+                            </form>
+                          </div>
+                        </div>
                       </div>
-                      <p className="mt-1 text-xs text-gray-600">
-                        Date: {record.overtime_date} • <strong>{record.hours} hours</strong>
-                        {record.ticket_ref && ` • Ref: ${record.ticket_ref}`}
-                      </p>
-                      <p className="mt-1 text-xs italic text-gray-600">
-                        &quot;{record.task_summary}&quot;
-                      </p>
-                    </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      <form action={reviewOvertimeRequest} className="flex flex-wrap items-center gap-2">
-                        <input type="hidden" name="record_id" value={record.id} />
+            {/* 2. OVERTIME APPROVALS QUEUE */}
+            {(approvalTab === "all" || approvalTab === "overtime") && pendingOvertime.length > 0 && (
+              <div className="space-y-3 pt-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-blue-900">
+                      Pending Overtime Claims ({pendingOvertime.length})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedOvertimeBatch.length === pendingOvertime.length) {
+                          setSelectedOvertimeBatch([]);
+                        } else {
+                          setSelectedOvertimeBatch(pendingOvertime.map((r) => r.id));
+                        }
+                      }}
+                      className="text-[11px] font-semibold text-blue-600 hover:underline"
+                    >
+                      {selectedOvertimeBatch.length === pendingOvertime.length
+                        ? "Deselect All"
+                        : "Select All"}
+                    </button>
+                  </div>
+
+                  {/* Batch Actions Bar for Overtime */}
+                  {selectedOvertimeBatch.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-blue-50 p-2 border border-blue-200 animate-in fade-in">
+                      <span className="text-xs font-bold text-blue-900">
+                        {selectedOvertimeBatch.length} Selected
+                      </span>
+                      <form action={batchReviewOvertimeRequests} className="flex flex-wrap items-center gap-1.5">
+                        <input
+                          type="hidden"
+                          name="record_ids"
+                          value={selectedOvertimeBatch.join(",")}
+                        />
                         <input
                           type="text"
                           name="reviewer_note"
-                          placeholder="Note (optional)"
-                          className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs shadow-2xs focus:border-brand focus:outline-none"
+                          value={batchOvertimeNote}
+                          onChange={(e) => setBatchOvertimeNote(e.target.value)}
+                          placeholder="Batch review note…"
+                          className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
                         />
                         <button
                           type="submit"
                           name="decision"
                           value="approved"
-                          className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700"
+                          className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-2xs transition hover:bg-emerald-700 active:scale-95"
                         >
-                          <CheckCircleIcon className="h-4 w-4" />
-                          Approve
+                          <CheckCircleIcon className="h-3.5 w-3.5" />
+                          <span>Approve ({selectedOvertimeBatch.length})</span>
                         </button>
                         <button
                           type="submit"
                           name="decision"
                           value="rejected"
-                          className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-red-700"
+                          className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-2xs transition hover:bg-red-700 active:scale-95"
                         >
-                          <XCircleIcon className="h-4 w-4" />
-                          Reject
+                          <XCircleIcon className="h-3.5 w-3.5" />
+                          <span>Reject ({selectedOvertimeBatch.length})</span>
                         </button>
                       </form>
                     </div>
-                  </div>
+                  )}
                 </div>
-              );
-            })}
+
+                {/* Individual Overtime Cards */}
+                <div className="space-y-3">
+                  {pendingOvertime.map((record) => {
+                    const requester = memberMap.get(record.user_email.toLowerCase());
+                    const isSelected = selectedOvertimeBatch.includes(record.id);
+
+                    const cannedPresets = [
+                      "Approved per shift rota",
+                      "Approved, verified against ticket",
+                      "Approved, emergency support confirmed",
+                      "Rejected: Hours require clarification",
+                    ];
+
+                    return (
+                      <div
+                        key={record.id}
+                        className={`rounded-2xl border p-4 transition-all duration-200 ${
+                          isSelected
+                            ? "border-blue-400 bg-blue-50/70 ring-1 ring-blue-400/30"
+                            : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-xs"
+                        }`}
+                      >
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedOvertimeBatch((prev) => [...prev, record.id]);
+                                } else {
+                                  setSelectedOvertimeBatch((prev) =>
+                                    prev.filter((id) => id !== record.id)
+                                  );
+                                }
+                              }}
+                              className="mt-1 h-4 w-4 rounded accent-brand cursor-pointer"
+                            />
+
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-bold text-gray-900 text-sm">
+                                  {requester?.full_name || record.user_email}
+                                </span>
+                                <span
+                                  className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                                    record.compensatory_choice === "paid"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-purple-100 text-purple-800"
+                                  }`}
+                                >
+                                  {record.compensatory_choice === "paid" ? "PAID PAYROLL" : "TOIL CREDIT"}
+                                </span>
+                                <span className="font-mono text-xs font-extrabold text-gray-900">
+                                  {record.hours} Hours
+                                </span>
+                              </div>
+
+                              <p className="mt-1 text-xs text-gray-600">
+                                Date Worked: <span className="font-mono font-semibold">{record.overtime_date}</span>
+                                {record.ticket_ref && (
+                                  <span className="ml-2 font-mono text-[11px] text-gray-500">
+                                    Ref: {record.ticket_ref}
+                                  </span>
+                                )}
+                              </p>
+
+                              <p className="mt-1.5 text-xs italic text-gray-700 bg-gray-50 p-2 rounded-lg border border-gray-100 font-mono text-[11px] whitespace-pre-wrap">
+                                &quot;{record.task_summary}&quot;
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Quick Canned Remarks & Decision Actions */}
+                          <div className="flex flex-col gap-2 w-full lg:w-auto lg:items-end">
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="text-[10px] uppercase font-bold text-gray-400">
+                                Canned:
+                              </span>
+                              {cannedPresets.map((preset) => (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  onClick={() =>
+                                    setOvertimeNotes((prev) => ({ ...prev, [record.id]: preset }))
+                                  }
+                                  className="rounded bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-700 hover:bg-gray-200 transition"
+                                >
+                                  {preset.split(":")[0]}
+                                </button>
+                              ))}
+                            </div>
+
+                            <form action={reviewOvertimeRequest} className="flex flex-wrap items-center gap-2">
+                              <input type="hidden" name="record_id" value={record.id} />
+                              <input
+                                type="text"
+                                name="reviewer_note"
+                                value={overtimeNotes[record.id] || ""}
+                                onChange={(e) =>
+                                  setOvertimeNotes((prev) => ({
+                                    ...prev,
+                                    [record.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder="Decision remarks…"
+                                className="w-full sm:w-56 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+                              />
+                              <button
+                                type="submit"
+                                name="decision"
+                                value="approved"
+                                className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-emerald-700 active:scale-95"
+                              >
+                                <CheckCircleIcon className="h-4 w-4" />
+                                <span>Approve</span>
+                              </button>
+                              <button
+                                type="submit"
+                                name="decision"
+                                value="rejected"
+                                className="flex items-center gap-1 rounded-lg bg-red-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-red-700 active:scale-95"
+                              >
+                                <XCircleIcon className="h-4 w-4" />
+                                <span>Reject</span>
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
