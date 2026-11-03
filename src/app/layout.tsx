@@ -13,8 +13,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Leave Management",
-  description: "Team leave management system",
+  title: "Safaricom Leave & Overtime Management",
+  description: "Technology & Operations Team Leave & Overtime Management Portal",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "32x32" },
+    ],
+    apple: "/apple-icon",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

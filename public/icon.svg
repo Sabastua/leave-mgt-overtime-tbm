@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="safGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00a651"/>
+      <stop offset="100%" stop-color="#007a3d"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Badge -->
+  <rect width="32" height="32" rx="7" fill="url(#safGreen)"/>
+  
+  <!-- Stylized Safaricom S -->
+  <path d="M21 11 C21 8.8 19 7 16 7 C12.7 7 10.5 8.8 10.5 11.5 C10.5 14.2 12.8 15.2 16 16 C19.2 16.8 21.5 17.8 21.5 20.5 C21.5 23.2 19.3 25 16 25 C12.5 25 10.5 23 10.5 20.8" 
+        fill="none" 
+        stroke="#ffffff" 
+        stroke-width="3.2" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+</svg>
