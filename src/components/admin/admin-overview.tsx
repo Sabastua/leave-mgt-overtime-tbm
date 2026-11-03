@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { LeaveRequest, LeaveType } from "@/lib/leave/types";
 import type { OvertimeRecord } from "@/lib/overtime/types";
 import type { AllowedUser } from "@/lib/auth/allowed-users";
@@ -16,6 +16,10 @@ import {
   ChartBarIcon,
   ArrowDownTrayIcon,
   MagnifyingGlassIcon,
+  FunnelIcon,
+  ArrowTrendingUpIcon,
+  BanknotesIcon,
+  BuildingOfficeIcon,
 } from "@/components/ui/icons";
 
 type Props = {
@@ -33,11 +37,10 @@ export function AdminOverview({
   overtimeRecords,
   currentYear,
 }: Props) {
-  const [memberSearch, setMemberSearch] = useState("");
   const todayStr = new Date().toISOString().slice(0, 10);
-  const activeMembers = teamMembers.filter((m) => m.is_active);
-  const memberMap = new Map(teamMembers.map((m) => [m.email.toLowerCase(), m]));
-  const leaveTypeMap = new Map(leaveTypes.map((t) => [t.code, t]));
+  const activeMembers = useMemo(() => teamMembers.filter((m) => m.is_active), [teamMembers]);
+  const memberMap = useMemo(() => new Map(teamMembers.map((m) => [m.email.toLowerCase(), m])), [teamMembers]);
+  const leaveTypeMap = useMemo(() => new Map(leaveTypes.map((t) => [t.code, t])), [leaveTypes]);
 
   // Approval Center State
   const [approvalTab, setApprovalTab] = useState<"all" | "leaves" | "overtime">("all");
@@ -48,148 +51,331 @@ export function AdminOverview({
   const [batchLeaveNote, setBatchLeaveNote] = useState("");
   const [batchOvertimeNote, setBatchOvertimeNote] = useState("");
 
+  // Chart Metric Toggle
+  const [chartMetric, setChartMetric] = useState<"leaves" | "overtime" | "combined">("leaves");
+  const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
+
+  // Member Balances Search & Sort
+  const [memberSearch, setMemberSearch] = useState("");
+  const [memberSort, setMemberSort] = useState<"least_remaining" | "most_taken" | "name">("least_remaining");
+
+  // Payroll Report Generator State
+  const firstDayOfMonth = `${currentYear}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
+  const [reportStartDate, setReportStartDate] = useState(firstDayOfMonth);
+  const [reportEndDate, setReportEndDate] = useState(todayStr);
+  const [reportMemberFilter, setReportMemberFilter] = useState<string>("all");
+  const [reportTypeFilter, setReportTypeFilter] = useState<"all" | "overtime_paid" | "overtime_toil" | "leaves">("all");
+
   // 1. Pending Approvals
-  const pendingLeaves = leaveRequests.filter((r) => r.status === "pending");
-  const pendingOvertime = overtimeRecords.filter((r) => r.status === "pending");
+  const pendingLeaves = useMemo(() => leaveRequests.filter((r) => r.status === "pending"), [leaveRequests]);
+  const pendingOvertime = useMemo(() => overtimeRecords.filter((r) => r.status === "pending"), [overtimeRecords]);
   const totalPending = pendingLeaves.length + pendingOvertime.length;
 
   // 2. Active leaves right now (today falls between start_date and end_date)
-  const currentActiveLeaves = leaveRequests.filter(
-    (r) => r.status === "approved" && r.start_date <= todayStr && r.end_date >= todayStr
+  const currentActiveLeaves = useMemo(
+    () =>
+      leaveRequests.filter(
+        (r) => r.status === "approved" && r.start_date <= todayStr && r.end_date >= todayStr
+      ),
+    [leaveRequests, todayStr]
   );
 
-  // 3. Calculate total team metrics for current year
-  const approvedYearLeaves = leaveRequests.filter(
-    (r) =>
-      r.status === "approved" &&
-      (r.start_date.startsWith(String(currentYear)) ||
-        r.end_date.startsWith(String(currentYear)))
+  // 3. Approved items for current year
+  const approvedYearLeaves = useMemo(
+    () =>
+      leaveRequests.filter(
+        (r) =>
+          r.status === "approved" &&
+          (r.start_date.startsWith(String(currentYear)) ||
+            r.end_date.startsWith(String(currentYear)))
+      ),
+    [leaveRequests, currentYear]
   );
 
-  const totalLeaveDaysTaken = approvedYearLeaves.reduce(
-    (sum, r) => sum + r.working_days,
-    0
+  const totalLeaveDaysTaken = useMemo(
+    () => approvedYearLeaves.reduce((sum, r) => sum + r.working_days, 0),
+    [approvedYearLeaves]
   );
 
-  const approvedOvertime = overtimeRecords.filter((r) => r.status === "approved");
-  const totalOvertimeHours = approvedOvertime.reduce(
-    (sum, r) => sum + Number(r.hours),
-    0
+  const approvedOvertime = useMemo(
+    () => overtimeRecords.filter((r) => r.status === "approved"),
+    [overtimeRecords]
   );
-  const paidOvertimeHours = approvedOvertime
-    .filter((r) => r.compensatory_choice === "paid")
-    .reduce((sum, r) => sum + Number(r.hours), 0);
-  const toilOvertimeHours = approvedOvertime
-    .filter((r) => r.compensatory_choice === "time_off_in_lieu")
-    .reduce((sum, r) => sum + Number(r.hours), 0);
 
-  // 4. Leave Type Distribution Breakdown
-  const daysByType: Record<string, number> = {};
-  leaveTypes.forEach((t) => {
-    daysByType[t.code] = 0;
-  });
-  approvedYearLeaves.forEach((r) => {
-    daysByType[r.leave_type] = (daysByType[r.leave_type] || 0) + r.working_days;
-  });
+  const totalOvertimeHours = useMemo(
+    () => approvedOvertime.reduce((sum, r) => sum + Number(r.hours), 0),
+    [approvedOvertime]
+  );
 
-  // 5. Monthly trend (months 1 to 12)
-  const monthlyDays = Array(12).fill(0);
-  approvedYearLeaves.forEach((r) => {
-    const monthIndex = new Date(r.start_date).getMonth();
-    if (monthIndex >= 0 && monthIndex < 12) {
-      monthlyDays[monthIndex] += r.working_days;
-    }
-  });
-  const maxMonthDays = Math.max(...monthlyDays, 1);
+  const paidOvertimeHours = useMemo(
+    () =>
+      approvedOvertime
+        .filter((r) => r.compensatory_choice === "paid")
+        .reduce((sum, r) => sum + Number(r.hours), 0),
+    [approvedOvertime]
+  );
 
+  const toilOvertimeHours = useMemo(
+    () =>
+      approvedOvertime
+        .filter((r) => r.compensatory_choice === "time_off_in_lieu")
+        .reduce((sum, r) => sum + Number(r.hours), 0),
+    [approvedOvertime]
+  );
+
+  // 4. Monthly trends calculation (Jan - Dec)
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  // Filter team members in entitlements table
-  const filteredMembers = activeMembers.filter((m) => {
-    if (!memberSearch) return true;
-    const term = memberSearch.toLowerCase();
-    return (
-      m.email.toLowerCase().includes(term) ||
-      (m.full_name && m.full_name.toLowerCase().includes(term))
-    );
-  });
+  const monthlyData = useMemo(() => {
+    const data = Array(12)
+      .fill(null)
+      .map(() => ({ leaveDays: 0, overtimeHours: 0, paidHours: 0, toilHours: 0 }));
 
-  // CSV Export functions
-  function exportLeaveCSV() {
-    const headers = [
-      "Request ID",
-      "Employee Name",
-      "Employee Email",
-      "Leave Type",
-      "Start Date",
-      "End Date",
-      "Working Days",
-      "Handover Person",
-      "Status",
-      "Reason",
-      "Reviewed By",
-      "Reviewed At",
-    ];
-
-    const rows = leaveRequests.map((r) => {
-      const member = memberMap.get(r.user_email.toLowerCase());
-      const type = leaveTypeMap.get(r.leave_type);
-      return [
-        r.id,
-        `"${member?.full_name || ""}"`,
-        r.user_email,
-        type?.name || r.leave_type,
-        r.start_date,
-        r.end_date,
-        r.working_days,
-        r.handover_email || "",
-        r.status,
-        `"${(r.reason || "").replace(/"/g, '""')}"`,
-        r.reviewed_by || "",
-        r.reviewed_at || "",
-      ];
+    approvedYearLeaves.forEach((r) => {
+      const monthIndex = new Date(r.start_date).getMonth();
+      if (monthIndex >= 0 && monthIndex < 12) {
+        data[monthIndex].leaveDays += r.working_days;
+      }
     });
 
-    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `Safaricom_Leave_Report_${currentYear}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
+    approvedOvertime.forEach((r) => {
+      const monthIndex = new Date(r.overtime_date).getMonth();
+      if (monthIndex >= 0 && monthIndex < 12) {
+        const h = Number(r.hours) || 0;
+        data[monthIndex].overtimeHours += h;
+        if (r.compensatory_choice === "paid") {
+          data[monthIndex].paidHours += h;
+        } else {
+          data[monthIndex].toilHours += h;
+        }
+      }
+    });
 
-  function exportOvertimeCSV() {
+    return data;
+  }, [approvedYearLeaves, approvedOvertime]);
+
+  const maxMonthlyLeave = Math.max(...monthlyData.map((d) => d.leaveDays), 1);
+  const maxMonthlyOvertime = Math.max(...monthlyData.map((d) => d.overtimeHours), 1);
+
+  // 5. Leave Type Distribution Breakdown
+  const daysByType = useMemo(() => {
+    const counts: Record<string, number> = {};
+    leaveTypes.forEach((t) => {
+      counts[t.code] = 0;
+    });
+    approvedYearLeaves.forEach((r) => {
+      counts[r.leave_type] = (counts[r.leave_type] || 0) + r.working_days;
+    });
+    return counts;
+  }, [leaveTypes, approvedYearLeaves]);
+
+  // Total leave liability across all active members
+  const teamLiability = useMemo(() => {
+    let totalEntitled = 0;
+    let totalTaken = 0;
+    let totalRemaining = 0;
+
+    activeMembers.forEach((member) => {
+      const bals = computeUserBalances(leaveTypes, leaveRequests, member.email, currentYear);
+      bals.forEach((b) => {
+        totalEntitled += b.entitled;
+        totalTaken += b.approved;
+        totalRemaining += b.remaining;
+      });
+    });
+
+    return { totalEntitled, totalTaken, totalRemaining };
+  }, [activeMembers, leaveTypes, leaveRequests, currentYear]);
+
+  // Filter & sort team members
+  const processedMembers = useMemo(() => {
+    const list = activeMembers.map((member) => {
+      const bals = computeUserBalances(leaveTypes, leaveRequests, member.email, currentYear);
+      const annualBal = bals.find((b) => b.leaveType.code === "annual");
+      const annualRemaining = annualBal?.remaining ?? 21;
+      const annualEntitled = annualBal?.entitled ?? 21;
+      const totalTaken = bals.reduce((sum, b) => sum + b.approved, 0);
+      const totalRemaining = bals.reduce((sum, b) => sum + b.remaining, 0);
+
+      // Overtime for this member
+      const memberOt = approvedOvertime.filter(
+        (r) => r.user_email.toLowerCase() === member.email.toLowerCase()
+      );
+      const totalOtHours = memberOt.reduce((sum, r) => sum + Number(r.hours), 0);
+
+      return {
+        member,
+        bals,
+        annualRemaining,
+        annualEntitled,
+        annualPercent: Math.round((annualRemaining / annualEntitled) * 100),
+        totalTaken,
+        totalRemaining,
+        totalOtHours,
+      };
+    });
+
+    // Search filter
+    const filtered = list.filter((item) => {
+      if (!memberSearch.trim()) return true;
+      const term = memberSearch.toLowerCase();
+      return (
+        item.member.email.toLowerCase().includes(term) ||
+        (item.member.full_name && item.member.full_name.toLowerCase().includes(term))
+      );
+    });
+
+    // Sort
+    if (memberSort === "least_remaining") {
+      filtered.sort((a, b) => a.annualRemaining - b.annualRemaining);
+    } else if (memberSort === "most_taken") {
+      filtered.sort((a, b) => b.totalTaken - a.totalTaken);
+    } else if (memberSort === "name") {
+      filtered.sort((a, b) => (a.member.full_name || a.member.email).localeCompare(b.member.full_name || b.member.email));
+    }
+
+    return filtered;
+  }, [activeMembers, leaveTypes, leaveRequests, currentYear, memberSearch, memberSort, approvedOvertime]);
+
+  // Filtered dataset for Payroll Generator Preview
+  const matchedPayrollRecords = useMemo(() => {
+    const otList = overtimeRecords.filter((r) => {
+      if (r.status !== "approved") return false;
+      if (r.overtime_date < reportStartDate || r.overtime_date > reportEndDate) return false;
+      if (reportMemberFilter !== "all" && r.user_email.toLowerCase() !== reportMemberFilter.toLowerCase()) return false;
+      if (reportTypeFilter === "overtime_paid" && r.compensatory_choice !== "paid") return false;
+      if (reportTypeFilter === "overtime_toil" && r.compensatory_choice !== "time_off_in_lieu") return false;
+      if (reportTypeFilter === "leaves") return false;
+      return true;
+    });
+
+    const lvList = leaveRequests.filter((r) => {
+      if (r.status !== "approved") return false;
+      if (r.start_date > reportEndDate || r.end_date < reportStartDate) return false;
+      if (reportMemberFilter !== "all" && r.user_email.toLowerCase() !== reportMemberFilter.toLowerCase()) return false;
+      if (reportTypeFilter === "overtime_paid" || reportTypeFilter === "overtime_toil") return false;
+      return true;
+    });
+
+    return {
+      overtime: otList,
+      leaves: lvList,
+      totalOtHours: otList.reduce((s, r) => s + Number(r.hours), 0),
+      totalPaidOtHours: otList.filter((r) => r.compensatory_choice === "paid").reduce((s, r) => s + Number(r.hours), 0),
+      totalToilOtHours: otList.filter((r) => r.compensatory_choice === "time_off_in_lieu").reduce((s, r) => s + Number(r.hours), 0),
+      totalLeaveDays: lvList.reduce((s, r) => s + r.working_days, 0),
+    };
+  }, [overtimeRecords, leaveRequests, reportStartDate, reportEndDate, reportMemberFilter, reportTypeFilter]);
+
+  // CSV Generator function
+  function generateFilteredPayrollCSV() {
     const headers = [
-      "Record ID",
+      "Record Type",
+      "Record Reference",
       "Employee Name",
       "Employee Email",
-      "Date Worked",
-      "Hours",
-      "Compensatory Choice",
+      "Date / Period",
+      "Quantity (Hours or Working Days)",
+      "Compensation Mode / Leave Type",
       "Ticket Reference",
-      "Task Summary",
-      "Status",
-      "Reviewed By",
-      "Reviewed At",
+      "Audit Status",
+      "Reviewed By (Approver)",
+      "Approval Timestamp",
     ];
 
-    const rows = overtimeRecords.map((r) => {
+    const rows: string[][] = [];
+
+    // Add Overtime records
+    matchedPayrollRecords.overtime.forEach((r) => {
       const member = memberMap.get(r.user_email.toLowerCase());
-      return [
-        r.id,
+      rows.push([
+        "Overtime Claim",
+        `"SAF-OT-${r.id.slice(0, 8).toUpperCase()}"`,
         `"${member?.full_name || ""}"`,
         r.user_email,
         r.overtime_date,
-        r.hours,
-        r.compensatory_choice,
-        r.ticket_ref || "",
-        `"${(r.task_summary || "").replace(/"/g, '""')}"`,
+        String(r.hours),
+        r.compensatory_choice === "paid" ? "Paid Payroll" : "TOIL Credit",
+        r.ticket_ref ? `"${r.ticket_ref}"` : "",
         r.status,
-        r.reviewed_by || "",
+        r.reviewed_by || "fmbuthia@safaricom.co.ke",
         r.reviewed_at || "",
+      ]);
+    });
+
+    // Add Leave records
+    matchedPayrollRecords.leaves.forEach((r) => {
+      const member = memberMap.get(r.user_email.toLowerCase());
+      const type = leaveTypeMap.get(r.leave_type);
+      rows.push([
+        "Leave Request",
+        `"SAF-LV-${r.id.slice(0, 8).toUpperCase()}"`,
+        `"${member?.full_name || ""}"`,
+        r.user_email,
+        `"${r.start_date} to ${r.end_date}"`,
+        String(r.working_days),
+        type?.name || r.leave_type,
+        `"Relief: ${r.handover_email || "N/A"}"`,
+        r.status,
+        r.reviewed_by || "fmbuthia@safaricom.co.ke",
+        r.reviewed_at || "",
+      ]);
+    });
+
+    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `Safaricom_Payroll_Report_${reportStartDate}_to_${reportEndDate}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Entitlements CSV Export
+  function exportEntitlementsCSV() {
+    const headers = [
+      "Employee Name",
+      "Employee Email",
+      "Role",
+      "Annual Entitled",
+      "Annual Remaining",
+      "Annual Taken",
+      "Sick Remaining",
+      "Sick Taken",
+      "Compassionate Remaining",
+      "Compassionate Taken",
+      "Study Remaining",
+      "Study Taken",
+      "Total Approved Leave Days",
+      "Total Approved Overtime Hours",
+    ];
+
+    const rows = processedMembers.map(({ member, bals, totalTaken, totalOtHours }) => {
+      const annualBal = bals.find((b) => b.leaveType.code === "annual");
+      const sickBal = bals.find((b) => b.leaveType.code === "sick");
+      const compBal = bals.find((b) => b.leaveType.code === "compassionate");
+      const studyBal = bals.find((b) => b.leaveType.code === "study");
+
+      return [
+        `"${member.full_name || ""}"`,
+        member.email,
+        member.role,
+        String(annualBal?.entitled ?? 21),
+        String(annualBal?.remaining ?? 21),
+        String(annualBal?.approved ?? 0),
+        String(sickBal?.remaining ?? 14),
+        String(sickBal?.approved ?? 0),
+        String(compBal?.remaining ?? 5),
+        String(compBal?.approved ?? 0),
+        String(studyBal?.remaining ?? 5),
+        String(studyBal?.approved ?? 0),
+        String(totalTaken),
+        String(totalOtHours),
       ];
     });
 
@@ -198,154 +384,185 @@ export function AdminOverview({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `Safaricom_Overtime_Report_${currentYear}.csv`);
+    link.setAttribute("download", `Safaricom_Team_Entitlements_${currentYear}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   }
 
+  // Calculate capacity percentage
+  const activeDutyCount = activeMembers.length - currentActiveLeaves.length;
+  const capacityPercent = activeMembers.length > 0 ? Math.round((activeDutyCount / activeMembers.length) * 100) : 100;
+
   return (
     <div className="space-y-8">
-      {/* Top Controls & Exports */}
-      <div className="flex flex-col gap-3 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 sm:flex-row sm:items-center sm:justify-between">
+      {/* Top Banner & Quick Controls */}
+      <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Admin Metrics &amp; Analytics</h1>
-          <p className="text-xs text-gray-500">
-            Real-time department leave balances, team utilization, and approval workflows
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-white font-black text-xs shadow-xs">
+              M
+            </span>
+            <h1 className="text-xl font-bold text-gray-900">Admin Metrics &amp; Analytics Center</h1>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Safaricom Technology Division • Operational capacity, overtime payroll expenditure, and leave liability
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Quick Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={exportLeaveCSV}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-2xs transition hover:bg-gray-50"
-            title="Download full leave requests report as CSV"
+            onClick={() => {
+              const el = document.getElementById("payroll-report-generator");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-brand-dark active:scale-95"
           >
-            <ArrowDownTrayIcon className="h-4 w-4 text-gray-500" />
-            <span>Export Leaves</span>
+            <BanknotesIcon className="h-4 w-4" />
+            <span>Payroll CSV Generator</span>
           </button>
           <button
-            onClick={exportOvertimeCSV}
+            onClick={exportEntitlementsCSV}
             className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-2xs transition hover:bg-gray-50"
-            title="Download full overtime claims report as CSV"
+            title="Download full team entitlement balances as CSV"
           >
             <ArrowDownTrayIcon className="h-4 w-4 text-gray-500" />
-            <span>Export Overtime</span>
+            <span>Team Entitlements CSV</span>
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* On Leave Today */}
+      {/* KPI Cards (5 Strategic Cards) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {/* Card 1: Active Capacity */}
         <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-              On Leave Today
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              Active Capacity
             </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <UsersIcon className="h-5 w-5" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <UsersIcon className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-gray-900">
-              {currentActiveLeaves.length}
+            <span className="text-2xl font-black text-gray-900">
+              {capacityPercent}%
             </span>
-            <span className="text-xs text-gray-500">of {activeMembers.length} members</span>
+            <span className="text-xs text-gray-500 font-medium">on duty</span>
           </div>
           <p className="mt-2 text-xs text-gray-600">
-            {currentActiveLeaves.length === 0
-              ? "All team members are in office"
-              : `${currentActiveLeaves.map((l) => memberMap.get(l.user_email.toLowerCase())?.full_name?.split(" ")[0] || l.user_email.split("@")[0]).join(", ")} out`}
+            {activeDutyCount} of {activeMembers.length} available today
           </p>
         </div>
 
-        {/* Pending Approvals */}
+        {/* Card 2: Pending Approvals */}
         <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
               Pending Approvals
             </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-              <ClockIcon className="h-5 w-5" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+              <ClockIcon className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-amber-700">
+            <span className="text-2xl font-black text-amber-700">
               {totalPending}
             </span>
-            <span className="text-xs text-gray-500">requests</span>
+            <span className="text-xs text-gray-500 font-medium">requests</span>
           </div>
           <p className="mt-2 text-xs text-gray-600">
             {pendingLeaves.length} leave, {pendingOvertime.length} overtime
           </p>
         </div>
 
-        {/* Total Working Days Taken */}
+        {/* Card 3: Days Taken this Year */}
         <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Days Taken ({currentYear})
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              Leaves Taken ({currentYear})
             </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-              <CalendarIcon className="h-5 w-5" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <CalendarIcon className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-gray-900">
+            <span className="text-2xl font-black text-gray-900">
               {totalLeaveDaysTaken}
             </span>
-            <span className="text-xs text-gray-500">working days</span>
+            <span className="text-xs text-gray-500 font-medium">working days</span>
           </div>
           <p className="mt-2 text-xs text-gray-600">
-            Team leave total across all types
+            Avg {(totalLeaveDaysTaken / (activeMembers.length || 1)).toFixed(1)} days / member
           </p>
         </div>
 
-        {/* Overtime Logged */}
+        {/* Card 4: Overtime Expenditure */}
         <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
               Approved Overtime
             </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-              <ClockIcon className="h-5 w-5" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+              <ClockIcon className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-gray-900">
+            <span className="text-2xl font-black text-gray-900">
               {totalOvertimeHours.toFixed(1)}
             </span>
-            <span className="text-xs text-gray-500">hrs</span>
+            <span className="text-xs text-gray-500 font-medium">hours</span>
           </div>
           <p className="mt-2 text-xs text-gray-600">
             {paidOvertimeHours.toFixed(1)}h Paid • {toilOvertimeHours.toFixed(1)}h TOIL
           </p>
         </div>
+
+        {/* Card 5: Unspent Team Liability */}
+        <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              Unspent Liability
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+              <BuildingOfficeIcon className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-gray-900">
+              {teamLiability.totalRemaining}
+            </span>
+            <span className="text-xs text-gray-500 font-medium">days left</span>
+          </div>
+          <p className="mt-2 text-xs text-gray-600">
+            Across {activeMembers.length} active team members
+          </p>
+        </div>
       </div>
 
-      {/* Active & Ongoing Leaves with Duration Progress Bars */}
+      {/* Currently On Leave & Ongoing Progress */}
       <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">
-              Currently On Leave &amp; Duration Progress
+            <h2 className="text-base font-bold text-gray-900">
+              Currently On Leave &amp; Coverage Timeline
             </h2>
             <p className="text-xs text-gray-500">
-              Active leaves with elapsed time vs total approved leave duration
+              Active leaves with elapsed duration and assigned relief handover colleagues
             </p>
           </div>
-          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-            {currentActiveLeaves.length} Active Now
+          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+            {currentActiveLeaves.length} Active Today
           </span>
         </div>
 
         {currentActiveLeaves.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center text-xs text-gray-500">
-            No team members are currently away on leave today.
+            All team members are active and available in office today.
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {currentActiveLeaves.map((leave) => {
               const member = memberMap.get(leave.user_email.toLowerCase());
               const type = leaveTypeMap.get(leave.leave_type);
@@ -366,11 +583,11 @@ export function AdminOverview({
               return (
                 <div
                   key={leave.id}
-                  className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 shadow-2xs"
+                  className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 shadow-2xs hover:shadow-xs transition"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-bold text-gray-900">
+                      <h3 className="font-bold text-gray-900 text-sm">
                         {member?.full_name || leave.user_email}
                       </h3>
                       <p className="text-xs text-gray-500">{leave.user_email}</p>
@@ -384,7 +601,7 @@ export function AdminOverview({
                   <div className="mt-4">
                     <div className="mb-1 flex items-center justify-between text-xs">
                       <span className="font-medium text-gray-700">
-                        Leave Duration ({leave.working_days} working days)
+                        Span ({leave.working_days} working days)
                       </span>
                       <span className="font-bold text-brand">{percentElapsed}% elapsed</span>
                     </div>
@@ -395,15 +612,15 @@ export function AdminOverview({
                       />
                     </div>
                     <div className="mt-1 flex justify-between text-[11px] text-gray-500">
-                      <span>Started: {leave.start_date}</span>
-                      <span>Ends: {leave.end_date}</span>
+                      <span>From: {leave.start_date}</span>
+                      <span>Until: {leave.end_date}</span>
                     </div>
                   </div>
 
-                  {/* Relief / Handover */}
+                  {/* Relief Colleague */}
                   {leave.handover_email && (
-                    <div className="mt-3 text-xs text-gray-600">
-                      <span className="font-semibold text-gray-700">Relief Person:</span>{" "}
+                    <div className="mt-3 text-xs text-gray-600 border-t border-gray-100 pt-2">
+                      <span className="font-semibold text-gray-700">Relief Colleague:</span>{" "}
                       {handover ? handover.full_name : leave.handover_email}
                     </div>
                   )}
@@ -414,50 +631,179 @@ export function AdminOverview({
         )}
       </section>
 
-      {/* Visual Charts Section */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Monthly Leave Days Taken Chart */}
-        <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-          <div className="mb-4 flex items-center justify-between">
+      {/* Visual Analytics & Charts Center */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Chart 1: Interactive Monthly Trends (Span 2 cols) */}
+        <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5 lg:col-span-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
             <div>
-              <h2 className="text-base font-bold text-gray-900">
-                Monthly Leave Distribution ({currentYear})
-              </h2>
-              <p className="text-xs text-gray-500">Total working days taken per month</p>
+              <div className="flex items-center gap-2">
+                <ArrowTrendingUpIcon className="h-5 w-5 text-brand" />
+                <h2 className="text-base font-bold text-gray-900">
+                  Monthly Trends &amp; Utilization ({currentYear})
+                </h2>
+              </div>
+              <p className="text-xs text-gray-500">
+                Tracking seasonal leave peaks and overtime surges across months
+              </p>
             </div>
-            <ChartBarIcon className="h-5 w-5 text-gray-400" />
+
+            {/* Metric Toggle */}
+            <div className="flex items-center rounded-xl bg-gray-100 p-1">
+              <button
+                type="button"
+                onClick={() => setChartMetric("leaves")}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                  chartMetric === "leaves"
+                    ? "bg-white text-gray-900 shadow-2xs font-bold"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Leave Days
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartMetric("overtime")}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                  chartMetric === "overtime"
+                    ? "bg-white text-gray-900 shadow-2xs font-bold"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Overtime Hours
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartMetric("combined")}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                  chartMetric === "combined"
+                    ? "bg-white text-gray-900 shadow-2xs font-bold"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Combined
+              </button>
+            </div>
           </div>
 
-          <div className="mt-6 flex h-44 items-end gap-2 border-b border-gray-200 pb-2">
-            {monthlyDays.map((days, idx) => {
-              const heightPercent = Math.round((days / maxMonthDays) * 100);
-              return (
-                <div key={idx} className="flex flex-1 flex-col items-center gap-1.5">
-                  <span className="text-[10px] font-semibold text-gray-600">
-                    {days > 0 ? days : ""}
+          {/* SVG Animated Bar Chart */}
+          <div className="relative mt-6 pt-4">
+            {/* Hover Tooltip Box */}
+            {hoveredMonth !== null && (
+              <div className="absolute top-0 right-4 rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white shadow-lg animate-in fade-in">
+                <span className="font-bold">{MONTH_NAMES[hoveredMonth]}: </span>
+                {chartMetric === "leaves" && (
+                  <span>{monthlyData[hoveredMonth].leaveDays} Working Days Taken</span>
+                )}
+                {chartMetric === "overtime" && (
+                  <span>
+                    {monthlyData[hoveredMonth].overtimeHours.toFixed(1)} OT Hours (
+                    {monthlyData[hoveredMonth].paidHours.toFixed(1)}h Paid,{" "}
+                    {monthlyData[hoveredMonth].toilHours.toFixed(1)}h TOIL)
                   </span>
-                  <div className="w-full rounded-t bg-gray-100 h-28 flex items-end">
-                    <div
-                      className="w-full rounded-t bg-brand transition-all duration-500"
-                      style={{ height: `${Math.max(heightPercent, days > 0 ? 8 : 0)}%` }}
-                    />
+                )}
+                {chartMetric === "combined" && (
+                  <span>
+                    {monthlyData[hoveredMonth].leaveDays}d Leave •{" "}
+                    {monthlyData[hoveredMonth].overtimeHours.toFixed(1)}h OT
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="flex h-52 items-end gap-2 sm:gap-3 border-b border-gray-200 pb-2">
+              {monthlyData.map((data, idx) => {
+                const leaveHeight = Math.round((data.leaveDays / maxMonthlyLeave) * 100);
+                const otHeight = Math.round((data.overtimeHours / maxMonthlyOvertime) * 100);
+
+                return (
+                  <div
+                    key={idx}
+                    onMouseEnter={() => setHoveredMonth(idx)}
+                    onMouseLeave={() => setHoveredMonth(null)}
+                    className="group relative flex flex-1 flex-col items-center gap-1.5 cursor-pointer"
+                  >
+                    {/* Bar top indicator */}
+                    <span className="text-[10px] font-semibold text-gray-500 opacity-0 group-hover:opacity-100 transition">
+                      {chartMetric === "leaves"
+                        ? data.leaveDays > 0 ? `${data.leaveDays}d` : ""
+                        : chartMetric === "overtime"
+                        ? data.overtimeHours > 0 ? `${data.overtimeHours.toFixed(0)}h` : ""
+                        : data.leaveDays + data.overtimeHours > 0 ? `${data.leaveDays}d` : ""}
+                    </span>
+
+                    {/* Bars Container */}
+                    <div className="w-full h-36 flex items-end justify-center gap-1">
+                      {chartMetric === "leaves" && (
+                        <div
+                          className="w-full max-w-[28px] rounded-t-lg bg-brand transition-all duration-500 group-hover:bg-brand-dark"
+                          style={{
+                            height: `${Math.max(leaveHeight, data.leaveDays > 0 ? 10 : 0)}%`,
+                          }}
+                        />
+                      )}
+
+                      {chartMetric === "overtime" && (
+                        <div
+                          className="w-full max-w-[28px] rounded-t-lg bg-blue-600 transition-all duration-500 group-hover:bg-blue-700"
+                          style={{
+                            height: `${Math.max(otHeight, data.overtimeHours > 0 ? 10 : 0)}%`,
+                          }}
+                        />
+                      )}
+
+                      {chartMetric === "combined" && (
+                        <>
+                          <div
+                            className="w-1/2 max-w-[14px] rounded-t-lg bg-brand transition-all duration-500"
+                            style={{
+                              height: `${Math.max(leaveHeight, data.leaveDays > 0 ? 10 : 0)}%`,
+                            }}
+                            title={`Leave: ${data.leaveDays}d`}
+                          />
+                          <div
+                            className="w-1/2 max-w-[14px] rounded-t-lg bg-blue-600 transition-all duration-500"
+                            style={{
+                              height: `${Math.max(otHeight, data.overtimeHours > 0 ? 10 : 0)}%`,
+                            }}
+                            title={`Overtime: ${data.overtimeHours}h`}
+                          />
+                        </>
+                      )}
+                    </div>
+
+                    <span className="text-[10px] font-medium text-gray-600 group-hover:font-bold group-hover:text-gray-900">
+                      {MONTH_NAMES[idx]}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-medium text-gray-500">
-                    {MONTH_NAMES[idx]}
-                  </span>
+                );
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="mt-4 flex flex-wrap items-center justify-between text-xs text-gray-500">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-brand" />
+                  <span>Leave Days Taken</span>
                 </div>
-              );
-            })}
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+                  <span>Overtime Hours</span>
+                </div>
+              </div>
+              <span className="text-[11px] italic">Hover bars to inspect exact metrics</span>
+            </div>
           </div>
         </section>
 
-        {/* Leave Type Breakdown & Overtime Ratio */}
+        {/* Chart 2: Leave Types & Overtime Split (1 col) */}
         <section className="space-y-6">
           {/* Leave Type Distribution */}
           <div className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-            <h2 className="text-base font-bold text-gray-900">Leave Types Breakdown</h2>
+            <h2 className="text-base font-bold text-gray-900">Leave Type Distribution</h2>
             <p className="mb-4 text-xs text-gray-500">
-              Proportion of leave days used by category
+              Total working days consumed by category
             </p>
 
             <div className="space-y-3">
@@ -468,17 +814,26 @@ export function AdminOverview({
                     ? Math.round((days / totalLeaveDaysTaken) * 100)
                     : 0;
 
+                const colorClass =
+                  type.code === "annual"
+                    ? "bg-emerald-500"
+                    : type.code === "sick"
+                    ? "bg-amber-500"
+                    : type.code === "compassionate"
+                    ? "bg-purple-500"
+                    : "bg-blue-500";
+
                 return (
                   <div key={type.code}>
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-gray-700">{type.name}</span>
                       <span className="font-mono text-gray-600">
-                        {days} days ({percent}%)
+                        {days}d ({percent}%)
                       </span>
                     </div>
                     <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-100">
                       <div
-                        className="h-full rounded-full bg-brand"
+                        className={`h-full rounded-full ${colorClass}`}
                         style={{ width: `${percent}%` }}
                       />
                     </div>
@@ -488,31 +843,31 @@ export function AdminOverview({
             </div>
           </div>
 
-          {/* Overtime Compensatory Ratio */}
+          {/* Overtime Compensatory Ratio Card */}
           <div className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-            <h2 className="text-base font-bold text-gray-900">Overtime Compensation Choice</h2>
-            <p className="mb-4 text-xs text-gray-500">Paid payout vs Time Off In Lieu (TOIL)</p>
+            <h2 className="text-base font-bold text-gray-900">Compensation Choice Ratio</h2>
+            <p className="mb-3 text-xs text-gray-500">Paid payout vs Time Off In Lieu (TOIL)</p>
 
             <div>
-              <div className="mb-1 flex items-center justify-between text-xs font-semibold">
+              <div className="mb-1.5 flex items-center justify-between text-xs font-bold">
                 <span className="text-blue-700">
                   Paid: {paidOvertimeHours.toFixed(1)}h (
                   {totalOvertimeHours > 0
                     ? Math.round((paidOvertimeHours / totalOvertimeHours) * 100)
-                    : 0}
+                    : 50}
                   %)
                 </span>
                 <span className="text-purple-700">
                   TOIL: {toilOvertimeHours.toFixed(1)}h (
                   {totalOvertimeHours > 0
                     ? Math.round((toilOvertimeHours / totalOvertimeHours) * 100)
-                    : 0}
+                    : 50}
                   %)
                 </span>
               </div>
               <div className="flex h-3 w-full overflow-hidden rounded-full bg-gray-100">
                 <div
-                  className="bg-blue-500"
+                  className="bg-blue-500 transition-all duration-300"
                   style={{
                     width: `${
                       totalOvertimeHours > 0
@@ -522,7 +877,7 @@ export function AdminOverview({
                   }}
                 />
                 <div
-                  className="bg-purple-500"
+                  className="bg-purple-500 transition-all duration-300"
                   style={{
                     width: `${
                       totalOvertimeHours > 0
@@ -532,32 +887,226 @@ export function AdminOverview({
                   }}
                 />
               </div>
+              <p className="mt-2 text-[11px] text-gray-500">
+                TOIL equivalent: ~{(toilOvertimeHours / 8).toFixed(1)} compensatory rest days banked
+              </p>
             </div>
           </div>
         </section>
       </div>
+
+      {/* Automated Payroll Report Generator (Date-Range & Filterable CSV) */}
+      <section
+        id="payroll-report-generator"
+        className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5 border-2 border-brand/20"
+      >
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-xs">
+                P
+              </span>
+              <h2 className="text-lg font-bold text-gray-900">
+                Automated Payroll &amp; HR Report Generator
+              </h2>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Generate structured, audit-ready CSV exports for HR payroll processing within custom cut-off dates
+            </p>
+          </div>
+
+          {/* Quick cycle presets */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] uppercase font-bold text-gray-400">Cycles:</span>
+            <button
+              type="button"
+              onClick={() => {
+                setReportStartDate(firstDayOfMonth);
+                setReportEndDate(todayStr);
+              }}
+              className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200 transition"
+            >
+              This Month
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const prevMonth = new Date().getMonth();
+                const m = prevMonth === 0 ? 12 : prevMonth;
+                const y = prevMonth === 0 ? currentYear - 1 : currentYear;
+                const mStr = String(m).padStart(2, "0");
+                const lastDay = new Date(y, m, 0).getDate();
+                setReportStartDate(`${y}-${mStr}-01`);
+                setReportEndDate(`${y}-${mStr}-${lastDay}`);
+              }}
+              className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200 transition"
+            >
+              Last Month
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                // Safaricom standard 21st to 20th cut-off cycle
+                const curMonth = new Date().getMonth() + 1;
+                const prevM = curMonth === 1 ? 12 : curMonth - 1;
+                const y = curMonth === 1 ? currentYear - 1 : currentYear;
+                setReportStartDate(`${y}-${String(prevM).padStart(2, "0")}-21`);
+                setReportEndDate(`${currentYear}-${String(curMonth).padStart(2, "0")}-20`);
+              }}
+              className="rounded-lg bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand-dark hover:bg-brand/20 transition"
+            >
+              Cycle (21st - 20th)
+            </button>
+          </div>
+        </div>
+
+        {/* Filter Controls Grid */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 bg-gray-50/70 p-4 rounded-xl border border-gray-200 mb-5">
+          {/* Start Date */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              Start Date (Cut-off From)
+            </label>
+            <input
+              type="date"
+              value={reportStartDate}
+              onChange={(e) => setReportStartDate(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+            />
+          </div>
+
+          {/* End Date */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              End Date (Cut-off To)
+            </label>
+            <input
+              type="date"
+              value={reportEndDate}
+              onChange={(e) => setReportEndDate(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+            />
+          </div>
+
+          {/* Member Filter */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              Filter by Colleague
+            </label>
+            <select
+              value={reportMemberFilter}
+              onChange={(e) => setReportMemberFilter(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+            >
+              <option value="all">All Team Members ({activeMembers.length})</option>
+              {activeMembers.map((m) => (
+                <option key={m.email} value={m.email}>
+                  {m.full_name || m.email}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Report Category */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              Record Category
+            </label>
+            <select
+              value={reportTypeFilter}
+              onChange={(e) => setReportTypeFilter(e.target.value as any)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+            >
+              <option value="all">Unified (Overtime &amp; Leaves)</option>
+              <option value="overtime_paid">Paid Overtime Claims Only</option>
+              <option value="overtime_toil">TOIL Claims Only</option>
+              <option value="leaves">Approved Leaves Only</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Live Filter Summary & Download Action */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-xl bg-emerald-50/60 p-4 border border-emerald-200">
+          <div className="flex flex-wrap items-center gap-4 text-xs">
+            <div>
+              <span className="text-gray-500">Cycle Range:</span>{" "}
+              <strong className="text-gray-900 font-mono">
+                {reportStartDate} &rarr; {reportEndDate}
+              </strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Overtime Claims:</span>{" "}
+              <strong className="text-blue-900 font-bold">
+                {matchedPayrollRecords.overtime.length} ({matchedPayrollRecords.totalOtHours.toFixed(1)}h total)
+              </strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Paid OT:</span>{" "}
+              <strong className="text-emerald-900 font-bold">
+                {matchedPayrollRecords.totalPaidOtHours.toFixed(1)}h
+              </strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Leave Days:</span>{" "}
+              <strong className="text-purple-900 font-bold">
+                {matchedPayrollRecords.totalLeaveDays} working days
+              </strong>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={generateFilteredPayrollCSV}
+            disabled={matchedPayrollRecords.overtime.length === 0 && matchedPayrollRecords.leaves.length === 0}
+            className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" />
+            <span>
+              Download Payroll CSV ({matchedPayrollRecords.overtime.length + matchedPayrollRecords.leaves.length} records)
+            </span>
+          </button>
+        </div>
+      </section>
 
       {/* Team Entitlements & Balances Table with Search and Progress Bars */}
       <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-gray-900">
-              Team Leave Entitlements &amp; Remaining Days ({currentYear})
+              Team Leave Entitlements &amp; Exhaustion Tracker ({currentYear})
             </h2>
             <p className="text-xs text-gray-500">
-              Allowance balances for all active team members
+              Allowance balances and exhaustion rate for all {activeMembers.length} active team members
             </p>
           </div>
 
-          <div className="relative w-full sm:w-64">
-            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              value={memberSearch}
-              onChange={(e) => setMemberSearch(e.target.value)}
-              placeholder="Search member..."
-              className="block w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Sorting */}
+            <div className="flex items-center gap-1 text-xs">
+              <span className="text-gray-400 font-bold uppercase text-[10px]">Sort:</span>
+              <select
+                value={memberSort}
+                onChange={(e) => setMemberSort(e.target.value as any)}
+                className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-2xs focus:border-brand focus:outline-none"
+              >
+                <option value="least_remaining">Least Annual Leave Left</option>
+                <option value="most_taken">Most Days Taken</option>
+                <option value="name">Name (A-Z)</option>
+              </select>
+            </div>
+
+            {/* Search */}
+            <div className="relative w-full sm:w-56">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="Search member..."
+                className="block w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+              >
+              </input>
+            </div>
           </div>
         </div>
 
@@ -567,41 +1116,24 @@ export function AdminOverview({
               <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
                 <th className="py-3 pr-4">Team Member</th>
                 <th className="px-3 py-3">Role</th>
-                <th className="px-3 py-3 min-w-[160px]">Annual Leave (21d)</th>
+                <th className="px-3 py-3 min-w-[180px]">Annual Leave (21d)</th>
                 <th className="px-3 py-3 text-right">Sick (14d)</th>
                 <th className="px-3 py-3 text-right">Compassionate (5d)</th>
                 <th className="px-3 py-3 text-right">Study (5d)</th>
-                <th className="px-3 py-3 text-right">Total Taken</th>
+                <th className="px-3 py-3 text-right">Leave Taken</th>
+                <th className="px-3 py-3 text-right">OT Logged</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredMembers.map((member) => {
-                const bals = computeUserBalances(
-                  leaveTypes,
-                  leaveRequests,
-                  member.email,
-                  currentYear
-                );
-
-                const annualBal = bals.find((b) => b.leaveType.code === "annual");
-                const annualRemaining = annualBal?.remaining ?? 21;
-                const annualEntitled = annualBal?.entitled ?? 21;
-                const annualPercent = Math.round(
-                  (annualRemaining / annualEntitled) * 100
-                );
-
+              {processedMembers.map(({ member, bals, annualRemaining, annualEntitled, annualPercent, totalTaken, totalOtHours }) => {
                 const sickBal = bals.find((b) => b.leaveType.code === "sick");
-                const compassionateBal = bals.find(
-                  (b) => b.leaveType.code === "compassionate"
-                );
+                const compassionateBal = bals.find((b) => b.leaveType.code === "compassionate");
                 const studyBal = bals.find((b) => b.leaveType.code === "study");
 
-                const memberTotalTaken = bals.reduce((sum, b) => sum + b.approved, 0);
-
                 return (
-                  <tr key={member.email} className="hover:bg-gray-50/50">
+                  <tr key={member.email} className="hover:bg-gray-50/50 transition">
                     <td className="py-3 pr-4">
-                      <div className="font-semibold text-gray-900">
+                      <div className="font-bold text-gray-900">
                         {member.full_name || member.email}
                       </div>
                       <div className="text-[11px] text-gray-400">{member.email}</div>
@@ -625,11 +1157,21 @@ export function AdminOverview({
                             /{annualEntitled} left
                           </span>
                         </span>
-                        <span className="text-gray-400">{annualPercent}%</span>
+                        <span
+                          className={`font-semibold ${
+                            annualRemaining <= 5
+                              ? "text-red-600 font-bold"
+                              : annualRemaining <= 10
+                              ? "text-amber-600"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {annualPercent}%
+                        </span>
                       </div>
                       <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                         <div
-                          className={`h-full rounded-full ${
+                          className={`h-full rounded-full transition-all duration-300 ${
                             annualPercent > 50
                               ? "bg-emerald-500"
                               : annualPercent > 20
@@ -653,7 +1195,10 @@ export function AdminOverview({
                       <span className="font-normal text-gray-400">/5</span>
                     </td>
                     <td className="px-3 py-3 text-right font-mono font-bold text-gray-900">
-                      {memberTotalTaken}d
+                      {totalTaken}d
+                    </td>
+                    <td className="px-3 py-3 text-right font-mono font-bold text-blue-700">
+                      {totalOtHours > 0 ? `${totalOtHours.toFixed(1)}h` : "-"}
                     </td>
                   </tr>
                 );
@@ -676,7 +1221,7 @@ export function AdminOverview({
               </h2>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
-              1-Click Decisions, Quick-Canned Feedback Presets &amp; Multi-Select Batch Approvals
+              Designated Approver: <strong className="text-gray-700">fmbuthia@safaricom.co.ke</strong> • 1-Click Decisions, Quick-Canned Feedback Presets &amp; Multi-Select Batch Approvals
             </p>
           </div>
 
