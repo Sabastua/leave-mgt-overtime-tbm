@@ -23,6 +23,9 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   InformationCircleIcon,
+  MagnifyingGlassIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "@/components/ui/icons";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -73,13 +76,27 @@ export function DashboardShell({
   const [selectedReceiptRecord, setSelectedReceiptRecord] = useState<OvertimeRecord | null>(null);
   const [leaveStatusFilter, setLeaveStatusFilter] = useState<string>("all");
   const [overtimeStatusFilter, setOvertimeStatusFilter] = useState<string>("all");
+  const [expandedLeaveId, setExpandedLeaveId] = useState<string | null>(null);
+  const [leaveSearchQuery, setLeaveSearchQuery] = useState("");
+
+  const memberMap = new Map(teamMembers.map((m) => [m.email.toLowerCase(), m]));
+  const leaveTypeMap = new Map(leaveTypes.map((t) => [t.code, t]));
 
   const myLeaveRequests = allLeaveRequests.filter(
     (r) => r.user_email.toLowerCase() === currentUserEmail
   );
   const filteredLeaveRequests = myLeaveRequests.filter((r) => {
-    if (leaveStatusFilter === "all") return true;
-    return r.status === leaveStatusFilter;
+    if (leaveStatusFilter !== "all" && r.status !== leaveStatusFilter) return false;
+    if (leaveSearchQuery.trim()) {
+      const q = leaveSearchQuery.toLowerCase();
+      const type = leaveTypeMap.get(r.leave_type)?.name.toLowerCase() || "";
+      const matchesType = type.includes(q) || r.leave_type.toLowerCase().includes(q);
+      const matchesDates = r.start_date.includes(q) || r.end_date.includes(q);
+      const matchesReason = (r.reason || "").toLowerCase().includes(q);
+      const matchesRelief = (r.handover_email || "").toLowerCase().includes(q);
+      return matchesType || matchesDates || matchesReason || matchesRelief;
+    }
+    return true;
   });
   const pendingLeaveApprovals = allLeaveRequests.filter((r) => r.status === "pending");
 
@@ -91,9 +108,6 @@ export function DashboardShell({
     return r.status === overtimeStatusFilter;
   });
   const pendingOvertimeApprovals = allOvertimeRecords.filter((r) => r.status === "pending");
-
-  const memberMap = new Map(teamMembers.map((m) => [m.email.toLowerCase(), m]));
-  const leaveTypeMap = new Map(leaveTypes.map((t) => [t.code, t]));
 
   return (
     <div className="flex flex-1 flex-col">
@@ -306,12 +320,13 @@ export function DashboardShell({
               </div>
             </section>
 
-            {/* Apply for Leave Form */}
+            {/* Apply for Leave Form with Smart Date Range & Clash Check */}
             <LeaveRequestForm
               currentUserEmail={currentUserEmail}
               leaveTypes={leaveTypes}
               balances={myBalances}
               teamMembers={teamMembers}
+              existingRequests={allLeaveRequests}
             />
 
             {/* Policy Reference Card */}
@@ -352,37 +367,55 @@ export function DashboardShell({
 
             {/* My Leave Requests Table */}
             <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-lg font-bold text-gray-900">My Leave History</h2>
-                <div className="flex items-center gap-1">
-                  {(["all", "pending", "approved", "rejected"] as const).map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => setLeaveStatusFilter(status)}
-                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize transition ${
-                        leaveStatusFilter === status
-                          ? "bg-brand text-white shadow-2xs"
-                          : "border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">My Leave History</h2>
+                  <p className="text-xs text-gray-500">Track status, handover details, and manager reviews.</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search leaves…"
+                      value={leaveSearchQuery}
+                      onChange={(e) => setLeaveSearchQuery(e.target.value)}
+                      className="rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-3 text-xs text-gray-900 shadow-2xs transition focus:border-brand focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {(["all", "pending", "approved", "rejected"] as const).map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => setLeaveStatusFilter(status)}
+                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize transition ${
+                          leaveStatusFilter === status
+                            ? "bg-brand text-white shadow-2xs"
+                            : "border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
+                        }`}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               {filteredLeaveRequests.length === 0 ? (
                 <p className="py-6 text-center text-sm text-gray-500">
-                  {leaveStatusFilter === "all"
+                  {leaveStatusFilter === "all" && !leaveSearchQuery
                     ? "You have not submitted any leave requests yet."
-                    : `No ${leaveStatusFilter} leave requests found.`}
+                    : "No leave requests match your search or filter."}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
+                        <th className="py-2.5 pr-2 w-6"></th>
                         <th className="py-2.5 pr-4">Type</th>
                         <th className="px-3 py-2.5">Start</th>
                         <th className="px-3 py-2.5">End</th>
@@ -396,38 +429,110 @@ export function DashboardShell({
                       {filteredLeaveRequests.map((r) => {
                         const type = leaveTypeMap.get(r.leave_type);
                         const handover = memberMap.get(r.handover_email?.toLowerCase() || "");
+                        const isExpanded = expandedLeaveId === r.id;
+
                         return (
-                          <tr key={r.id} className="hover:bg-gray-50/50">
-                            <td className="py-3 pr-4 font-semibold text-gray-900">
-                              {type?.name ?? r.leave_type}
-                            </td>
-                            <td className="px-3 py-3 font-mono">{r.start_date}</td>
-                            <td className="px-3 py-3 font-mono">{r.end_date}</td>
-                            <td className="px-3 py-3 font-semibold">{r.working_days}</td>
-                            <td className="px-3 py-3 text-gray-600">
-                              {handover ? handover.full_name : r.handover_email || "—"}
-                            </td>
-                            <td className="px-3 py-3">
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                  STATUS_BADGE[r.status] ?? "bg-gray-100 text-gray-700"
-                                }`}
-                              >
-                                {r.status.toUpperCase()}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3 text-right">
-                              {r.status === "pending" && (
-                                <form action={cancelLeaveRequest} className="inline">
-                                  <input type="hidden" name="request_id" value={r.id} />
-                                  <button
-                                    type="submit"
-                                    className="text-xs text-red-600 hover:text-red-800 font-semibold"
-                                  >
-                                    Cancel
-                                  </button>
-                                </form>
-                              )}
+                          <tr key={r.id} className="group">
+                            <td colSpan={8} className="p-0">
+                              <div className="hover:bg-gray-50/60 transition flex flex-col">
+                                <div className="flex items-center w-full px-2 py-3">
+                                  <div className="w-6 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedLeaveId(isExpanded ? null : r.id)}
+                                      className="rounded p-1 text-gray-400 hover:text-gray-700 transition"
+                                      title={isExpanded ? "Collapse details" : "Expand details"}
+                                    >
+                                      {isExpanded ? (
+                                        <ChevronUpIcon className="h-3.5 w-3.5" />
+                                      ) : (
+                                        <ChevronDownIcon className="h-3.5 w-3.5" />
+                                      )}
+                                    </button>
+                                  </div>
+
+                                  <div className="w-1/4 pr-4 font-semibold text-gray-900">
+                                    {type?.name ?? r.leave_type}
+                                  </div>
+
+                                  <div className="w-24 px-3 font-mono text-gray-700">{r.start_date}</div>
+                                  <div className="w-24 px-3 font-mono text-gray-700">{r.end_date}</div>
+                                  <div className="w-24 px-3 font-semibold text-gray-900">{r.working_days}d</div>
+
+                                  <div className="flex-1 px-3 text-gray-600 truncate">
+                                    {handover ? handover.full_name : r.handover_email || "—"}
+                                  </div>
+
+                                  <div className="w-28 px-3">
+                                    <span
+                                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                                        STATUS_BADGE[r.status] ?? "bg-gray-100 text-gray-700"
+                                      }`}
+                                    >
+                                      {r.status.toUpperCase()}
+                                    </span>
+                                  </div>
+
+                                  <div className="w-20 px-3 text-right">
+                                    {r.status === "pending" && (
+                                      <form action={cancelLeaveRequest} className="inline">
+                                        <input type="hidden" name="request_id" value={r.id} />
+                                        <button
+                                          type="submit"
+                                          className="text-xs text-red-600 hover:text-red-800 font-semibold active:scale-95 transition"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </form>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Expanded Detailed View */}
+                                {isExpanded && (
+                                  <div className="bg-gray-50/80 px-8 py-3.5 border-t border-gray-100 text-xs animate-in fade-in">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      <div>
+                                        <span className="text-[10px] uppercase font-bold text-gray-400 block mb-0.5">
+                                          Reason &amp; Handover Brief:
+                                        </span>
+                                        <p className="text-gray-800 bg-white p-2.5 rounded-lg border border-gray-200">
+                                          {r.reason || "No specific handover notes recorded."}
+                                        </p>
+                                      </div>
+
+                                      <div>
+                                        <span className="text-[10px] uppercase font-bold text-gray-400 block mb-0.5">
+                                          Manager Authorization &amp; Remarks:
+                                        </span>
+                                        <div className="bg-white p-2.5 rounded-lg border border-gray-200 space-y-1">
+                                          <div className="flex items-center justify-between text-[11px]">
+                                            <span className="text-gray-500">Reviewer:</span>
+                                            <span className="font-semibold text-gray-900">
+                                              {r.reviewed_by || "F. Mbuthia (Manager)"}
+                                            </span>
+                                          </div>
+                                          {r.reviewed_at && (
+                                            <div className="flex items-center justify-between text-[11px]">
+                                              <span className="text-gray-500">Decision Date:</span>
+                                              <span className="font-mono text-gray-700">{r.reviewed_at.slice(0, 10)}</span>
+                                            </div>
+                                          )}
+                                          {r.reviewer_note && (
+                                            <div className="pt-1 border-t border-gray-100 text-gray-700">
+                                              <span className="font-semibold text-gray-800">Remarks: </span>
+                                              <span>{r.reviewer_note}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="mt-2 text-[10px] text-gray-400 text-right">
+                                      Submitted: {r.created_at ? r.created_at.slice(0, 19).replace("T", " ") : "—"}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );

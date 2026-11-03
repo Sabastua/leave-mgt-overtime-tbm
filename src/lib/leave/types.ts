@@ -71,29 +71,17 @@ export type LeaveBalanceSummary = {
   remaining: number;
 };
 
+import { calculateWorkingDaysDetailed } from "./holidays";
+
 /**
- * Counts weekday working days (Mon–Fri) between two YYYY-MM-DD dates (inclusive).
+ * Counts official working days (excluding weekends and statutory public holidays)
+ * between two YYYY-MM-DD dates (inclusive).
  */
 export function calculateWorkingDays(
   startDateStr: string,
   endDateStr: string,
 ): number {
-  if (!startDateStr || !endDateStr) return 0;
-  const start = new Date(`${startDateStr}T00:00:00Z`);
-  const end = new Date(`${endDateStr}T00:00:00Z`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
-  if (end < start) return 0;
-
-  let count = 0;
-  const cursor = new Date(start);
-  while (cursor <= end) {
-    const day = cursor.getUTCDay();
-    if (day !== 0 && day !== 6) {
-      count += 1;
-    }
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-  return count;
+  return calculateWorkingDaysDetailed(startDateStr, endDateStr).workingDays;
 }
 
 /**
