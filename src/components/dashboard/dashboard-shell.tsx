@@ -26,6 +26,10 @@ import {
   MagnifyingGlassIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  UserIcon,
+  ShieldCheckIcon,
+  BuildingOfficeIcon,
+  KeyIcon,
 } from "@/components/ui/icons";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -73,6 +77,8 @@ export function DashboardShell({
     "leave" | "overtime" | "calendar" | "admin" | "team"
   >("leave");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [showReviewBanner, setShowReviewBanner] = useState(true);
   const [selectedReceiptRecord, setSelectedReceiptRecord] = useState<OvertimeRecord | null>(null);
   const [leaveStatusFilter, setLeaveStatusFilter] = useState<string>("all");
   const [overtimeStatusFilter, setOvertimeStatusFilter] = useState<string>("all");
@@ -137,17 +143,28 @@ export function DashboardShell({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-sm font-semibold text-gray-900">
-                {currentMember.full_name || currentUserEmail}
-              </p>
-              <p className="text-xs text-gray-500">{currentUserEmail}</p>
-            </div>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setIsProfileModalOpen(true)}
+              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-2.5 py-1.5 transition hover:bg-gray-100 hover:border-gray-300 cursor-pointer"
+              title="View your profile, entitlements & approver details"
+            >
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand font-bold text-xs text-white">
+                {(currentMember.full_name || currentUserEmail)[0].toUpperCase()}
+              </div>
+              <div className="text-left hidden sm:block">
+                <p className="text-xs font-bold text-gray-900 leading-tight">
+                  {currentMember.full_name || currentUserEmail}
+                </p>
+                <p className="text-[10px] text-gray-500 leading-tight">{currentUserEmail}</p>
+              </div>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsPasswordModalOpen(true)}
-              className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
+              className="rounded-xl border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 cursor-pointer"
               title="Change your password"
             >
               Password
@@ -155,7 +172,7 @@ export function DashboardShell({
             <form action={signOut}>
               <button
                 type="submit"
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
+                className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 cursor-pointer"
               >
                 Sign out
               </button>
@@ -254,6 +271,30 @@ export function DashboardShell({
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-8">
+        {/* Manager Review Notification Banner */}
+        {showReviewBanner && (
+          <div className="flex items-center justify-between rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-xs animate-in fade-in">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shrink-0">
+                <ShieldCheckIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-bold text-emerald-950">Manager Approval Center</p>
+                <p className="text-emerald-800 mt-0.5">
+                  Designated Approver: <strong className="font-mono">fmbuthia@safaricom.co.ke</strong> • Review notifications and workflow status are synchronized in real time.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowReviewBanner(false)}
+              className="text-emerald-800 hover:text-emerald-950 text-xs font-bold px-2.5 py-1 rounded-lg hover:bg-emerald-100 transition cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {!schemaReady && (
           <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             <p className="font-semibold">Notice: Database Setup</p>
@@ -885,6 +926,119 @@ export function DashboardShell({
             employeeName={currentMember.full_name || currentUserEmail}
             onClose={() => setSelectedReceiptRecord(null)}
           />
+        )}
+
+        {/* Self-Service Profile Modal */}
+        {isProfileModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-2xs animate-in fade-in">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-black/5">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <UserIcon className="h-5 w-5 text-brand" />
+                  <h3 className="text-base font-bold text-gray-900">My Profile &amp; Entitlements</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsProfileModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 transition cursor-pointer"
+                >
+                  <XCircleIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-4 text-xs">
+                {/* Identity Card */}
+                <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-4 border border-gray-100">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand text-xl font-bold text-white shadow-xs shrink-0">
+                    {(currentMember.full_name || currentUserEmail)[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-sm">
+                      {currentMember.full_name || currentUserEmail}
+                    </h4>
+                    <p className="text-gray-500 font-mono text-[11px]">{currentUserEmail}</p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand-dark">
+                        {currentMember.role === "approver" ? "Approver / Manager" : "Team Member (Staff)"}
+                      </span>
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                        Active
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Approver & Governance Details */}
+                <div className="rounded-xl border border-gray-100 p-3.5 space-y-2 bg-white">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Designated Approver:</span>
+                    <strong className="text-gray-900 font-mono">fmbuthia@safaricom.co.ke</strong>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Department:</span>
+                    <span className="text-gray-900 font-semibold">Safaricom Technology Team</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Current Year Cycle:</span>
+                    <span className="text-gray-900 font-bold">{currentYear}</span>
+                  </div>
+                </div>
+
+                {/* Balances Quick Snapshot */}
+                <div className="rounded-xl border border-gray-100 p-3.5 bg-gray-50/50 space-y-2">
+                  <p className="font-bold text-gray-700">Leave Entitlements Summary</p>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    {myBalances.map((b) => (
+                      <div key={b.leaveType.code} className="rounded-lg bg-white p-2 border border-gray-100">
+                        <span className="text-gray-500 block text-[10px]">{b.leaveType.name}</span>
+                        <strong className="text-gray-900 font-mono text-sm">{b.remaining}d</strong>
+                        <span className="text-gray-400 text-[10px]"> /{b.entitled}d</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Overtime Snapshot */}
+                <div className="rounded-xl border border-gray-100 p-3.5 bg-white space-y-1">
+                  <p className="font-bold text-gray-700">Overtime Summary ({currentYear})</p>
+                  <div className="flex justify-between items-center text-xs pt-1">
+                    <span className="text-gray-500">Total Approved Hours:</span>
+                    <strong className="font-mono text-gray-900">{myOvertimeStats.totalHoursApproved.toFixed(1)}h</strong>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500">Paid Payroll Hours:</span>
+                    <strong className="font-mono text-blue-700">{myOvertimeStats.paidHoursApproved.toFixed(1)}h</strong>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500">TOIL Rest Days Banked:</span>
+                    <strong className="font-mono text-purple-700">~{(myOvertimeStats.toilHoursApproved / 8).toFixed(1)} days</strong>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileModalOpen(false);
+                      setIsPasswordModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                  >
+                    <KeyIcon className="h-4 w-4 text-gray-500" />
+                    <span>Change Password</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsProfileModalOpen(false)}
+                    className="rounded-xl bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { updateMyPassword, type PasswordUpdateState } from "@/app/login/actions";
-import { KeyIcon, XCircleIcon } from "@/components/ui/icons";
+import { KeyIcon, XCircleIcon, EyeIcon, EyeSlashIcon, CheckCircleIcon } from "@/components/ui/icons";
 
 const initialState: PasswordUpdateState = {};
 
@@ -19,7 +19,7 @@ export function ChangePasswordModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-2xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-2xs animate-in fade-in">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl ring-1 ring-black/5">
         <div className="flex items-center justify-between pb-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
@@ -43,23 +43,29 @@ export function ChangePasswordModal({
               >
                 New Password
               </label>
+            </div>
+            <div className="relative mt-1">
+              <input
+                id="modal_new_password"
+                name="new_password"
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={6}
+                placeholder="Minimum 6 characters"
+                className="block w-full rounded-xl border border-gray-300 px-3.5 pr-10 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+              />
               <button
                 type="button"
                 onClick={() => setShowPassword((s) => !s)}
-                className="text-[11px] text-gray-500 hover:text-gray-700"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition"
               >
-                {showPassword ? "Hide" : "Show"}
+                {showPassword ? (
+                  <EyeSlashIcon className="h-4 w-4" />
+                ) : (
+                  <EyeIcon className="h-4 w-4" />
+                )}
               </button>
             </div>
-            <input
-              id="modal_new_password"
-              name="new_password"
-              type={showPassword ? "text" : "password"}
-              required
-              minLength={6}
-              placeholder="Minimum 6 characters"
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
-            />
           </div>
 
           <div>
@@ -69,21 +75,23 @@ export function ChangePasswordModal({
             >
               Confirm Password
             </label>
-            <input
-              id="modal_confirm_password"
-              name="confirm_password"
-              type={showPassword ? "text" : "password"}
-              required
-              minLength={6}
-              placeholder="Re-enter new password"
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
-            />
+            <div className="relative mt-1">
+              <input
+                id="modal_confirm_password"
+                name="confirm_password"
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={6}
+                placeholder="Re-enter new password"
+                className="block w-full rounded-xl border border-gray-300 px-3.5 pr-10 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+              />
+            </div>
           </div>
 
           {state.error && (
             <div
               role="alert"
-              className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs font-medium text-red-700"
+              className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-semibold text-red-700"
             >
               {state.error}
             </div>
@@ -92,29 +100,28 @@ export function ChangePasswordModal({
           {state.success && (
             <div
               role="status"
-              className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs font-medium text-emerald-800"
+              className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-xs font-semibold text-emerald-800 flex items-center gap-1.5"
             >
-              {state.success}
+              <CheckCircleIcon className="h-4 w-4 text-emerald-600" />
+              <span>{state.success}</span>
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              className="rounded-xl border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
             >
-              {state.success ? "Done" : "Cancel"}
+              Cancel
             </button>
-            {!state.success && (
-              <button
-                type="submit"
-                disabled={pending}
-                className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-brand-dark disabled:opacity-60"
-              >
-                {pending ? "Saving..." : "Update Password"}
-              </button>
-            )}
+            <button
+              type="submit"
+              disabled={pending}
+              className="rounded-xl bg-brand px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-brand-dark focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:outline-none disabled:opacity-60"
+            >
+              {pending ? "Updating..." : "Update Password"}
+            </button>
           </div>
         </form>
       </div>
