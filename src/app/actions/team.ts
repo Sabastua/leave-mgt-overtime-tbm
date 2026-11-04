@@ -70,7 +70,7 @@ export async function addTeamMember(
       return { error: "Password must be at least 6 characters." };
     }
 
-    // Try provisioning via secure admin RPC (handles both auth.users and allowed_users)
+    // Provision via secure admin RPC (handles both auth.users, auth.identities, and allowed_users)
     const { error: rpcError } = await supabase.rpc("admin_provision_user", {
       p_email: email,
       p_password: password,
@@ -79,17 +79,9 @@ export async function addTeamMember(
     });
 
     if (rpcError) {
-      // Fallback: upsert to allowed_users directly if migration 0006 is pending
-      const { error: upsertError } = await supabase.from("allowed_users").upsert({
-        email,
-        full_name: fullName,
-        role,
-        is_active: true,
-      });
-
-      if (upsertError) {
-        return { error: `Failed to create user: ${rpcError.message}` };
-      }
+      return {
+        error: `Could not provision login account in database: ${rpcError.message}. Please verify the approver role and database migration status.`,
+      };
     }
 
     revalidatePath("/");
