@@ -281,7 +281,7 @@ export function DashboardShell({
               <div>
                 <p className="font-bold text-emerald-950">Manager Approval Center</p>
                 <p className="text-emerald-800 mt-0.5">
-                  Designated Approver: <strong className="font-mono">fmbuthia@safaricom.co.ke</strong> • Review notifications and workflow status are synchronized in real time.
+                  Review notifications and workflow status are synchronized in real time.
                 </p>
               </div>
             </div>
@@ -968,12 +968,8 @@ export function DashboardShell({
                   </div>
                 </div>
 
-                {/* Approver & Governance Details */}
+                {/* Department & Governance Details */}
                 <div className="rounded-xl border border-gray-100 p-3.5 space-y-2 bg-white">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">Designated Approver:</span>
-                    <strong className="text-gray-900 font-mono">fmbuthia@safaricom.co.ke</strong>
-                  </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Department:</span>
                     <span className="text-gray-900 font-semibold">Safaricom Technology Team</span>

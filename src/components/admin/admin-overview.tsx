@@ -298,7 +298,7 @@ export function AdminOverview({
         r.compensatory_choice === "paid" ? "Paid Payroll" : "TOIL Credit",
         r.ticket_ref ? `"${r.ticket_ref}"` : "",
         r.status,
-        r.reviewed_by || "fmbuthia@safaricom.co.ke",
+        r.reviewed_by || "Authorized Approver",
         r.reviewed_at || "",
       ]);
     });
@@ -317,7 +317,7 @@ export function AdminOverview({
         type?.name || r.leave_type,
         `"Relief: ${r.handover_email || "N/A"}"`,
         r.status,
-        r.reviewed_by || "fmbuthia@safaricom.co.ke",
+        r.reviewed_by || "Authorized Approver",
         r.reviewed_at || "",
       ]);
     });
@@ -1221,7 +1221,7 @@ export function AdminOverview({
               </h2>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
-              Designated Approver: <strong className="text-gray-700">fmbuthia@safaricom.co.ke</strong> • 1-Click Decisions, Quick-Canned Feedback Presets &amp; Multi-Select Batch Approvals
+              1-Click Decisions, Quick-Canned Feedback Presets &amp; Multi-Select Batch Approvals
             </p>
           </div>
 

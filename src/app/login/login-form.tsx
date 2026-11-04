@@ -151,7 +151,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
       <div className="mt-4 rounded-xl bg-gray-50 p-2.5 border border-gray-100 flex items-center gap-2 text-[11px] text-gray-500">
         <ShieldCheckIcon className="h-4 w-4 text-brand shrink-0" />
         <span>
-          Designated Approver: <strong className="text-gray-700">fmbuthia@safaricom.co.ke</strong>
+          Leave &amp; Overtime Management • Authorized Safaricom Personnel Only
         </span>
       </div>
     </form>
