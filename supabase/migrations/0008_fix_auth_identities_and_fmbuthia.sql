@@ -1,7 +1,7 @@
 -- =============================================================================
 -- 0008_fix_auth_identities_and_fmbuthia.sql
--- Fix GoTrue "Database error querying schema" by ensuring auth.identities exists
--- and provision fmbuthia@safaricom.co.ke properly as Manager & Approver
+-- Fix GoTrue "Database error querying schema" by ensuring auth.identities has
+-- valid UUID id and records, and provision fmbuthia@safaricom.co.ke
 -- =============================================================================
 
 -- Ensure pgcrypto extension is active
@@ -20,6 +20,7 @@ begin
     left join auth.identities i on i.user_id = u.id and i.provider = 'email'
     where i.id is null and u.email is not null
   ) loop
+    delete from auth.identities where user_id = r.id;
     insert into auth.identities (
       id,
       user_id,
@@ -30,7 +31,7 @@ begin
       created_at,
       updated_at
     ) values (
-      r.id::text,
+      r.id,
       r.id,
       jsonb_build_object('sub', r.id::text, 'email', lower(r.email)),
       'email',
@@ -38,7 +39,7 @@ begin
       now(),
       now(),
       now()
-    ) on conflict do nothing;
+    );
   end loop;
 end;
 $$ language plpgsql security definer set search_path = public, auth, extensions;
@@ -64,7 +65,9 @@ begin
         updated_at = now()
     where id = v_user_id;
 
-    -- Ensure identity exists
+    -- Clean existing identity if corrupt, then re-insert cleanly with UUID id
+    delete from auth.identities where user_id = v_user_id;
+
     insert into auth.identities (
       id,
       user_id,
@@ -75,7 +78,7 @@ begin
       created_at,
       updated_at
     ) values (
-      v_user_id::text,
+      v_user_id,
       v_user_id,
       jsonb_build_object('sub', v_user_id::text, 'email', v_email),
       'email',
@@ -83,9 +86,7 @@ begin
       now(),
       now(),
       now()
-    ) on conflict (provider, id) do update
-    set identity_data = jsonb_build_object('sub', v_user_id::text, 'email', v_email),
-        updated_at = now();
+    );
   else
     -- Create fresh user
     v_user_id := gen_random_uuid();
@@ -126,7 +127,7 @@ begin
       created_at,
       updated_at
     ) values (
-      v_user_id::text,
+      v_user_id,
       v_user_id,
       jsonb_build_object('sub', v_user_id::text, 'email', v_email),
       'email',
@@ -240,7 +241,9 @@ begin
     );
   end if;
 
-  -- CRITICAL: Insert/update identity in auth.identities
+  -- Insert/update identity in auth.identities with UUID id
+  delete from auth.identities where user_id = v_user_id;
+
   insert into auth.identities (
     id,
     user_id,
@@ -251,7 +254,7 @@ begin
     created_at,
     updated_at
   ) values (
-    v_user_id::text,
+    v_user_id,
     v_user_id,
     jsonb_build_object('sub', v_user_id::text, 'email', v_email),
     'email',
@@ -259,15 +262,13 @@ begin
     now(),
     now(),
     now()
-  ) on conflict (provider, id) do update
-  set identity_data = jsonb_build_object('sub', v_user_id::text, 'email', v_email),
-      updated_at = now();
+  );
 
   return 'success';
 end;
 $$ language plpgsql security definer set search_path = public, auth, extensions;
 
--- 5. Update admin_reset_user_password to also update/create identity
+-- 5. Update admin_reset_user_password to also update/create identity with UUID id
 create or replace function public.admin_reset_user_password(
   p_email text,
   p_password text
@@ -314,7 +315,9 @@ begin
       updated_at = now()
   where id = v_user_id;
 
-  -- Ensure identity exists in auth.identities
+  -- Ensure identity exists in auth.identities with UUID id
+  delete from auth.identities where user_id = v_user_id;
+
   insert into auth.identities (
     id,
     user_id,
@@ -325,7 +328,7 @@ begin
     created_at,
     updated_at
   ) values (
-    v_user_id::text,
+    v_user_id,
     v_user_id,
     jsonb_build_object('sub', v_user_id::text, 'email', v_email),
     'email',
@@ -333,9 +336,7 @@ begin
     now(),
     now(),
     now()
-  ) on conflict (provider, id) do update
-  set identity_data = jsonb_build_object('sub', v_user_id::text, 'email', v_email),
-      updated_at = now();
+  );
 
   return 'success';
 end;
