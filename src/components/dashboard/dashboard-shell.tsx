@@ -10,6 +10,7 @@ import { TeamCalendar } from "@/components/calendar/team-calendar";
 import { AdminOverview } from "@/components/admin/admin-overview";
 import { TeamManagement } from "@/components/team/team-management";
 import { ChangePasswordModal } from "@/components/dashboard/change-password-modal";
+import { LeaveSpeedometerCard } from "@/components/dashboard/leave-speedometer";
 import { OvertimeReceiptModal } from "@/components/overtime/overtime-receipt-modal";
 import { reviewLeaveRequest, cancelLeaveRequest } from "@/app/actions/leave";
 import { reviewOvertimeRequest, cancelOvertimeRequest } from "@/app/actions/overtime";
@@ -87,6 +88,7 @@ export function DashboardShell({
   const [expandedOvertimeId, setExpandedOvertimeId] = useState<string | null>(null);
   const [overtimeSearchQuery, setOvertimeSearchQuery] = useState("");
   const [prefillOvertimeClaim, setPrefillOvertimeClaim] = useState<OvertimeRecord | null>(null);
+  const [radialStyle, setRadialStyle] = useState<"speedometer" | "radial_donut">("speedometer");
 
   const memberMap = new Map(teamMembers.map((m) => [m.email.toLowerCase(), m]));
   const leaveTypeMap = new Map(leaveTypes.map((t) => [t.code, t]));
@@ -307,66 +309,80 @@ export function DashboardShell({
         {/* TAB 1: LEAVE REQUESTS */}
         {activeTab === "leave" && (
           <div className="space-y-8">
-            {/* My Leave Balances with Progress Bars */}
+            {/* My Leave Balances with Animated Radial Speedometer Gauges */}
             <section>
-              <div className="mb-3 flex items-baseline justify-between">
-                <h1 className="text-xl font-bold text-gray-900">
-                  My Leave Balances ({currentYear})
-                </h1>
-                <span className="text-xs text-gray-500">Working days (Mon–Fri)</span>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+                    My Leave Balances ({currentYear})
+                  </h1>
+                  <p className="text-xs text-gray-500">
+                    Live animated speedometer gauges tracking days taken and remaining allowance before depletion
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex items-center rounded-xl bg-gray-100 p-1 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setRadialStyle("speedometer")}
+                      className={`rounded-lg px-3 py-1.5 transition-all duration-200 cursor-pointer ${
+                        radialStyle === "speedometer"
+                          ? "bg-white text-gray-900 shadow-xs font-bold"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      Speedometer Dial
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRadialStyle("radial_donut")}
+                      className={`rounded-lg px-3 py-1.5 transition-all duration-200 cursor-pointer ${
+                        radialStyle === "radial_donut"
+                          ? "bg-white text-gray-900 shadow-xs font-bold"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      Radial Donut
+                    </button>
+                  </div>
+                  <span className="hidden sm:inline-block text-xs text-gray-400 font-medium">
+                    Working days (Mon–Fri)
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {myBalances.map(({ leaveType, entitled, approved, pending, remaining }) => {
-                  const accent = COLOR_ACCENT[leaveType.color] ?? COLOR_ACCENT.emerald;
-                  const remainingPercent =
-                    entitled > 0 ? Math.round((remaining / entitled) * 100) : 0;
+                  const todayStr = new Date().toISOString().slice(0, 10);
+                  const activeLeave = myLeaveRequests.find(
+                    (r) =>
+                      r.status === "approved" &&
+                      r.leave_type === leaveType.code &&
+                      r.start_date <= todayStr &&
+                      r.end_date >= todayStr
+                  );
+                  const upcomingLeave = myLeaveRequests
+                    .filter(
+                      (r) =>
+                        r.status === "approved" &&
+                        r.leave_type === leaveType.code &&
+                        r.start_date > todayStr
+                    )
+                    .sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
 
                   return (
-                    <div
+                    <LeaveSpeedometerCard
                       key={leaveType.code}
-                      className="flex flex-col justify-between rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition-all duration-300 hover:shadow-md hover:-translate-y-1"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-semibold text-gray-900">
-                            {leaveType.name}
-                          </span>
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${accent.badge}`}>
-                            {entitled}d / yr
-                          </span>
-                        </div>
-                        <p className="mt-3 text-3xl font-bold tracking-tight text-gray-900">
-                          {remaining}{" "}
-                          <span className="text-sm font-normal text-gray-500">days left</span>
-                        </p>
-                      </div>
-
-                      {/* Progress Bar of Remaining Allowance */}
-                      <div className="mt-4">
-                        <div className="flex justify-between text-[11px] text-gray-500 mb-1">
-                          <span>{approved}d taken</span>
-                          <span className="font-semibold">{remainingPercent}% available</span>
-                        </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                          <div
-                            className={`h-full rounded-full transition-all duration-300 ${
-                              remainingPercent > 50
-                                ? "bg-emerald-500"
-                                : remainingPercent > 20
-                                ? "bg-amber-500"
-                                : "bg-red-500"
-                            }`}
-                            style={{ width: `${remainingPercent}%` }}
-                          />
-                        </div>
-                        {pending > 0 && (
-                          <div className="mt-1 text-right text-[10px] text-amber-700">
-                            {pending}d pending approval
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                      leaveType={leaveType}
+                      entitled={entitled}
+                      approved={approved}
+                      pending={pending}
+                      remaining={remaining}
+                      activeLeaveRequest={activeLeave}
+                      upcomingLeaveRequest={upcomingLeave}
+                      chartStyle={radialStyle}
+                    />
                   );
                 })}
               </div>
