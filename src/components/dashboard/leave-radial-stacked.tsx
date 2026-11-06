@@ -94,35 +94,25 @@ export function LeaveRadialStackedCard({
     };
   }, [activeLeaveRequest, upcomingLeaveRequest, todayStr]);
 
-  // Depletion status badge & styling
-  const depletionStatus = useMemo(() => {
+  // Allowance badge styling (clean entitlement & depletion alert)
+  const allowanceBadge = useMemo(() => {
     if (annualRemaining === 0) {
       return {
-        label: "Annual Depleted",
-        badge: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
-        accentHex: "#ef4444",
+        label: "Depleted",
+        className: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
       };
     }
     if (annualRemaining <= 3 || annualRemainingPercent <= 20) {
       return {
-        label: "Near Depleted",
-        badge: "bg-rose-50 text-rose-700 ring-1 ring-rose-600/20",
-        accentHex: "#f43f5e",
-      };
-    }
-    if (annualRemainingPercent <= 50) {
-      return {
-        label: "Moderate Balance",
-        badge: "bg-amber-50 text-amber-800 ring-1 ring-amber-600/20",
-        accentHex: "#f59e0b",
+        label: `${annualRemaining}d Left`,
+        className: "bg-rose-50 text-rose-700 ring-1 ring-rose-600/20",
       };
     }
     return {
-      label: "Healthy Balance",
-      badge: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600/20",
-      accentHex: "#00A34D", // Safaricom Green
+      label: `${annualEntitled}d / yr`,
+      className: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600/20",
     };
-  }, [annualRemaining, annualRemainingPercent]);
+  }, [annualRemaining, annualRemainingPercent, annualEntitled]);
 
   // Radial Chart - Stacked Math Geometry
   // Canvas: 200 x 200
@@ -165,8 +155,8 @@ export function LeaveRadialStackedCard({
             </span>
           </div>
 
-          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${depletionStatus.badge}`}>
-            {depletionStatus.label}
+          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${allowanceBadge.className}`}>
+            {allowanceBadge.label}
           </span>
         </div>
       </div>
