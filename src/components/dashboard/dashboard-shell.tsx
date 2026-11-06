@@ -10,7 +10,7 @@ import { TeamCalendar } from "@/components/calendar/team-calendar";
 import { AdminOverview } from "@/components/admin/admin-overview";
 import { TeamManagement } from "@/components/team/team-management";
 import { ChangePasswordModal } from "@/components/dashboard/change-password-modal";
-import { LeaveSpeedometerCard } from "@/components/dashboard/leave-speedometer";
+import { LeaveRadialStackedCard } from "@/components/dashboard/leave-radial-stacked";
 import { OvertimeReceiptModal } from "@/components/overtime/overtime-receipt-modal";
 import { reviewLeaveRequest, cancelLeaveRequest } from "@/app/actions/leave";
 import { reviewOvertimeRequest, cancelOvertimeRequest } from "@/app/actions/overtime";
@@ -88,7 +88,6 @@ export function DashboardShell({
   const [expandedOvertimeId, setExpandedOvertimeId] = useState<string | null>(null);
   const [overtimeSearchQuery, setOvertimeSearchQuery] = useState("");
   const [prefillOvertimeClaim, setPrefillOvertimeClaim] = useState<OvertimeRecord | null>(null);
-  const [radialStyle, setRadialStyle] = useState<"speedometer" | "radial_donut">("speedometer");
 
   const memberMap = new Map(teamMembers.map((m) => [m.email.toLowerCase(), m]));
   const leaveTypeMap = new Map(leaveTypes.map((t) => [t.code, t]));
@@ -309,7 +308,7 @@ export function DashboardShell({
         {/* TAB 1: LEAVE REQUESTS */}
         {activeTab === "leave" && (
           <div className="space-y-8">
-            {/* My Leave Balances with Animated Radial Speedometer Gauges */}
+            {/* My Leave Balances with Radial Chart - Stacked */}
             <section>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -317,35 +316,15 @@ export function DashboardShell({
                     My Leave Balances ({currentYear})
                   </h1>
                   <p className="text-xs text-gray-500">
-                    Live animated speedometer gauges tracking days taken and remaining allowance before depletion
+                    Radial Chart - Stacked visualizing annual allowance breakdown and active leave timeline
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="inline-flex items-center rounded-xl bg-gray-100 p-1 text-xs font-semibold">
-                    <button
-                      type="button"
-                      onClick={() => setRadialStyle("speedometer")}
-                      className={`rounded-lg px-3 py-1.5 transition-all duration-200 cursor-pointer ${
-                        radialStyle === "speedometer"
-                          ? "bg-white text-gray-900 shadow-xs font-bold"
-                          : "text-gray-500 hover:text-gray-700"
-                      }`}
-                    >
-                      Speedometer Dial
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRadialStyle("radial_donut")}
-                      className={`rounded-lg px-3 py-1.5 transition-all duration-200 cursor-pointer ${
-                        radialStyle === "radial_donut"
-                          ? "bg-white text-gray-900 shadow-xs font-bold"
-                          : "text-gray-500 hover:text-gray-700"
-                      }`}
-                    >
-                      Radial Donut
-                    </button>
-                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200">
+                    <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse" />
+                    Radial Chart - Stacked
+                  </span>
                   <span className="hidden sm:inline-block text-xs text-gray-400 font-medium">
                     Working days (Mon–Fri)
                   </span>
@@ -372,7 +351,7 @@ export function DashboardShell({
                     .sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
 
                   return (
-                    <LeaveSpeedometerCard
+                    <LeaveRadialStackedCard
                       key={leaveType.code}
                       leaveType={leaveType}
                       entitled={entitled}
@@ -381,7 +360,6 @@ export function DashboardShell({
                       remaining={remaining}
                       activeLeaveRequest={activeLeave}
                       upcomingLeaveRequest={upcomingLeave}
-                      chartStyle={radialStyle}
                     />
                   );
                 })}
