@@ -182,9 +182,10 @@ export function LeaveRequestForm({
           >
             {leaveTypes.map((lt) => {
               const bal = balances.find((b) => b.leaveType.code === lt.code);
+              const carriedNote = bal && bal.carriedForward > 0 ? ` (incl. +${bal.carriedForward}d carried)` : "";
               return (
                 <option key={lt.code} value={lt.code}>
-                  {lt.name} — {bal ? `${bal.remaining} days available` : `${lt.annual_days} days entitlement`}
+                  {lt.name} — {bal ? `${bal.remaining} days available${carriedNote}` : `${lt.annual_days} days entitlement`}
                 </option>
               );
             })}
@@ -294,6 +295,11 @@ export function LeaveRequestForm({
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="font-bold text-gray-800">
                 Balance Simulation ({selectedBalance.leaveType.name})
+                {selectedBalance.carriedForward > 0 && (
+                  <span className="ml-1.5 font-normal text-emerald-700 text-[11px]">
+                    (includes +{selectedBalance.carriedForward}d carried over)
+                  </span>
+                )}
               </span>
               {exceedsBalance ? (
                 <span className="flex items-center gap-1 text-[11px] font-bold text-red-700">

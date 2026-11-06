@@ -66,6 +66,8 @@ export type LeaveRequest = {
 export type LeaveBalanceSummary = {
   leaveType: LeaveType;
   entitled: number;
+  baseEntitled: number;
+  carriedForward: number;
   approved: number;
   pending: number;
   remaining: number;
@@ -85,38 +87,80 @@ export function calculateWorkingDays(
 }
 
 /**
- * Computes per-leave-type balances for a given user in the current calendar year.
+ * Computes per-leave-type balances for a given user in the specified calendar year,
+ * automatically carrying forward all unutilized days from prior years.
  */
 export function computeUserBalances(
   leaveTypes: LeaveType[],
   requests: LeaveRequest[],
   userEmail: string,
   year: number = new Date().getFullYear(),
+  carryForwardOverrides?: Record<string, number>,
 ): LeaveBalanceSummary[] {
   const normalized = userEmail.toLowerCase();
   const yearPrefix = `${year}-`;
 
   return leaveTypes.map((lt) => {
-    const matching = requests.filter(
+    // Current year matching requests
+    const currentYearMatching = requests.filter(
       (r) =>
         r.user_email.toLowerCase() === normalized &&
         r.leave_type === lt.code &&
         r.start_date.startsWith(yearPrefix),
     );
 
-    const approved = matching
+    const approved = currentYearMatching
       .filter((r) => r.status === "approved")
       .reduce((sum, r) => sum + r.working_days, 0);
 
-    const pending = matching
+    const pending = currentYearMatching
       .filter((r) => r.status === "pending")
       .reduce((sum, r) => sum + r.working_days, 0);
 
-    const remaining = Math.max(0, lt.annual_days - approved - pending);
+    // Compute automatic carry-forward from all unutilized prior years
+    const priorYears = Array.from(
+      new Set(
+        requests
+          .filter(
+            (r) =>
+              r.user_email.toLowerCase() === normalized &&
+              r.leave_type === lt.code &&
+              parseInt(r.start_date.slice(0, 4), 10) < year,
+          )
+          .map((r) => parseInt(r.start_date.slice(0, 4), 10)),
+      ),
+    ).sort((a, b) => a - b);
+
+    let autoCarriedForward = 0;
+    for (const py of priorYears) {
+      const pyPrefix = `${py}-`;
+      const pyApproved = requests
+        .filter(
+          (r) =>
+            r.user_email.toLowerCase() === normalized &&
+            r.leave_type === lt.code &&
+            r.status === "approved" &&
+            r.start_date.startsWith(pyPrefix),
+        )
+        .reduce((sum, r) => sum + r.working_days, 0);
+
+      // Any unused days in that prior year carry forward
+      const unutilized = Math.max(0, lt.annual_days - pyApproved);
+      autoCarriedForward += unutilized;
+    }
+
+    const explicitOverride = carryForwardOverrides ? carryForwardOverrides[lt.code] : undefined;
+    const carriedForward = typeof explicitOverride === "number" ? explicitOverride : autoCarriedForward;
+
+    const baseEntitled = lt.annual_days;
+    const totalEntitled = baseEntitled + carriedForward;
+    const remaining = Math.max(0, totalEntitled - approved - pending);
 
     return {
       leaveType: lt,
-      entitled: lt.annual_days,
+      entitled: totalEntitled,
+      baseEntitled,
+      carriedForward,
       approved,
       pending,
       remaining,

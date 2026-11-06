@@ -194,6 +194,7 @@ export function AdminOverview({
       const annualBal = bals.find((b) => b.leaveType.code === "annual");
       const annualRemaining = annualBal?.remaining ?? 21;
       const annualEntitled = annualBal?.entitled ?? 21;
+      const annualCarried = annualBal?.carriedForward ?? 0;
       const totalTaken = bals.reduce((sum, b) => sum + b.approved, 0);
       const totalRemaining = bals.reduce((sum, b) => sum + b.remaining, 0);
 
@@ -208,6 +209,7 @@ export function AdminOverview({
         bals,
         annualRemaining,
         annualEntitled,
+        annualCarried,
         annualPercent: Math.round((annualRemaining / annualEntitled) * 100),
         totalTaken,
         totalRemaining,
@@ -1125,7 +1127,7 @@ export function AdminOverview({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {processedMembers.map(({ member, bals, annualRemaining, annualEntitled, annualPercent, totalTaken, totalOtHours }) => {
+              {processedMembers.map(({ member, bals, annualRemaining, annualEntitled, annualCarried, annualPercent, totalTaken, totalOtHours }) => {
                 const sickBal = bals.find((b) => b.leaveType.code === "sick");
                 const compassionateBal = bals.find((b) => b.leaveType.code === "compassionate");
                 const studyBal = bals.find((b) => b.leaveType.code === "study");
@@ -1156,6 +1158,11 @@ export function AdminOverview({
                           <span className="font-normal text-gray-400">
                             /{annualEntitled} left
                           </span>
+                          {annualCarried > 0 && (
+                            <span className="ml-1 text-[10px] text-emerald-700 font-medium">
+                              (+{annualCarried}d)
+                            </span>
+                          )}
                         </span>
                         <span
                           className={`font-semibold ${
@@ -1398,6 +1405,7 @@ export function AdminOverview({
                                 {bal && (
                                   <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
                                     {bal.remaining}d available
+                                    {bal.carriedForward > 0 && ` (+${bal.carriedForward}d carried)`}
                                   </span>
                                 )}
                               </div>

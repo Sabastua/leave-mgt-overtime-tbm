@@ -15,6 +15,8 @@ import {
 export type RadialStackedCardProps = {
   leaveType: LeaveType;
   entitled: number;
+  baseEntitled?: number;
+  carriedForward?: number;
   approved: number;
   pending: number;
   remaining: number;
@@ -25,6 +27,8 @@ export type RadialStackedCardProps = {
 export function LeaveRadialStackedCard({
   leaveType,
   entitled,
+  baseEntitled,
+  carriedForward = 0,
   approved,
   pending,
   remaining,
@@ -35,7 +39,9 @@ export function LeaveRadialStackedCard({
   const todayStr = new Date().toISOString().slice(0, 10);
   const [hoveredSegment, setHoveredSegment] = useState<string | null>(null);
 
-  // 1. Annual Allowance Baseline Metrics
+  // 1. Annual Allowance Baseline Metrics & Carry-Forward
+  const annualBase = baseEntitled ?? leaveType.annual_days;
+  const annualCarried = carriedForward;
   const annualEntitled = entitled;
   const annualApproved = approved;
   const annualPending = pending;
@@ -150,9 +156,16 @@ export function LeaveRadialStackedCard({
             <span className="text-sm font-bold text-gray-900 tracking-tight block">
               {leaveType.name}
             </span>
-            <span className="text-[11px] font-semibold text-gray-500">
-              Annual Entitlement: <strong className="text-gray-900">{annualEntitled} days</strong>
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+              <span className="text-[11px] font-semibold text-gray-500">
+                Annual Entitlement: <strong className="text-gray-900">{annualEntitled} days</strong>
+              </span>
+              {annualCarried > 0 && (
+                <span className="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                  +{annualCarried}d carried over
+                </span>
+              )}
+            </div>
           </div>
 
           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${allowanceBadge.className}`}>
@@ -408,11 +421,11 @@ export function LeaveRadialStackedCard({
         </div>
 
         {/* Stacked Legend Grid */}
-        <div className="grid grid-cols-3 gap-1 pt-1 text-center text-[11px]">
+        <div className={`grid ${annualCarried > 0 ? "grid-cols-4" : "grid-cols-3"} gap-1 pt-1 text-center text-[11px]`}>
           <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
             <span className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-600 shrink-0" />
-              Remaining
+              Left
             </span>
             <strong className="font-mono text-emerald-700 font-bold mt-0.5">{annualRemaining}d</strong>
           </div>
@@ -425,13 +438,33 @@ export function LeaveRadialStackedCard({
             <strong className="font-mono text-gray-800 font-bold mt-0.5">{annualApproved}d</strong>
           </div>
 
-          <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
-            <span className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
-              <span className="inline-block h-2 w-2 rounded-full bg-gray-300 shrink-0" />
-              Entitled
-            </span>
-            <strong className="font-mono text-gray-900 font-bold mt-0.5">{annualEntitled}d</strong>
-          </div>
+          {annualCarried > 0 ? (
+            <>
+              <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
+                <span className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
+                  <span className="inline-block h-2 w-2 rounded-full bg-teal-500 shrink-0" />
+                  Carried
+                </span>
+                <strong className="font-mono text-teal-700 font-bold mt-0.5">+{annualCarried}d</strong>
+              </div>
+
+              <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
+                <span className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
+                  <span className="inline-block h-2 w-2 rounded-full bg-gray-300 shrink-0" />
+                  Total
+                </span>
+                <strong className="font-mono text-gray-900 font-bold mt-0.5">{annualEntitled}d</strong>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
+              <span className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
+                <span className="inline-block h-2 w-2 rounded-full bg-gray-300 shrink-0" />
+                Entitled
+              </span>
+              <strong className="font-mono text-gray-900 font-bold mt-0.5">{annualEntitled}d</strong>
+            </div>
+          )}
         </div>
 
         {/* Pending Requests Notice */}

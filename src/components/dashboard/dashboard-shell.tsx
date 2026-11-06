@@ -328,7 +328,7 @@ export function DashboardShell({
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {myBalances.map(({ leaveType, entitled, approved, pending, remaining }) => {
+                {myBalances.map(({ leaveType, entitled, baseEntitled, carriedForward, approved, pending, remaining }) => {
                   const todayStr = new Date().toISOString().slice(0, 10);
                   const activeLeave = myLeaveRequests.find(
                     (r) =>
@@ -351,6 +351,8 @@ export function DashboardShell({
                       key={leaveType.code}
                       leaveType={leaveType}
                       entitled={entitled}
+                      baseEntitled={baseEntitled}
+                      carriedForward={carriedForward}
                       approved={approved}
                       pending={pending}
                       remaining={remaining}
