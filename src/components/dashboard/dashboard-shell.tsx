@@ -365,9 +365,9 @@ export function DashboardShell({
                   const upcomingLeave = myLeaveRequests
                     .filter(
                       (r) =>
-                        r.status === "approved" &&
+                        (r.status === "approved" || r.status === "pending") &&
                         r.leave_type === leaveType.code &&
-                        r.start_date > todayStr
+                        r.end_date >= todayStr
                     )
                     .sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
 
