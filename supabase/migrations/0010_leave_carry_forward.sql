@@ -66,9 +66,13 @@ create policy "Approvers manage carry forward"
         or lower(auth.jwt() ->> 'email') = 'fmbuthia@safaricom.co.ke'
     );
 
--- 4. Audit View: Unspent Leave Balance and Rollover Estimation
+-- 4. Grants for authenticated and service_role
+grant select, insert, update, delete on public.leave_carry_forwards to authenticated;
+grant all on public.leave_carry_forwards to service_role;
+
+-- 5. Audit View: Unspent Leave Balance and Rollover Estimation
 create or replace view public.view_leave_carry_forward_summary as
-with user_year_approved as (
+with user_prior_years_approved as (
     select
         lr.user_email,
         lr.leave_type,
@@ -76,26 +80,40 @@ with user_year_approved as (
         coalesce(sum(lr.working_days), 0) as approved_days
     from public.leave_requests lr
     where lr.status = 'approved'
+      and extract(year from lr.start_date::date) < extract(year from current_date)
     group by lr.user_email, lr.leave_type, extract(year from lr.start_date::date)
+),
+user_auto_carried as (
+    select
+        pya.user_email,
+        pya.leave_type,
+        sum(greatest(0, lt.annual_days - pya.approved_days)) as total_auto_carried
+    from user_prior_years_approved pya
+    join public.leave_types lt on lt.code = pya.leave_type
+    group by pya.user_email, pya.leave_type
 )
 select
     au.email as user_email,
     au.full_name,
     lt.code as leave_type,
     lt.annual_days as base_entitlement,
-    coalesce(uya.approved_days, 0) as approved_days,
-    greatest(0, lt.annual_days - coalesce(uya.approved_days, 0)) as calculated_unutilized_days,
+    coalesce(uac.total_auto_carried, 0) as calculated_carried_days,
     lcf.carried_days as manual_override_days,
-    coalesce(lcf.carried_days, greatest(0, lt.annual_days - coalesce(uya.approved_days, 0))) as effective_carried_days
+    coalesce(lcf.carried_days, coalesce(uac.total_auto_carried, 0)) as effective_carried_days,
+    lt.annual_days + coalesce(lcf.carried_days, coalesce(uac.total_auto_carried, 0)) as total_available_entitlement
 from public.allowed_users au
 cross join public.leave_types lt
-left join user_year_approved uya
-    on lower(uya.user_email) = lower(au.email)
-    and uya.leave_type = lt.code
+left join user_auto_carried uac
+    on lower(uac.user_email) = lower(au.email)
+    and uac.leave_type = lt.code
 left join public.leave_carry_forwards lcf
     on lower(lcf.user_email) = lower(au.email)
     and lcf.leave_type = lt.code
+    and lcf.year = extract(year from current_date)::integer
 where au.is_active = true;
+
+grant select on public.view_leave_carry_forward_summary to authenticated;
+grant select on public.view_leave_carry_forward_summary to service_role;
 
 comment on table public.leave_carry_forwards is 'Stores carried forward leave days and manager adjustments across calendar years';
 comment on view public.view_leave_carry_forward_summary is 'Computes unutilized leave days from prior years for carry-forward tracking';
