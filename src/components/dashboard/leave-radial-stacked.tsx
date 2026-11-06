@@ -177,7 +177,7 @@ export function LeaveRadialStackedCard({
           <svg
             viewBox="0 0 200 200"
             className="h-full w-full -rotate-90 transform overflow-visible"
-            aria-label={`Radial Chart Stacked showing ${annualRemaining} remaining of ${annualEntitled} days`}
+            aria-label={`Leave balance showing ${annualRemaining} remaining of ${annualEntitled} days`}
           >
             <defs>
               <linearGradient id={`remainingGrad-${filterId}`} x1="0%" y1="0%" x2="100%" y2="100%">

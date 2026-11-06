@@ -308,7 +308,7 @@ export function DashboardShell({
         {/* TAB 1: LEAVE REQUESTS */}
         {activeTab === "leave" && (
           <div className="space-y-8">
-            {/* My Leave Balances with Radial Chart - Stacked */}
+            {/* My Leave Balances */}
             <section>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -316,16 +316,12 @@ export function DashboardShell({
                     My Leave Balances ({currentYear})
                   </h1>
                   <p className="text-xs text-gray-500">
-                    Radial Chart - Stacked visualizing annual allowance breakdown and active leave timeline
+                    Annual allowance breakdown and active leave timeline
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200">
-                    <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse" />
-                    Radial Chart - Stacked
-                  </span>
-                  <span className="hidden sm:inline-block text-xs text-gray-400 font-medium">
+                  <span className="text-xs text-gray-500 font-medium">
                     Working days (Mon–Fri)
                   </span>
                 </div>
