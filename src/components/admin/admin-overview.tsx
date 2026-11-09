@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
 import type { LeaveRequest, LeaveType } from "@/lib/leave/types";
 import type { OvertimeRecord } from "@/lib/overtime/types";
 import type { AllowedUser } from "@/lib/auth/allowed-users";
 import { computeUserBalances } from "@/lib/leave/types";
-import { reviewLeaveRequest, batchReviewLeaveRequests } from "@/app/actions/leave";
+import { reviewLeaveRequest, batchReviewLeaveRequests, updateCarryForward } from "@/app/actions/leave";
 import { reviewOvertimeRequest, batchReviewOvertimeRequests } from "@/app/actions/overtime";
 import {
   UsersIcon,
@@ -20,6 +20,10 @@ import {
   ArrowTrendingUpIcon,
   BanknotesIcon,
   BuildingOfficeIcon,
+  DocumentTextIcon,
+  ShieldCheckIcon,
+  ArrowPathIcon,
+  InformationCircleIcon,
 } from "@/components/ui/icons";
 
 type Props = {
@@ -51,6 +55,27 @@ export function AdminOverview({
   const [batchLeaveNote, setBatchLeaveNote] = useState("");
   const [batchOvertimeNote, setBatchOvertimeNote] = useState("");
 
+  // Manager Governance Tabs: Pending Action Queue, Decision Audit Trail, Carry-Forward Governance
+  const [governanceTab, setGovernanceTab] = useState<"pending" | "audit" | "carry_forward">("pending");
+
+  // Decision Audit Trail State
+  const [auditSearch, setAuditSearch] = useState("");
+  const [auditCategoryFilter, setAuditCategoryFilter] = useState<"all" | "leaves" | "overtime">("all");
+  const [auditDecisionFilter, setAuditDecisionFilter] = useState<"all" | "approved" | "rejected">("all");
+
+  // Carry-Forward Governance State
+  const [isSavingCarry, startSavingCarry] = useTransition();
+  const [adjustingMember, setAdjustingMember] = useState<{
+    email: string;
+    fullName: string;
+    currentCarried: number;
+    baseEntitled: number;
+    totalEntitled: number;
+  } | null>(null);
+  const [adjustCarriedDays, setAdjustCarriedDays] = useState<number>(0);
+  const [adjustReason, setAdjustReason] = useState<string>("");
+  const [carryForwardStatus, setCarryForwardStatus] = useState<{ message?: string; error?: string } | null>(null);
+
   // Chart Metric Toggle
   const [chartMetric, setChartMetric] = useState<"leaves" | "overtime" | "combined">("leaves");
   const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
@@ -79,6 +104,17 @@ export function AdminOverview({
       ),
     [leaveRequests, todayStr]
   );
+
+  // Reviewed items for Historical Decision Audit Trail
+  const reviewedLeaves = useMemo(
+    () => leaveRequests.filter((r) => r.status === "approved" || r.status === "rejected"),
+    [leaveRequests]
+  );
+  const reviewedOvertime = useMemo(
+    () => overtimeRecords.filter((r) => r.status === "approved" || r.status === "rejected"),
+    [overtimeRecords]
+  );
+  const totalReviewed = reviewedLeaves.length + reviewedOvertime.length;
 
   // 3. Approved items for current year
   const approvedYearLeaves = useMemo(
@@ -391,6 +427,166 @@ export function AdminOverview({
     link.click();
     document.body.removeChild(link);
   }
+
+  // Unified Audit Trail calculation
+  const unifiedAuditRecords = useMemo(() => {
+    const records: Array<{
+      id: string;
+      category: "leave" | "overtime";
+      userEmail: string;
+      fullName: string;
+      title: string;
+      detail: string;
+      quantity: string;
+      status: "approved" | "rejected";
+      reviewedBy: string | null;
+      reviewedAt: string | null;
+      reviewerNote: string | null;
+      rawDate: string;
+    }> = [];
+
+    reviewedLeaves.forEach((r) => {
+      const member = memberMap.get(r.user_email.toLowerCase());
+      const type = leaveTypeMap.get(r.leave_type);
+      records.push({
+        id: r.id,
+        category: "leave",
+        userEmail: r.user_email,
+        fullName: member?.full_name || r.user_email,
+        title: type?.name || r.leave_type,
+        detail: `${r.start_date} to ${r.end_date}`,
+        quantity: `${r.working_days} working days`,
+        status: r.status as "approved" | "rejected",
+        reviewedBy: r.reviewed_by || "Designated Approver",
+        reviewedAt: r.reviewed_at,
+        reviewerNote: r.reviewer_note,
+        rawDate: r.reviewed_at || r.created_at,
+      });
+    });
+
+    reviewedOvertime.forEach((r) => {
+      const member = memberMap.get(r.user_email.toLowerCase());
+      const choiceLabel = r.compensatory_choice === "paid" ? "Paid Overtime" : "TOIL Credit";
+      records.push({
+        id: r.id,
+        category: "overtime",
+        userEmail: r.user_email,
+        fullName: member?.full_name || r.user_email,
+        title: `Overtime (${choiceLabel})`,
+        detail: `Date: ${r.overtime_date}${r.ticket_ref ? ` • Ref: ${r.ticket_ref}` : ""}`,
+        quantity: `${Number(r.hours).toFixed(1)} hours`,
+        status: r.status as "approved" | "rejected",
+        reviewedBy: r.reviewed_by || "Designated Approver",
+        reviewedAt: r.reviewed_at,
+        reviewerNote: r.reviewer_note,
+        rawDate: r.reviewed_at || r.created_at,
+      });
+    });
+
+    records.sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
+
+    return records.filter((rec) => {
+      if (auditCategoryFilter === "leaves" && rec.category !== "leave") return false;
+      if (auditCategoryFilter === "overtime" && rec.category !== "overtime") return false;
+      if (auditDecisionFilter !== "all" && rec.status !== auditDecisionFilter) return false;
+      if (auditSearch.trim()) {
+        const query = auditSearch.toLowerCase();
+        const matchName = rec.fullName.toLowerCase().includes(query);
+        const matchEmail = rec.userEmail.toLowerCase().includes(query);
+        const matchNote = rec.reviewerNote?.toLowerCase().includes(query);
+        const matchTitle = rec.title.toLowerCase().includes(query);
+        if (!matchName && !matchEmail && !matchNote && !matchTitle) return false;
+      }
+      return true;
+    });
+  }, [reviewedLeaves, reviewedOvertime, memberMap, leaveTypeMap, auditCategoryFilter, auditDecisionFilter, auditSearch]);
+
+  const handleExportAuditCSV = () => {
+    const headers = [
+      "Decision Timestamp",
+      "Record Category",
+      "Requester Name",
+      "Safaricom Email",
+      "Item Details",
+      "Duration / Quantity",
+      "Manager Decision",
+      "Reviewed By",
+      "Manager Remarks / Notes",
+    ];
+    const rows = unifiedAuditRecords.map((r) => [
+      r.reviewedAt ? new Date(r.reviewedAt).toLocaleString() : "N/A",
+      r.category.toUpperCase(),
+      `"${r.fullName.replace(/"/g, '""')}"`,
+      r.userEmail,
+      `"${r.detail.replace(/"/g, '""')}"`,
+      r.quantity,
+      r.status.toUpperCase(),
+      `"${(r.reviewedBy || "Approver").replace(/"/g, '""')}"`,
+      `"${(r.reviewerNote || "").replace(/"/g, '""')}"`,
+    ]);
+    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `safaricom_decision_audit_log_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Carry-Forward Governance Summary
+  const carryForwardSummary = useMemo(() => {
+    const membersData = activeMembers.map((member) => {
+      const bals = computeUserBalances(leaveTypes, leaveRequests, member.email, currentYear);
+      const annualBal = bals.find((b) => b.leaveType.code === "annual");
+      const baseEntitled = annualBal?.baseEntitled ?? 21;
+      const carriedForward = annualBal?.carriedForward ?? 0;
+      const totalEntitled = annualBal?.entitled ?? (baseEntitled + carriedForward);
+      const approved = annualBal?.approved ?? 0;
+      const remaining = annualBal?.remaining ?? (totalEntitled - approved);
+      return {
+        member,
+        baseEntitled,
+        carriedForward,
+        totalEntitled,
+        approved,
+        remaining,
+      };
+    });
+
+    const totalCarriedAcrossTeam = membersData.reduce((sum, m) => sum + m.carriedForward, 0);
+    const membersWithRollover = membersData.filter((m) => m.carriedForward > 0).length;
+
+    return {
+      membersData,
+      totalCarriedAcrossTeam,
+      membersWithRollover,
+    };
+  }, [activeMembers, leaveTypes, leaveRequests, currentYear]);
+
+  const handleSaveCarryForward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adjustingMember) return;
+    startSavingCarry(async () => {
+      const formData = new FormData();
+      formData.append("user_email", adjustingMember.email);
+      formData.append("leave_type", "annual");
+      formData.append("year", String(currentYear));
+      formData.append("carried_days", String(adjustCarriedDays));
+      formData.append("reason", adjustReason);
+      const res = await updateCarryForward(formData);
+      if (res?.error) {
+        setCarryForwardStatus({ error: res.error });
+      } else {
+        setCarryForwardStatus({ message: res?.success || "Carry forward updated successfully." });
+        setTimeout(() => {
+          setAdjustingMember(null);
+          setCarryForwardStatus(null);
+        }, 1200);
+      }
+    });
+  };
 
   // Calculate capacity percentage
   const activeDutyCount = activeMembers.length - currentActiveLeaves.length;
@@ -1215,67 +1411,117 @@ export function AdminOverview({
         </div>
       </section>
 
-      {/* Manager Approval & Review Center */}
-      <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4">
+      {/* Manager Governance & Decision Suite */}
+      <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5" id="manager-governance-center">
+        {/* Top-level Suite Navigation Tabs */}
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-gray-100 pb-5">
           <div>
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-brand text-white text-xs font-black">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-white text-xs font-black shadow-xs">
                 M
               </span>
               <h2 className="text-lg font-bold text-gray-900">
-                Manager Approval Center
+                Manager Governance &amp; Decision Suite
               </h2>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
-              1-Click Decisions, Quick-Canned Feedback Presets &amp; Multi-Select Batch Approvals
+              Approvals Queue, Decision Audit Trail &amp; Carry-Forward Leave Balance Administration
             </p>
           </div>
 
-          {/* Filter Tabs */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 rounded-xl bg-gray-100 p-1">
             <button
               type="button"
-              onClick={() => setApprovalTab("all")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
-                approvalTab === "all"
-                  ? "bg-brand text-white shadow-2xs"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              onClick={() => setGovernanceTab("pending")}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                governanceTab === "pending"
+                  ? "bg-white text-gray-900 shadow-2xs"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              All Pending ({totalPending})
+              <ClockIcon className="h-3.5 w-3.5" />
+              <span>Pending Queue ({totalPending})</span>
             </button>
+
             <button
               type="button"
-              onClick={() => setApprovalTab("leaves")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
-                approvalTab === "leaves"
-                  ? "bg-amber-600 text-white shadow-2xs"
-                  : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+              onClick={() => setGovernanceTab("audit")}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                governanceTab === "audit"
+                  ? "bg-white text-gray-900 shadow-2xs"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Leaves ({pendingLeaves.length})
+              <ShieldCheckIcon className="h-3.5 w-3.5" />
+              <span>Decision Audit Trail ({totalReviewed})</span>
             </button>
+
             <button
               type="button"
-              onClick={() => setApprovalTab("overtime")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
-                approvalTab === "overtime"
-                  ? "bg-blue-600 text-white shadow-2xs"
-                  : "bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200"
+              onClick={() => setGovernanceTab("carry_forward")}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                governanceTab === "carry_forward"
+                  ? "bg-white text-gray-900 shadow-2xs"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Overtime ({pendingOvertime.length})
+              <ArrowPathIcon className="h-3.5 w-3.5" />
+              <span>Carry-Forward Desk ({activeMembers.length})</span>
             </button>
           </div>
         </div>
 
-        {totalPending === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center text-xs text-gray-500">
-            All clear! No pending leave requests or overtime claims awaiting review.
-          </div>
-        ) : (
-          <div className="space-y-6">
+        {/* TAB 1: PENDING ACTION QUEUE */}
+        {governanceTab === "pending" && (
+          <div>
+            {/* Filter Sub-Tabs for Pending Queue */}
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                Filter Review Queue:
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setApprovalTab("all")}
+                  className={`rounded-lg px-3 py-1 text-xs font-bold transition active:scale-95 ${
+                    approvalTab === "all"
+                      ? "bg-brand text-white shadow-2xs"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  All Pending ({totalPending})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setApprovalTab("leaves")}
+                  className={`rounded-lg px-3 py-1 text-xs font-bold transition active:scale-95 ${
+                    approvalTab === "leaves"
+                      ? "bg-amber-600 text-white shadow-2xs"
+                      : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+                  }`}
+                >
+                  Leaves ({pendingLeaves.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setApprovalTab("overtime")}
+                  className={`rounded-lg px-3 py-1 text-xs font-bold transition active:scale-95 ${
+                    approvalTab === "overtime"
+                      ? "bg-blue-600 text-white shadow-2xs"
+                      : "bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200"
+                  }`}
+                >
+                  Overtime ({pendingOvertime.length})
+                </button>
+              </div>
+            </div>
+
+            {totalPending === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center text-xs text-gray-500">
+                All clear! No pending leave requests or overtime claims awaiting review.
+              </div>
+            ) : (
+              <div className="space-y-6">
             {/* 1. LEAVE APPROVALS QUEUE */}
             {(approvalTab === "all" || approvalTab === "leaves") && pendingLeaves.length > 0 && (
               <div className="space-y-3">
@@ -1701,6 +1947,353 @@ export function AdminOverview({
             )}
           </div>
         )}
+      </div>
+    )}
+
+    {/* TAB 2: HISTORICAL DECISION AUDIT TRAIL */}
+    {governanceTab === "audit" && (
+      <div className="space-y-4">
+        {/* Audit Filter & Export Bar */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-gray-50/80 p-3.5 rounded-xl border border-gray-200/80">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Search input with iPhone theme */}
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
+              <input
+                type="text"
+                value={auditSearch}
+                onChange={(e) => setAuditSearch(e.target.value)}
+                placeholder="Search requester, remarks, notes…"
+                className="w-56 rounded-xl border border-black/10 bg-white pl-8 pr-3 py-1.5 text-xs text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] transition focus:border-brand focus:outline-none"
+              />
+            </div>
+
+            {/* Category Filter */}
+            <select
+              value={auditCategoryFilter}
+              onChange={(e) => setAuditCategoryFilter(e.target.value as any)}
+              className="rounded-xl border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] transition focus:border-brand focus:outline-none"
+            >
+              <option value="all">All Categories ({totalReviewed})</option>
+              <option value="leaves">Leaves ({reviewedLeaves.length})</option>
+              <option value="overtime">Overtime ({reviewedOvertime.length})</option>
+            </select>
+
+            {/* Decision Filter */}
+            <select
+              value={auditDecisionFilter}
+              onChange={(e) => setAuditDecisionFilter(e.target.value as any)}
+              className="rounded-xl border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] transition focus:border-brand focus:outline-none"
+            >
+              <option value="all">All Decisions</option>
+              <option value="approved">Approved Only</option>
+              <option value="rejected">Rejected Only</option>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleExportAuditCSV}
+            className="flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-2xs transition hover:bg-gray-50 active:scale-95"
+          >
+            <ArrowDownTrayIcon className="h-3.5 w-3.5 text-gray-500" />
+            <span>Export Audit CSV</span>
+          </button>
+        </div>
+
+        {/* Audit Table */}
+        {unifiedAuditRecords.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center text-xs text-gray-500">
+            No decision records found matching your audit search criteria.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-gray-200">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-gray-200 bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                <tr>
+                  <th className="px-4 py-3">Requester</th>
+                  <th className="px-4 py-3">Category &amp; Scope</th>
+                  <th className="px-4 py-3">Duration / Units</th>
+                  <th className="px-4 py-3">Decision</th>
+                  <th className="px-4 py-3">Reviewer &amp; Date</th>
+                  <th className="px-4 py-3">Decision Remarks</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {unifiedAuditRecords.map((rec) => (
+                  <tr key={`${rec.category}-${rec.id}`} className="hover:bg-gray-50/60 transition">
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-gray-900">{rec.fullName}</div>
+                      <div className="text-[11px] text-gray-400 font-mono">{rec.userEmail}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-gray-800">{rec.title}</span>
+                      <div className="text-[11px] text-gray-500">{rec.detail}</div>
+                    </td>
+                    <td className="px-4 py-3 font-mono font-bold text-gray-900">
+                      {rec.quantity}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                          rec.status === "approved"
+                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                            : "bg-red-50 text-red-800 border border-red-200"
+                        }`}
+                      >
+                        {rec.status === "approved" ? (
+                          <CheckCircleIcon className="h-3 w-3 text-emerald-600" />
+                        ) : (
+                          <XCircleIcon className="h-3 w-3 text-red-600" />
+                        )}
+                        <span>{rec.status.toUpperCase()}</span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-[11px]">
+                      <div className="font-semibold text-gray-800">{rec.reviewedBy || "Approver"}</div>
+                      <div className="text-gray-400">
+                        {rec.reviewedAt
+                          ? new Date(rec.reviewedAt).toLocaleDateString("en-KE", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "N/A"}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-[11px] text-gray-600 max-w-xs">
+                      {rec.reviewerNote ? (
+                        <span className="italic">"{rec.reviewerNote}"</span>
+                      ) : (
+                        <span className="text-gray-300">No remarks logged</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* TAB 3: CARRY-FORWARD GOVERNANCE & ROLLOVER DESK */}
+    {governanceTab === "carry_forward" && (
+      <div className="space-y-4">
+        {/* Informational Guidance Banner */}
+        <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50/60 p-4 text-xs text-blue-900">
+          <InformationCircleIcon className="h-5 w-5 text-blue-700 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold">Annual Carry-Forward Governance &amp; Balance Administration</p>
+            <p className="mt-0.5 text-blue-800/90 leading-relaxed">
+              Unutilized leave days from prior calendar years automatically carry forward into employee annual entitlements.
+              The Manager can inspect calculated unutilized days or record manual overrides per Safaricom HR authorizations.
+            </p>
+          </div>
+        </div>
+
+        {/* Metric Highlights */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
+            <span className="text-[11px] uppercase font-bold text-gray-500 block">Total Carried Over</span>
+            <span className="text-xl font-black text-gray-900 font-mono mt-1 block">
+              +{carryForwardSummary.totalCarriedAcrossTeam} days
+            </span>
+            <span className="text-[11px] text-gray-500">Across active team members</span>
+          </div>
+
+          <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
+            <span className="text-[11px] uppercase font-bold text-gray-500 block">Members with Rollover</span>
+            <span className="text-xl font-black text-brand-dark font-mono mt-1 block">
+              {carryForwardSummary.membersWithRollover} / {activeMembers.length}
+            </span>
+            <span className="text-[11px] text-gray-500">Holding carried-forward days</span>
+          </div>
+
+          <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
+            <span className="text-[11px] uppercase font-bold text-gray-500 block">Base Annual Allowance</span>
+            <span className="text-xl font-black text-gray-900 font-mono mt-1 block">
+              21 days / yr
+            </span>
+            <span className="text-[11px] text-gray-500">Standard contractual entitlement</span>
+          </div>
+        </div>
+
+        {/* Carry Forward Members Table */}
+        <div className="overflow-x-auto rounded-xl border border-gray-200">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-gray-200 bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              <tr>
+                <th className="px-4 py-3">Team Member</th>
+                <th className="px-4 py-3 text-center">Base Days</th>
+                <th className="px-4 py-3 text-center">Carried Forward</th>
+                <th className="px-4 py-3 text-center">Total Entitled</th>
+                <th className="px-4 py-3 text-center">Taken YTD</th>
+                <th className="px-4 py-3 text-center">Remaining Balance</th>
+                <th className="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {carryForwardSummary.membersData.map(({ member, baseEntitled, carriedForward, totalEntitled, approved, remaining }) => (
+                <tr key={member.email} className="hover:bg-gray-50/60 transition">
+                  <td className="px-4 py-3">
+                    <div className="font-bold text-gray-900">{member.full_name || member.email}</div>
+                    <div className="text-[11px] text-gray-400 font-mono">{member.email}</div>
+                  </td>
+                  <td className="px-4 py-3 text-center font-mono text-gray-700">
+                    {baseEntitled}d
+                  </td>
+                  <td className="px-4 py-3 text-center font-mono">
+                    {carriedForward > 0 ? (
+                      <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                        +{carriedForward}d
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">0d</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center font-mono font-bold text-gray-900">
+                    {totalEntitled}d
+                  </td>
+                  <td className="px-4 py-3 text-center font-mono text-gray-600">
+                    {approved}d
+                  </td>
+                  <td className="px-4 py-3 text-center font-mono font-bold text-emerald-700">
+                    {remaining}d
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdjustingMember({
+                          email: member.email,
+                          fullName: member.full_name || member.email,
+                          currentCarried: carriedForward,
+                          baseEntitled,
+                          totalEntitled,
+                        });
+                        setAdjustCarriedDays(carriedForward);
+                        setAdjustReason("");
+                        setCarryForwardStatus(null);
+                      }}
+                      className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-2xs hover:bg-gray-50 transition active:scale-95"
+                    >
+                      Adjust Balance
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Modal for Carry-Forward Balance Adjustment */}
+        {adjustingMember && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs animate-in fade-in">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-black/10">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h3 className="text-sm font-bold text-gray-900">
+                  Adjust Carried-Forward Leave Days
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setAdjustingMember(null)}
+                  className="rounded-lg p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <XCircleIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveCarryForward} className="mt-4 space-y-4">
+                <div>
+                  <span className="text-xs font-semibold text-gray-500 block">Colleague</span>
+                  <span className="text-sm font-bold text-gray-900 block">{adjustingMember.fullName}</span>
+                  <span className="text-xs text-gray-400 font-mono block">{adjustingMember.email}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs bg-gray-50 p-3 rounded-xl border border-gray-100">
+                  <div>
+                    <span className="text-gray-500 block">Base Allowance:</span>
+                    <span className="font-bold text-gray-800">{adjustingMember.baseEntitled} days</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Current Carried:</span>
+                    <span className="font-bold text-emerald-700">+{adjustingMember.currentCarried} days</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="carried_days" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                    New Carried-Forward Days
+                  </label>
+                  <input
+                    id="carried_days"
+                    name="carried_days"
+                    type="number"
+                    min="0"
+                    max="60"
+                    step="0.5"
+                    required
+                    value={adjustCarriedDays}
+                    onChange={(e) => setAdjustCarriedDays(parseFloat(e.target.value) || 0)}
+                    className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm font-bold text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition focus:border-brand focus:bg-white focus:outline-none"
+                  />
+                  <span className="text-[11px] text-gray-400 mt-1 block">
+                    Total entitlement will be: <strong>{adjustingMember.baseEntitled + adjustCarriedDays} days</strong>
+                  </span>
+                </div>
+
+                <div>
+                  <label htmlFor="adjust_reason" className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1">
+                    Authorization Reason / Justification
+                  </label>
+                  <input
+                    id="adjust_reason"
+                    name="adjust_reason"
+                    type="text"
+                    required
+                    value={adjustReason}
+                    onChange={(e) => setAdjustReason(e.target.value)}
+                    placeholder="e.g. Approved prior-year unutilized rollover per policy"
+                    className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition focus:border-brand focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                {carryForwardStatus?.error && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-semibold text-red-700">
+                    {carryForwardStatus.error}
+                  </div>
+                )}
+                {carryForwardStatus?.message && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-xs font-semibold text-emerald-800">
+                    {carryForwardStatus.message}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setAdjustingMember(null)}
+                    className="rounded-xl border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingCarry}
+                    className="rounded-xl bg-brand px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-brand-dark transition disabled:opacity-60"
+                  >
+                    {isSavingCarry ? "Saving..." : "Save Carry-Forward"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    )}
       </section>
     </div>
   );

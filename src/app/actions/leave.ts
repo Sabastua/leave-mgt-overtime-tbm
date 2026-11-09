@@ -214,3 +214,60 @@ export async function cancelLeaveRequest(formData: FormData): Promise<void> {
 
   revalidatePath("/");
 }
+
+
+export async function updateCarryForward(formData: FormData): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const email = user?.email ? normalizeEmail(user.email) : null;
+  if (!user || !email) {
+    redirect("/login");
+  }
+
+  const isStaticApprover = isApproverEmail(email);
+  if (!isStaticApprover) {
+    const { data: member } = await supabase
+      .from("allowed_users")
+      .select("role")
+      .eq("email", email)
+      .single();
+
+    if (!member || member.role !== "approver") {
+      redirect("/login");
+    }
+  }
+
+  const userEmail = normalizeEmail(String(formData.get("user_email") ?? ""));
+  const leaveType = String(formData.get("leave_type") ?? "annual");
+  const year = parseInt(String(formData.get("year") ?? new Date().getFullYear()), 10);
+  const carriedDays = parseFloat(String(formData.get("carried_days") ?? "0"));
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  if (!userEmail) return { error: "User email is required." };
+  if (isNaN(carriedDays) || carriedDays < 0) return { error: "Carried days must be 0 or greater." };
+
+  const { error } = await supabase
+    .from("leave_carry_forwards")
+    .upsert(
+      {
+        user_email: userEmail,
+        leave_type: leaveType,
+        year,
+        carried_days: carriedDays,
+        reason: reason || "Manager adjustment",
+        created_by: email,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_email,leave_type,year" },
+    );
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/");
+  return { success: `Carried forward balance updated for ${userEmail}.` };
+}
