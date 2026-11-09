@@ -24,6 +24,7 @@ import {
   ShieldCheckIcon,
   ArrowPathIcon,
   InformationCircleIcon,
+  ExclamationTriangleIcon,
 } from "@/components/ui/icons";
 
 type Props = {
@@ -75,6 +76,13 @@ export function AdminOverview({
   const [adjustCarriedDays, setAdjustCarriedDays] = useState<number>(0);
   const [adjustReason, setAdjustReason] = useState<string>("");
   const [carryForwardStatus, setCarryForwardStatus] = useState<{ message?: string; error?: string } | null>(null);
+
+  // Step 3: Forward Coverage & Minimum Staffing Risk Radar State
+  const [radarWindowDays, setRadarWindowDays] = useState<30 | 60>(30);
+  const [minOnDutyStaff, setMinOnDutyStaff] = useState<number>(2);
+  const [minCapacityThreshold, setMinCapacityThreshold] = useState<number>(70);
+  const [selectedRadarDate, setSelectedRadarDate] = useState<string | null>(null);
+  const [radarFilter, setRadarFilter] = useState<"all" | "risk_only">("all");
 
   // Chart Metric Toggle
   const [chartMetric, setChartMetric] = useState<"leaves" | "overtime" | "combined">("leaves");
@@ -588,6 +596,126 @@ export function AdminOverview({
     });
   };
 
+  // Step 3: Forward Coverage & Minimum Staffing Risk Radar Calculation (Next 30-60 Days)
+  const forwardRadarData = useMemo(() => {
+    const days: Array<{
+      dateStr: string;
+      dayOfWeek: string;
+      displayDate: string;
+      isWeekend: boolean;
+      approvedLeaves: Array<{ requester: string; email: string; type: string; handover: string | null }>;
+      pendingLeaves: Array<{ requester: string; email: string; type: string; handover: string | null }>;
+      availableStaff: number;
+      potentialStaff: number;
+      capacityPercent: number;
+      potentialCapacityPercent: number;
+      isCritical: boolean;
+      isPendingRisk: boolean;
+      handoverClashes: Array<{ handoverEmail: string; handoverName: string; count: number; coveringFor: string[] }>;
+    }> = [];
+
+    const baseDate = new Date();
+
+    for (let i = 0; i < radarWindowDays; i++) {
+      const d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const dayNum = d.getDay();
+      const isWeekend = dayNum === 0 || dayNum === 6;
+      const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "short" });
+      const displayDate = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+      const dayApproved = leaveRequests.filter(
+        (r) => r.status === "approved" && r.start_date <= dateStr && r.end_date >= dateStr
+      );
+      const dayPending = leaveRequests.filter(
+        (r) => r.status === "pending" && r.start_date <= dateStr && r.end_date >= dateStr
+      );
+
+      const approvedLeaves = dayApproved.map((r) => {
+        const m = memberMap.get(r.user_email.toLowerCase());
+        const t = leaveTypeMap.get(r.leave_type);
+        return {
+          requester: m?.full_name || r.user_email,
+          email: r.user_email,
+          type: t?.name || r.leave_type,
+          handover: r.handover_email,
+        };
+      });
+
+      const pendingLeaves = dayPending.map((r) => {
+        const m = memberMap.get(r.user_email.toLowerCase());
+        const t = leaveTypeMap.get(r.leave_type);
+        return {
+          requester: m?.full_name || r.user_email,
+          email: r.user_email,
+          type: t?.name || r.leave_type,
+          handover: r.handover_email,
+        };
+      });
+
+      const availableStaff = Math.max(0, activeMembers.length - approvedLeaves.length);
+      const potentialStaff = Math.max(0, availableStaff - pendingLeaves.length);
+      const capacityPercent = activeMembers.length > 0 ? Math.round((availableStaff / activeMembers.length) * 100) : 100;
+      const potentialCapacityPercent = activeMembers.length > 0 ? Math.round((potentialStaff / activeMembers.length) * 100) : 100;
+
+      // Check double-handover clashes on this day
+      const handoverCounts = new Map<string, string[]>();
+      [...dayApproved, ...dayPending].forEach((r) => {
+        if (r.handover_email) {
+          const lowerH = r.handover_email.toLowerCase();
+          const list = handoverCounts.get(lowerH) || [];
+          const reqMember = memberMap.get(r.user_email.toLowerCase());
+          list.push(reqMember?.full_name || r.user_email);
+          handoverCounts.set(lowerH, list);
+        }
+      });
+
+      const handoverClashes: Array<{ handoverEmail: string; handoverName: string; count: number; coveringFor: string[] }> = [];
+      handoverCounts.forEach((coveringFor, handoverEmail) => {
+        if (coveringFor.length >= 2) {
+          const m = memberMap.get(handoverEmail);
+          handoverClashes.push({
+            handoverEmail,
+            handoverName: m?.full_name || handoverEmail,
+            count: coveringFor.length,
+            coveringFor,
+          });
+        }
+      });
+
+      const isCritical = !isWeekend && (availableStaff < minOnDutyStaff || capacityPercent < minCapacityThreshold);
+      const isPendingRisk = !isWeekend && !isCritical && (potentialStaff < minOnDutyStaff || potentialCapacityPercent < minCapacityThreshold);
+
+      days.push({
+        dateStr,
+        dayOfWeek,
+        displayDate,
+        isWeekend,
+        approvedLeaves,
+        pendingLeaves,
+        availableStaff,
+        potentialStaff,
+        capacityPercent,
+        potentialCapacityPercent,
+        isCritical,
+        isPendingRisk,
+        handoverClashes,
+      });
+    }
+
+    const criticalDaysCount = days.filter((d) => d.isCritical).length;
+    const pendingRiskDaysCount = days.filter((d) => d.isPendingRisk).length;
+    const clashDaysCount = days.filter((d) => d.handoverClashes.length > 0).length;
+
+    return {
+      days,
+      criticalDaysCount,
+      pendingRiskDaysCount,
+      clashDaysCount,
+    };
+  }, [leaveRequests, activeMembers, memberMap, leaveTypeMap, radarWindowDays, minOnDutyStaff, minCapacityThreshold]);
+
   // Calculate capacity percentage
   const activeDutyCount = activeMembers.length - currentActiveLeaves.length;
   const capacityPercent = activeMembers.length > 0 ? Math.round((activeDutyCount / activeMembers.length) * 100) : 100;
@@ -827,6 +955,375 @@ export function AdminOverview({
             })}
           </div>
         )}
+      </section>
+
+      {/* Step 3: Forward Coverage & Minimum Staffing Risk Radar */}
+      <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5" id="forward-coverage-risk-radar">
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-gray-100 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white text-xs font-black shadow-xs">
+                <ShieldCheckIcon className="h-4 w-4" />
+              </span>
+              <h2 className="text-base font-bold text-gray-900">
+                Forward Coverage &amp; Minimum Staffing Risk Radar
+              </h2>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Next {radarWindowDays} days forward projection • Proactively flags minimum staffing breaches, understaffing risks, and relief clashes
+            </p>
+          </div>
+
+          {/* Radar Controls: Horizon, SLA Minimums, Filter */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Window Toggle */}
+            <div className="flex items-center rounded-xl bg-gray-100 p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setRadarWindowDays(30)}
+                className={`rounded-lg px-2.5 py-1 font-bold transition active:scale-95 ${
+                  radarWindowDays === 30
+                    ? "bg-white text-gray-900 shadow-2xs"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                30 Days
+              </button>
+              <button
+                type="button"
+                onClick={() => setRadarWindowDays(60)}
+                className={`rounded-lg px-2.5 py-1 font-bold transition active:scale-95 ${
+                  radarWindowDays === 60
+                    ? "bg-white text-gray-900 shadow-2xs"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                60 Days
+              </button>
+            </div>
+
+            {/* Minimum On-Duty Selector */}
+            <div className="flex items-center gap-1.5 rounded-xl border border-black/10 bg-[#F2F2F7] px-2.5 py-1 text-xs">
+              <span className="font-semibold text-gray-500">Min On-Duty:</span>
+              <select
+                value={minOnDutyStaff}
+                onChange={(e) => setMinOnDutyStaff(Number(e.target.value))}
+                className="bg-transparent font-bold text-gray-900 focus:outline-none cursor-pointer"
+              >
+                <option value={1}>1 Engineer</option>
+                <option value={2}>2 Engineers (SLA)</option>
+                <option value={3}>3 Engineers</option>
+                <option value={4}>4 Engineers</option>
+              </select>
+            </div>
+
+            {/* Filter Toggle */}
+            <button
+              type="button"
+              onClick={() => setRadarFilter((f) => (f === "all" ? "risk_only" : "all"))}
+              className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                radarFilter === "risk_only"
+                  ? "bg-rose-600 text-white shadow-2xs"
+                  : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <FunnelIcon className="h-3.5 w-3.5" />
+              <span>{radarFilter === "risk_only" ? "Showing Risks Only" : "Show All Days"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* SLA Status Summary Cards */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 mb-5">
+          <div
+            className={`rounded-xl border p-3.5 transition ${
+              forwardRadarData.criticalDaysCount > 0
+                ? "border-red-200 bg-red-50/70 text-red-900"
+                : "border-gray-200 bg-gray-50/60 text-gray-700"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider">
+                Critical SLA Breaches
+              </span>
+              <ExclamationTriangleIcon
+                className={`h-4 w-4 ${
+                  forwardRadarData.criticalDaysCount > 0 ? "text-red-600" : "text-gray-400"
+                }`}
+              />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono">
+                {forwardRadarData.criticalDaysCount}
+              </span>
+              <span className="text-xs font-medium">days under minimum staffing</span>
+            </div>
+            <p className="mt-1 text-[11px] opacity-80">
+              Approved leaves cause staffing to fall below {minOnDutyStaff} engineers
+            </p>
+          </div>
+
+          <div
+            className={`rounded-xl border p-3.5 transition ${
+              forwardRadarData.pendingRiskDaysCount > 0
+                ? "border-amber-200 bg-amber-50/70 text-amber-900"
+                : "border-gray-200 bg-gray-50/60 text-gray-700"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider">
+                Pending Approval Warnings
+              </span>
+              <ClockIcon
+                className={`h-4 w-4 ${
+                  forwardRadarData.pendingRiskDaysCount > 0 ? "text-amber-600" : "text-gray-400"
+                }`}
+              />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono">
+                {forwardRadarData.pendingRiskDaysCount}
+              </span>
+              <span className="text-xs font-medium">days at potential risk</span>
+            </div>
+            <p className="mt-1 text-[11px] opacity-80">
+              If pending leave requests are approved, staffing SLA will be breached
+            </p>
+          </div>
+
+          <div
+            className={`rounded-xl border p-3.5 transition ${
+              forwardRadarData.clashDaysCount > 0
+                ? "border-purple-200 bg-purple-50/70 text-purple-900"
+                : "border-gray-200 bg-gray-50/60 text-gray-700"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider">
+                Double Handover Conflicts
+              </span>
+              <UsersIcon
+                className={`h-4 w-4 ${
+                  forwardRadarData.clashDaysCount > 0 ? "text-purple-600" : "text-gray-400"
+                }`}
+              />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono">
+                {forwardRadarData.clashDaysCount}
+              </span>
+              <span className="text-xs font-medium">relief clash dates</span>
+            </div>
+            <p className="mt-1 text-[11px] opacity-80">
+              One colleague assigned as relief for 2+ members simultaneously
+            </p>
+          </div>
+        </div>
+
+        {/* Forward Radar Horizon Strip / Matrix */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-gray-500 font-medium px-1">
+            <span>Forward Timeline Radar ({radarWindowDays} Days Horizon)</span>
+            <span className="text-[11px]">Click any date to inspect full daily on-duty roster</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10">
+            {forwardRadarData.days
+              .filter((day) => {
+                if (radarFilter === "risk_only") {
+                  return day.isCritical || day.isPendingRisk || day.handoverClashes.length > 0;
+                }
+                return true;
+              })
+              .map((day) => {
+                const isSelected = selectedRadarDate === day.dateStr;
+                let borderClass = "border-gray-200 bg-white hover:border-gray-300";
+                let badgeClass = "bg-gray-100 text-gray-600";
+                let statusLabel = "Healthy";
+
+                if (day.isCritical) {
+                  borderClass = "border-red-400 bg-red-50/50 hover:border-red-500 ring-1 ring-red-400/30";
+                  badgeClass = "bg-red-100 text-red-800 font-bold";
+                  statusLabel = "Breach";
+                } else if (day.isPendingRisk) {
+                  borderClass = "border-amber-300 bg-amber-50/40 hover:border-amber-400 ring-1 ring-amber-300/30";
+                  badgeClass = "bg-amber-100 text-amber-800 font-bold";
+                  statusLabel = "Risk";
+                } else if (day.handoverClashes.length > 0) {
+                  borderClass = "border-purple-300 bg-purple-50/40 hover:border-purple-400 ring-1 ring-purple-300/30";
+                  badgeClass = "bg-purple-100 text-purple-800 font-bold";
+                  statusLabel = "Clash";
+                } else if (day.isWeekend) {
+                  borderClass = "border-gray-100 bg-gray-50/60";
+                  badgeClass = "bg-gray-100 text-gray-400";
+                  statusLabel = "Weekend";
+                }
+
+                return (
+                  <button
+                    key={day.dateStr}
+                    type="button"
+                    onClick={() => setSelectedRadarDate(isSelected ? null : day.dateStr)}
+                    className={`flex flex-col justify-between rounded-xl border p-2.5 text-left transition-all duration-200 active:scale-95 ${borderClass} ${
+                      isSelected ? "ring-2 ring-brand" : ""
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] text-gray-400">
+                        <span className="font-semibold uppercase">{day.dayOfWeek}</span>
+                        <span className={`rounded-sm px-1 py-0.2 text-[9px] ${badgeClass}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-gray-900 mt-0.5">
+                        {day.displayDate}
+                      </div>
+                    </div>
+
+                    <div className="mt-2">
+                      <div className="flex items-baseline justify-between text-[11px] font-mono">
+                        <span className="font-extrabold text-gray-900">
+                          {day.availableStaff}/{activeMembers.length}
+                        </span>
+                        <span className="text-[10px] text-gray-400">
+                          {day.capacityPercent}%
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            day.isCritical
+                              ? "bg-red-500"
+                              : day.isPendingRisk
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          }`}
+                          style={{ width: `${day.capacityPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+
+        {/* Selected Day Inspector Modal / Drawer */}
+        {selectedRadarDate && (() => {
+          const inspectedDay = forwardRadarData.days.find((d) => d.dateStr === selectedRadarDate);
+          if (!inspectedDay) return null;
+
+          const onDutyMembers = activeMembers.filter(
+            (m) =>
+              !inspectedDay.approvedLeaves.some((l) => l.email.toLowerCase() === m.email.toLowerCase()) &&
+              !inspectedDay.pendingLeaves.some((l) => l.email.toLowerCase() === m.email.toLowerCase())
+          );
+
+          return (
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/70 p-4 animate-in fade-in">
+              <div className="flex items-center justify-between border-b border-gray-200/80 pb-2.5 mb-3">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4 text-brand" />
+                  <span className="font-bold text-gray-900 text-sm">
+                    Staffing Roster Breakdown for {inspectedDay.dayOfWeek}, {inspectedDay.dateStr}
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                      inspectedDay.isCritical
+                        ? "bg-red-100 text-red-800"
+                        : inspectedDay.isPendingRisk
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-emerald-100 text-emerald-800"
+                    }`}
+                  >
+                    {inspectedDay.availableStaff} of {activeMembers.length} Available On Duty ({inspectedDay.capacityPercent}%)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRadarDate(null)}
+                  className="rounded-lg text-xs font-semibold text-gray-500 hover:text-gray-800"
+                >
+                  Close Inspector
+                </button>
+              </div>
+
+              {/* Handover Overload Alerts */}
+              {inspectedDay.handoverClashes.length > 0 && (
+                <div className="mb-3 rounded-lg border border-purple-200 bg-purple-50 p-2.5 text-xs text-purple-900">
+                  <span className="font-bold block">Relief Overload Conflict Detected:</span>
+                  {inspectedDay.handoverClashes.map((c) => (
+                    <div key={c.handoverEmail} className="mt-0.5 text-[11px]">
+                      • <strong>{c.handoverName}</strong> is assigned as relief for {c.count} team members ({c.coveringFor.join(", ")}) on this date.
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 text-xs">
+                {/* On Duty */}
+                <div className="rounded-lg bg-white p-3 border border-gray-200">
+                  <span className="font-bold text-emerald-800 uppercase text-[10px] block mb-1.5">
+                    Active On Duty ({onDutyMembers.length})
+                  </span>
+                  <div className="space-y-1">
+                    {onDutyMembers.length === 0 ? (
+                      <span className="text-gray-400 italic">No engineers on active duty</span>
+                    ) : (
+                      onDutyMembers.map((m) => (
+                        <div key={m.email} className="font-medium text-gray-800">
+                          {m.full_name || m.email}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Approved Leaves */}
+                <div className="rounded-lg bg-white p-3 border border-gray-200">
+                  <span className="font-bold text-gray-700 uppercase text-[10px] block mb-1.5">
+                    On Approved Leave ({inspectedDay.approvedLeaves.length})
+                  </span>
+                  <div className="space-y-1.5">
+                    {inspectedDay.approvedLeaves.length === 0 ? (
+                      <span className="text-gray-400 italic">No approved leaves</span>
+                    ) : (
+                      inspectedDay.approvedLeaves.map((l) => (
+                        <div key={l.email}>
+                          <span className="font-semibold text-gray-900">{l.requester}</span>
+                          <span className="text-[10px] text-gray-500 block">
+                            {l.type} {l.handover ? `• Relief: ${memberMap.get(l.handover.toLowerCase())?.full_name || l.handover}` : ""}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Pending Requests */}
+                <div className="rounded-lg bg-white p-3 border border-gray-200">
+                  <span className="font-bold text-amber-800 uppercase text-[10px] block mb-1.5">
+                    Pending Leave Requests ({inspectedDay.pendingLeaves.length})
+                  </span>
+                  <div className="space-y-1.5">
+                    {inspectedDay.pendingLeaves.length === 0 ? (
+                      <span className="text-gray-400 italic">No pending requests</span>
+                    ) : (
+                      inspectedDay.pendingLeaves.map((l) => (
+                        <div key={l.email}>
+                          <span className="font-semibold text-amber-900">{l.requester}</span>
+                          <span className="text-[10px] text-amber-700 block">
+                            {l.type} {l.handover ? `• Relief: ${memberMap.get(l.handover.toLowerCase())?.full_name || l.handover}` : ""}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </section>
 
       {/* Visual Analytics & Charts Center */}
