@@ -52,12 +52,12 @@ export function ChangePasswordModal({
                 required
                 minLength={6}
                 placeholder="Minimum 6 characters"
-                className="block w-full rounded-xl border border-gray-300 px-3.5 pr-10 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+                className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 pr-11 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 placeholder:text-gray-400 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((s) => !s)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition"
+                className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 hover:text-gray-600 transition"
               >
                 {showPassword ? (
                   <EyeSlashIcon className="h-4 w-4" />
@@ -83,7 +83,7 @@ export function ChangePasswordModal({
                 required
                 minLength={6}
                 placeholder="Re-enter new password"
-                className="block w-full rounded-xl border border-gray-300 px-3.5 pr-10 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+                className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 pr-11 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 placeholder:text-gray-400 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
               />
             </div>
           </div>

@@ -69,7 +69,7 @@ export function TeamManagement({
                 type="text"
                 required
                 placeholder="e.g. Jane Doe"
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+                className="mt-1 block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 placeholder:text-gray-400 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
               />
             </div>
 
@@ -86,7 +86,7 @@ export function TeamManagement({
                 type="email"
                 required
                 placeholder="jdoe@safaricom.co.ke"
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+                className="mt-1 block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 placeholder:text-gray-400 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
               />
             </div>
 
@@ -101,7 +101,7 @@ export function TeamManagement({
                 id="role"
                 name="role"
                 defaultValue="staff"
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+                className="mt-1 block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
               >
                 <option value="staff">Staff (Leave &amp; Overtime)</option>
                 <option value="approver">Approver / Manager</option>
@@ -122,7 +122,7 @@ export function TeamManagement({
                 required
                 minLength={6}
                 placeholder="Min 6 characters"
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+                className="mt-1 block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 placeholder:text-gray-400 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
               />
             </div>
           </div>
@@ -192,7 +192,7 @@ export function TeamManagement({
                 required
                 minLength={6}
                 placeholder="Enter new password"
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-brand focus:outline-none"
+                className="mt-1 block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 placeholder:text-gray-400 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
               />
             </div>
 

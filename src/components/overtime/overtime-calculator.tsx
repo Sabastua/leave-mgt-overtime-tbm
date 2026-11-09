@@ -178,7 +178,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
             type="time"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
-            className="block w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-mono font-semibold text-gray-900 shadow-2xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-3.5 py-2.5 text-xs font-mono font-semibold text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
           />
         </div>
 
@@ -191,7 +191,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
             type="time"
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
-            className="block w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-mono font-semibold text-gray-900 shadow-2xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-3.5 py-2.5 text-xs font-mono font-semibold text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
           />
         </div>
 
@@ -230,7 +230,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
           <select
             value={dayType}
             onChange={(e) => setDayType(e.target.value as any)}
-            className="block w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-900 shadow-2xs focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-3.5 py-2.5 text-xs font-semibold text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
           >
             <option value="weekday">Weekday Shift (1.5x Rate)</option>
             <option value="weekend">Weekend Shift (2.0x Double Rate)</option>

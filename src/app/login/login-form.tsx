@@ -84,7 +84,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
             value={emailValue}
             onChange={(e) => handleEmailChange(e.target.value)}
             placeholder="username@safaricom.co.ke"
-            className="block w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-xs transition placeholder:text-gray-400 focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-3 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 placeholder:text-gray-400 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
           />
         </div>
       </div>
@@ -107,7 +107,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
             autoComplete="current-password"
             required
             placeholder="Enter your corporate password"
-            className="block w-full rounded-xl border border-gray-300 bg-white pl-3.5 pr-10 py-2.5 text-sm text-gray-900 shadow-xs transition placeholder:text-gray-400 focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] pl-4 pr-11 py-3 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 placeholder:text-gray-400 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
           />
           <button
             type="button"

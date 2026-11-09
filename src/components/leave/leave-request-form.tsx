@@ -178,7 +178,7 @@ export function LeaveRequestForm({
             name="leave_type"
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="block w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-2xs transition focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-3 text-sm font-semibold text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
           >
             {leaveTypes.map((lt) => {
               const bal = balances.find((b) => b.leaveType.code === lt.code);
@@ -213,7 +213,7 @@ export function LeaveRequestForm({
                   setEndDate(e.target.value);
                 }
               }}
-              className="block w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm text-gray-900 font-mono shadow-2xs transition focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+              className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 font-mono shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
             />
           </div>
 
@@ -232,7 +232,7 @@ export function LeaveRequestForm({
               min={startDate}
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="block w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm text-gray-900 font-mono shadow-2xs transition focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+              className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 font-mono shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
             />
           </div>
         </div>
@@ -385,7 +385,7 @@ export function LeaveRequestForm({
               name="handover_email"
               value={selectedHandover}
               onChange={(e) => setSelectedHandover(e.target.value)}
-              className="block w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-2xs transition focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+              className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-3 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
             >
               <option value="">— Optional: select team relief colleague —</option>
               {reliefOptions.map((member) => (
@@ -446,7 +446,7 @@ export function LeaveRequestForm({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Brief reason or critical operational items delegated to relief colleague…"
-            className="block w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm text-gray-900 shadow-2xs transition focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] p-4 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 placeholder:text-gray-400 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
           />
         </div>
 
