@@ -228,7 +228,7 @@ export function DashboardShell({
             >
               <BellIcon className={`h-4.5 w-4.5 ${unreadCount > 0 ? "text-brand" : "text-gray-600"}`} />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[10px] font-bold text-white shadow-xs animate-pulse">
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-white text-[10px] font-bold text-gray-900 ring-1 ring-black/10 shadow-xs animate-pulse">
                   {unreadCount}
                 </span>
               )}
@@ -244,7 +244,7 @@ export function DashboardShell({
               <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-brand font-bold text-xs text-white">
                 {(currentMember.full_name || currentUserEmail)[0].toUpperCase()}
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white shadow-xs animate-bounce">
+                  <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 px-0.5 items-center justify-center rounded-full bg-white text-[9px] font-bold text-gray-900 ring-1 ring-black/10 shadow-xs animate-bounce">
                     {unreadCount}
                   </span>
                 )}
@@ -255,7 +255,7 @@ export function DashboardShell({
                     {currentMember.full_name || currentUserEmail}
                   </p>
                   {unreadCount > 0 && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-white ring-1 ring-gray-400 animate-ping" />
                   )}
                 </div>
                 <p className="text-[10px] text-gray-500 leading-tight">{currentUserEmail}</p>
@@ -994,7 +994,7 @@ export function DashboardShell({
                     <div className="flex items-center gap-2">
                       <h3 className="text-base font-bold text-gray-900">Notifications</h3>
                       {allStaffNotices.length > 0 && (
-                        <span className="rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5">
+                        <span className="rounded-full bg-white border border-gray-200 text-gray-800 text-[10px] font-bold px-2 py-0.5 shadow-2xs">
                           {allStaffNotices.length} active
                         </span>
                       )}
