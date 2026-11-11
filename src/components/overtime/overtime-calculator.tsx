@@ -267,7 +267,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
           <p className="mt-1.5 text-xs text-gray-600">
             {netHours}h actual work × {rateMultiplier.toFixed(1)}x multiplier =
           </p>
-          <p className="mt-1 text-lg font-black tabular-nums text-blue-800">
+          <p className="mt-1 text-lg font-bold tabular-nums text-blue-800">
             {equivalentPayHours} Pay Hours Equivalent
           </p>
         </div>
@@ -298,7 +298,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
           <p className="mt-1.5 text-xs text-gray-600">
             Credited toward paid compensatory rest days (8h = 1d):
           </p>
-          <p className="mt-1 text-lg font-black tabular-nums text-purple-800">
+          <p className="mt-1 text-lg font-bold tabular-nums text-purple-800">
             {equivalentToilDays} Days TOIL ({equivalentPayHours}h)
           </p>
         </div>

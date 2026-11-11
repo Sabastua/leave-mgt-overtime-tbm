@@ -614,7 +614,7 @@ export function TeamCalendar({ teamMembers, leaveRequests, leaveTypes }: Props) 
                     key={dayNum}
                     className={`py-1 ${
                       isToday
-                        ? "bg-brand text-white rounded font-black"
+                        ? "bg-brand text-white rounded font-bold"
                         : isWeekend
                         ? "text-gray-300 bg-gray-50/50"
                         : "text-gray-700"
@@ -720,7 +720,7 @@ export function TeamCalendar({ teamMembers, leaveRequests, leaveTypes }: Props) 
                         {day.dayName}
                       </span>
                       <span
-                        className={`text-sm font-extrabold tabular-nums ${
+                        className={`text-sm font-bold tabular-nums ${
                           day.isToday ? "text-brand" : "text-gray-900"
                         }`}
                       >

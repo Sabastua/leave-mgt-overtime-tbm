@@ -729,7 +729,7 @@ export function AdminOverview({
       <div className="space-y-4">
         <div className="flex flex-col gap-4 rounded-3xl bg-white p-5 shadow-xs ring-1 ring-black/5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand text-white font-black text-sm shadow-xs">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand text-white font-bold text-sm shadow-xs">
               M
             </span>
             <div>
@@ -799,7 +799,7 @@ export function AdminOverview({
               <CheckCircleIcon className="h-4 w-4 text-emerald-600" />
               <span>Approvals &amp; Governance</span>
               {totalPending > 0 && (
-                <span className="ml-1 rounded-full bg-amber-500 text-white px-2 py-0.5 text-[10px] font-black animate-pulse">
+                <span className="ml-1 rounded-full bg-amber-500 text-white px-2 py-0.5 text-[10px] font-bold animate-pulse">
                   {totalPending}
                 </span>
               )}
@@ -817,7 +817,7 @@ export function AdminOverview({
               <ShieldCheckIcon className="h-4 w-4 text-blue-600" />
               <span>Staffing Risk Radar</span>
               {forwardRadarData.criticalDaysCount > 0 && (
-                <span className="ml-1 rounded-full bg-rose-500 text-white px-2 py-0.5 text-[10px] font-black">
+                <span className="ml-1 rounded-full bg-rose-500 text-white px-2 py-0.5 text-[10px] font-bold">
                   {forwardRadarData.criticalDaysCount}
                 </span>
               )}
@@ -872,7 +872,7 @@ export function AdminOverview({
                 </div>
               </div>
               <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-gray-900">
+                <span className="text-2xl font-bold text-gray-900">
                   {capacityPercent}%
                 </span>
                 <span className="text-xs text-gray-500 font-medium">on duty</span>
@@ -904,7 +904,7 @@ export function AdminOverview({
                 </div>
               </div>
               <div className="mt-3 flex items-baseline gap-2">
-                <span className={`text-2xl font-black ${totalPending > 0 ? "text-amber-700" : "text-gray-900"}`}>
+                <span className={`text-2xl font-bold ${totalPending > 0 ? "text-amber-700" : "text-gray-900"}`}>
                   {totalPending}
                 </span>
                 <span className="text-xs text-gray-500 font-medium">requests</span>
@@ -930,7 +930,7 @@ export function AdminOverview({
                 </div>
               </div>
               <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-gray-900">
+                <span className="text-2xl font-bold text-gray-900">
                   {totalLeaveDaysTaken}
                 </span>
                 <span className="text-xs text-gray-500 font-medium">working days</span>
@@ -956,7 +956,7 @@ export function AdminOverview({
                 </div>
               </div>
               <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-gray-900">
+                <span className="text-2xl font-bold text-gray-900">
                   {totalOvertimeHours.toFixed(1)}
                 </span>
                 <span className="text-xs text-gray-500 font-medium">hours</span>
@@ -992,7 +992,7 @@ export function AdminOverview({
                 </div>
               </div>
               <div className="mt-3 flex items-baseline gap-2">
-                <span className={`text-2xl font-black ${forwardRadarData.criticalDaysCount > 0 ? "text-rose-700" : "text-gray-900"}`}>
+                <span className={`text-2xl font-bold ${forwardRadarData.criticalDaysCount > 0 ? "text-rose-700" : "text-gray-900"}`}>
                   {forwardRadarData.criticalDaysCount > 0 ? forwardRadarData.criticalDaysCount : teamLiability.totalRemaining}
                 </span>
                 <span className="text-xs text-gray-500 font-medium">
@@ -1434,7 +1434,7 @@ export function AdminOverview({
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-gray-100 pb-5">
           <div>
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-white text-xs font-black shadow-xs">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-white text-xs font-bold shadow-xs">
                 M
               </span>
               <h2 className="text-lg font-bold text-gray-900">
@@ -1544,7 +1544,7 @@ export function AdminOverview({
               <div className="space-y-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-amber-900">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-900">
                       Pending Leave Requests ({pendingLeaves.length})
                     </span>
                     <button
@@ -1764,7 +1764,7 @@ export function AdminOverview({
               <div className="space-y-3 pt-2">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-blue-900">
+                    <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
                       Pending Overtime Claims ({pendingOvertime.length})
                     </span>
                     <button
@@ -1880,7 +1880,7 @@ export function AdminOverview({
                                 >
                                   {record.compensatory_choice === "paid" ? "PAID PAYROLL" : "TOIL CREDIT"}
                                 </span>
-                                <span className="tabular-nums text-xs font-extrabold text-gray-900">
+                                <span className="tabular-nums text-xs font-bold text-gray-900">
                                   {record.hours} Hours
                                 </span>
                               </div>
@@ -2115,7 +2115,7 @@ export function AdminOverview({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
             <span className="text-[11px] uppercase font-bold text-gray-500 block">Total Carried Over</span>
-            <span className="text-xl font-black text-gray-900 tabular-nums mt-1 block">
+            <span className="text-xl font-bold text-gray-900 tabular-nums mt-1 block">
               +{carryForwardSummary.totalCarriedAcrossTeam} days
             </span>
             <span className="text-[11px] text-gray-500">Across active team members</span>
@@ -2123,7 +2123,7 @@ export function AdminOverview({
 
           <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
             <span className="text-[11px] uppercase font-bold text-gray-500 block">Members with Rollover</span>
-            <span className="text-xl font-black text-brand-dark tabular-nums mt-1 block">
+            <span className="text-xl font-bold text-brand-dark tabular-nums mt-1 block">
               {carryForwardSummary.membersWithRollover} / {activeMembers.length}
             </span>
             <span className="text-[11px] text-gray-500">Holding carried-forward days</span>
@@ -2131,7 +2131,7 @@ export function AdminOverview({
 
           <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
             <span className="text-[11px] uppercase font-bold text-gray-500 block">Base Annual Allowance</span>
-            <span className="text-xl font-black text-gray-900 tabular-nums mt-1 block">
+            <span className="text-xl font-bold text-gray-900 tabular-nums mt-1 block">
               21 days / yr
             </span>
             <span className="text-[11px] text-gray-500">Standard contractual entitlement</span>
@@ -2323,7 +2323,7 @@ export function AdminOverview({
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-gray-100 pb-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white text-xs font-black shadow-xs">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white text-xs font-bold shadow-xs">
                 <ShieldCheckIcon className="h-4 w-4" />
               </span>
               <h2 className="text-base font-bold text-gray-900">
@@ -2414,7 +2414,7 @@ export function AdminOverview({
               />
             </div>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black tabular-nums">
+              <span className="text-2xl font-bold tabular-nums">
                 {forwardRadarData.criticalDaysCount}
               </span>
               <span className="text-xs font-medium">days under minimum staffing</span>
@@ -2442,7 +2442,7 @@ export function AdminOverview({
               />
             </div>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black tabular-nums">
+              <span className="text-2xl font-bold tabular-nums">
                 {forwardRadarData.pendingRiskDaysCount}
               </span>
               <span className="text-xs font-medium">days at potential risk</span>
@@ -2470,7 +2470,7 @@ export function AdminOverview({
               />
             </div>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black tabular-nums">
+              <span className="text-2xl font-bold tabular-nums">
                 {forwardRadarData.clashDaysCount}
               </span>
               <span className="text-xs font-medium">relief clash dates</span>
@@ -2543,7 +2543,7 @@ export function AdminOverview({
 
                     <div className="mt-2">
                       <div className="flex items-baseline justify-between text-[11px] tabular-nums">
-                        <span className="font-extrabold text-gray-900">
+                        <span className="font-bold text-gray-900">
                           {day.availableStaff}/{activeMembers.length}
                         </span>
                         <span className="text-[10px] text-gray-400">

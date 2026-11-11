@@ -80,11 +80,11 @@ export function OvertimeReceiptModal({ record, employeeName, onClose }: Props) {
           <div className="flex items-start justify-between border-b-2 border-brand pb-4">
             <div>
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand font-black text-white text-base shadow-xs">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand font-bold text-white text-base shadow-xs">
                   S
                 </div>
                 <div>
-                  <span className="text-base font-extrabold tracking-tight text-gray-900 block leading-tight">
+                  <span className="text-base font-bold tracking-tight text-gray-900 block leading-tight">
                     SAFARICOM PLC
                   </span>
                   <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">
@@ -92,7 +92,7 @@ export function OvertimeReceiptModal({ record, employeeName, onClose }: Props) {
                   </span>
                 </div>
               </div>
-              <h2 className="mt-3.5 text-lg font-black tracking-tight text-gray-900">
+              <h2 className="mt-3.5 text-lg font-bold tracking-tight text-gray-900">
                 OVERTIME CLAIM VOUCHER
               </h2>
             </div>

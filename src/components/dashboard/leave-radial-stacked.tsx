@@ -326,7 +326,7 @@ export function LeaveRadialStackedCard({
               initial={{ scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.3 }}
-              className="text-3xl font-extrabold tracking-tight text-gray-900 tabular-nums"
+              className="text-3xl font-bold tracking-tight text-gray-900 tabular-nums"
             >
               {annualRemaining}
             </motion.span>

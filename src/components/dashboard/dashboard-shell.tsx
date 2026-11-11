@@ -327,7 +327,7 @@ export function DashboardShell({
               </div>
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-extrabold text-sm tracking-tight">
+                  <span className="font-bold text-sm tracking-tight">
                     {activeNotice.status === "approved" ? "Manager Approval Notification" : "Manager Decision Notice"}
                   </span>
                   <span className="rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-700 ring-1 ring-black/5">

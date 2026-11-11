@@ -245,7 +245,7 @@ export function LeaveRequestForm({
               <span className="text-xs font-bold text-gray-800">
                 Calculated Working Duration:
               </span>
-              <span className="text-sm font-extrabold text-brand-dark tabular-nums">
+              <span className="text-sm font-bold text-brand-dark tabular-nums">
                 {workingDays} {workingDays === 1 ? "day" : "days"}
               </span>
             </div>
@@ -319,7 +319,7 @@ export function LeaveRequestForm({
                 <span className="text-[10px] text-gray-400 uppercase font-semibold block">
                   Current
                 </span>
-                <span className="text-base font-extrabold text-gray-900 tabular-nums">
+                <span className="text-base font-bold text-gray-900 tabular-nums">
                   {currentAvailable}d
                 </span>
               </div>
@@ -328,7 +328,7 @@ export function LeaveRequestForm({
                 <span className="text-[10px] text-gray-400 uppercase font-semibold block">
                   Deduction
                 </span>
-                <span className="text-base font-extrabold text-brand-dark tabular-nums">
+                <span className="text-base font-bold text-brand-dark tabular-nums">
                   -{workingDays}d
                 </span>
               </div>
@@ -343,7 +343,7 @@ export function LeaveRequestForm({
                 <span className="text-[10px] uppercase font-semibold block opacity-70">
                   Projected
                 </span>
-                <span className="text-base font-extrabold tabular-nums">
+                <span className="text-base font-bold tabular-nums">
                   {projectedRemaining}d
                 </span>
               </div>
