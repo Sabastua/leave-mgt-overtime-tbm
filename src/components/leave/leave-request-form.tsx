@@ -213,7 +213,7 @@ export function LeaveRequestForm({
                   setEndDate(e.target.value);
                 }
               }}
-              className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 font-mono shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
+              className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 tabular-nums shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
             />
           </div>
 
@@ -232,7 +232,7 @@ export function LeaveRequestForm({
               min={startDate}
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 font-mono shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
+              className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 tabular-nums shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
             />
           </div>
         </div>
@@ -245,12 +245,12 @@ export function LeaveRequestForm({
               <span className="text-xs font-bold text-gray-800">
                 Calculated Working Duration:
               </span>
-              <span className="text-sm font-extrabold text-brand-dark font-mono">
+              <span className="text-sm font-extrabold text-brand-dark tabular-nums">
                 {workingDays} {workingDays === 1 ? "day" : "days"}
               </span>
             </div>
 
-            <div className="flex items-center gap-2 text-[11px] text-gray-500 font-mono">
+            <div className="flex items-center gap-2 text-[11px] text-gray-500 tabular-nums">
               <span>{calendarDays} calendar days</span>
               <span>•</span>
               <span>{weekendDays} weekend days</span>
@@ -319,7 +319,7 @@ export function LeaveRequestForm({
                 <span className="text-[10px] text-gray-400 uppercase font-semibold block">
                   Current
                 </span>
-                <span className="text-base font-extrabold text-gray-900 font-mono">
+                <span className="text-base font-extrabold text-gray-900 tabular-nums">
                   {currentAvailable}d
                 </span>
               </div>
@@ -328,7 +328,7 @@ export function LeaveRequestForm({
                 <span className="text-[10px] text-gray-400 uppercase font-semibold block">
                   Deduction
                 </span>
-                <span className="text-base font-extrabold text-brand-dark font-mono">
+                <span className="text-base font-extrabold text-brand-dark tabular-nums">
                   -{workingDays}d
                 </span>
               </div>
@@ -343,7 +343,7 @@ export function LeaveRequestForm({
                 <span className="text-[10px] uppercase font-semibold block opacity-70">
                   Projected
                 </span>
-                <span className="text-base font-extrabold font-mono">
+                <span className="text-base font-extrabold tabular-nums">
                   {projectedRemaining}d
                 </span>
               </div>

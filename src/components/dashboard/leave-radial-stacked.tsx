@@ -326,7 +326,7 @@ export function LeaveRadialStackedCard({
               initial={{ scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.3 }}
-              className="font-mono text-3xl font-extrabold tracking-tight text-gray-900"
+              className="text-3xl font-extrabold tracking-tight text-gray-900 tabular-nums"
             >
               {annualRemaining}
             </motion.span>
@@ -366,15 +366,15 @@ export function LeaveRadialStackedCard({
                 {appliedLeaveDetails.isOngoing ? "Active Leave In Progress" : "Scheduled Applied Leave"}
               </span>
             </span>
-            <span className="font-mono text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md font-semibold">
+            <span className="tabular-nums text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md font-semibold">
               {appliedLeaveDetails.totalDays} working days applied
             </span>
           </div>
 
           {/* Applied Start Date -> Supposed to End Date */}
           <div className="mt-2 flex items-center justify-between text-[11px] text-emerald-800 font-medium">
-            <span>Applied: <strong className="font-mono text-emerald-950">{appliedLeaveDetails.startDate}</strong></span>
-            <span>Supposed to End: <strong className="font-mono text-emerald-950">{appliedLeaveDetails.endDate}</strong></span>
+            <span>Applied: <strong className="tabular-nums text-emerald-950">{appliedLeaveDetails.startDate}</strong></span>
+            <span>Supposed to End: <strong className="tabular-nums text-emerald-950">{appliedLeaveDetails.endDate}</strong></span>
           </div>
 
           {/* Applied Leave Stacked Countdown Bar */}
@@ -398,10 +398,10 @@ export function LeaveRadialStackedCard({
           {/* Days on Leave vs Days Remaining */}
           <div className="mt-1.5 flex items-center justify-between text-[11px]">
             <span className="text-emerald-800">
-              On leave: <strong className="font-mono font-bold text-emerald-950">{appliedLeaveDetails.daysOnLeave}d elapsed</strong>
+              On leave: <strong className="tabular-nums font-bold text-emerald-950">{appliedLeaveDetails.daysOnLeave}d elapsed</strong>
             </span>
             <span className="text-emerald-900">
-              Remaining: <strong className="font-mono font-bold text-emerald-950">{appliedLeaveDetails.daysRemainingInLeave}d until end</strong>
+              Remaining: <strong className="tabular-nums font-bold text-emerald-950">{appliedLeaveDetails.daysRemainingInLeave}d until end</strong>
             </span>
           </div>
         </div>
@@ -413,12 +413,7 @@ export function LeaveRadialStackedCard({
 
       {/* Annual Days Stacked Breakdown Bar & Legend */}
       <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-2.5">
-        <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-          <span className="text-gray-700">Annual Days Pool:</span>
-          <span className="font-mono text-gray-900">
-            {annualRemaining} / {annualEntitled} days remaining
-          </span>
-        </div>
+
 
         {/* Stacked Legend Grid */}
         <div className={`grid ${annualCarried > 0 ? "grid-cols-4" : "grid-cols-3"} gap-1 pt-1 text-center text-[11px]`}>
@@ -427,7 +422,7 @@ export function LeaveRadialStackedCard({
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-600 shrink-0" />
               Left
             </span>
-            <strong className="font-mono text-emerald-700 font-bold mt-0.5">{annualRemaining}d</strong>
+            <strong className="tabular-nums text-emerald-700 font-bold mt-0.5">{annualRemaining}d</strong>
           </div>
 
           <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
@@ -435,7 +430,7 @@ export function LeaveRadialStackedCard({
               <span className="inline-block h-2 w-2 rounded-full bg-slate-500 shrink-0" />
               Taken
             </span>
-            <strong className="font-mono text-gray-800 font-bold mt-0.5">{annualApproved}d</strong>
+            <strong className="tabular-nums text-gray-800 font-bold mt-0.5">{annualApproved}d</strong>
           </div>
 
           {annualCarried > 0 ? (
@@ -445,7 +440,7 @@ export function LeaveRadialStackedCard({
                   <span className="inline-block h-2 w-2 rounded-full bg-teal-500 shrink-0" />
                   Carried
                 </span>
-                <strong className="font-mono text-teal-700 font-bold mt-0.5">+{annualCarried}d</strong>
+                <strong className="tabular-nums text-teal-700 font-bold mt-0.5">+{annualCarried}d</strong>
               </div>
 
               <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
@@ -453,7 +448,7 @@ export function LeaveRadialStackedCard({
                   <span className="inline-block h-2 w-2 rounded-full bg-gray-300 shrink-0" />
                   Total
                 </span>
-                <strong className="font-mono text-gray-900 font-bold mt-0.5">{annualEntitled}d</strong>
+                <strong className="tabular-nums text-gray-900 font-bold mt-0.5">{annualEntitled}d</strong>
               </div>
             </>
           ) : (
@@ -462,7 +457,7 @@ export function LeaveRadialStackedCard({
                 <span className="inline-block h-2 w-2 rounded-full bg-gray-300 shrink-0" />
                 Entitled
               </span>
-              <strong className="font-mono text-gray-900 font-bold mt-0.5">{annualEntitled}d</strong>
+              <strong className="tabular-nums text-gray-900 font-bold mt-0.5">{annualEntitled}d</strong>
             </div>
           )}
         </div>
@@ -474,7 +469,7 @@ export function LeaveRadialStackedCard({
               <ClockIcon className="h-3 w-3 shrink-0" />
               <span>Pending manager review:</span>
             </span>
-            <strong className="font-mono font-semibold">{annualPending}d requested</strong>
+            <strong className="tabular-nums font-semibold">{annualPending}d requested</strong>
           </div>
         )}
       </div>

@@ -178,7 +178,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
             type="time"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
-            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-3.5 py-2.5 text-xs font-mono font-semibold text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
+            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-3.5 py-2.5 text-xs tabular-nums font-semibold text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
           />
         </div>
 
@@ -191,7 +191,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
             type="time"
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
-            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-3.5 py-2.5 text-xs font-mono font-semibold text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
+            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-3.5 py-2.5 text-xs tabular-nums font-semibold text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
           />
         </div>
 
@@ -201,7 +201,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
             <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-600">
               Break Deduction
             </label>
-            <span className="font-mono text-xs font-bold text-blue-700">
+            <span className="tabular-nums text-xs font-bold text-blue-700">
               {breakMinutes} mins
             </span>
           </div>
@@ -267,7 +267,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
           <p className="mt-1.5 text-xs text-gray-600">
             {netHours}h actual work × {rateMultiplier.toFixed(1)}x multiplier =
           </p>
-          <p className="mt-1 text-lg font-black font-mono text-blue-800">
+          <p className="mt-1 text-lg font-black tabular-nums text-blue-800">
             {equivalentPayHours} Pay Hours Equivalent
           </p>
         </div>
@@ -298,7 +298,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
           <p className="mt-1.5 text-xs text-gray-600">
             Credited toward paid compensatory rest days (8h = 1d):
           </p>
-          <p className="mt-1 text-lg font-black font-mono text-purple-800">
+          <p className="mt-1 text-lg font-black tabular-nums text-purple-800">
             {equivalentToilDays} Days TOIL ({equivalentPayHours}h)
           </p>
         </div>
@@ -311,7 +311,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
             <span className="text-gray-400 block text-[10px] uppercase font-semibold">
               Net Claim Hours
             </span>
-            <span className="text-lg font-bold font-mono text-gray-900">
+            <span className="text-lg font-bold tabular-nums text-gray-900">
               {netHours}h
             </span>
           </div>
@@ -320,7 +320,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
             <span className="text-gray-400 block text-[10px] uppercase font-semibold">
               Gross Shift
             </span>
-            <span className="font-mono text-gray-700">
+            <span className="tabular-nums text-gray-700">
               {(grossMinutes / 60).toFixed(1)}h
             </span>
           </div>
@@ -329,7 +329,7 @@ export function OvertimeCalculator({ onApplyHours }: Props) {
             <span className="text-gray-400 block text-[10px] uppercase font-semibold">
               Break Deducted
             </span>
-            <span className="font-mono text-gray-700">
+            <span className="tabular-nums text-gray-700">
               {breakMinutes}m
             </span>
           </div>

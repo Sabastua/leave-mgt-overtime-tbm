@@ -720,7 +720,7 @@ export function TeamCalendar({ teamMembers, leaveRequests, leaveTypes }: Props) 
                         {day.dayName}
                       </span>
                       <span
-                        className={`text-sm font-extrabold font-mono ${
+                        className={`text-sm font-extrabold tabular-nums ${
                           day.isToday ? "text-brand" : "text-gray-900"
                         }`}
                       >
@@ -758,7 +758,7 @@ export function TeamCalendar({ teamMembers, leaveRequests, leaveTypes }: Props) 
                             <span className="text-[10px] font-semibold text-gray-600 block">
                               {typeName}
                             </span>
-                            <span className="text-[10px] text-gray-500 font-mono block mt-1">
+                            <span className="text-[10px] text-gray-500 tabular-nums block mt-1">
                               {request.start_date.slice(5)} to {request.end_date.slice(5)}
                             </span>
                           </div>

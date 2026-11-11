@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { LeaveType, LeaveRequest, LeaveBalanceSummary } from "@/lib/leave/types";
 import type { OvertimeRecord, OvertimeStats } from "@/lib/overtime/types";
 import type { AllowedUser } from "@/lib/auth/allowed-users";
@@ -79,7 +79,8 @@ export function DashboardShell({
   >("leave");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [showReviewBanner, setShowReviewBanner] = useState(true);
+  const [dismissedNoticeIds, setDismissedNoticeIds] = useState<string[]>([]);
+
   const [selectedReceiptRecord, setSelectedReceiptRecord] = useState<OvertimeRecord | null>(null);
   const [leaveStatusFilter, setLeaveStatusFilter] = useState<string>("all");
   const [overtimeStatusFilter, setOvertimeStatusFilter] = useState<string>("all");
@@ -126,6 +127,41 @@ export function DashboardShell({
     return true;
   });
   const pendingOvertimeApprovals = allOvertimeRecords.filter((r) => r.status === "pending");
+
+  // Active recent manager decisions for current staff member
+  const recentDecisions = useMemo(() => {
+    const recentLeaves = myLeaveRequests
+      .filter((r) => (r.status === "approved" || r.status === "rejected") && r.reviewed_at)
+      .map((r) => ({
+        id: `leave-${r.id}`,
+        type: "Leave",
+        title: `${leaveTypeMap.get(r.leave_type)?.name || r.leave_type} (${r.start_date} to ${r.end_date})`,
+        meta: `${r.working_days} working day(s)`,
+        status: r.status,
+        reviewedBy: r.reviewed_by || "F. Mbuthia (Manager)",
+        reviewedAt: r.reviewed_at || "",
+        note: r.reviewer_note || (r.status === "approved" ? "Approved by manager." : "Declined by manager."),
+      }));
+
+    const recentOvertime = myOvertimeRecords
+      .filter((r) => (r.status === "approved" || r.status === "rejected") && r.reviewed_at)
+      .map((r) => ({
+        id: `ot-${r.id}`,
+        type: "Overtime",
+        title: `Overtime worked on ${r.overtime_date} (${r.task_summary})`,
+        meta: `${r.hours} hours (${r.compensatory_choice.toUpperCase()})`,
+        status: r.status,
+        reviewedBy: r.reviewed_by || "F. Mbuthia (Manager)",
+        reviewedAt: r.reviewed_at || "",
+        note: r.reviewer_note || (r.status === "approved" ? "Approved by manager." : "Declined by manager."),
+      }));
+
+    return [...recentLeaves, ...recentOvertime]
+      .filter((n) => !dismissedNoticeIds.includes(n.id))
+      .sort((a, b) => b.reviewedAt.localeCompare(a.reviewedAt));
+  }, [myLeaveRequests, myOvertimeRecords, leaveTypeMap, dismissedNoticeIds]);
+
+  const activeNotice = recentDecisions[0] || null;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -272,27 +308,62 @@ export function DashboardShell({
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-8">
-        {/* Manager Review Notification Banner */}
-        {showReviewBanner && (
-          <div className="flex items-center justify-between rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-xs animate-in fade-in">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shrink-0">
-                <ShieldCheckIcon className="h-5 w-5" />
+        {/* Active Staff Decision & Approval Notice */}
+        {activeNotice && (
+          <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl p-5 text-xs border shadow-xs animate-in fade-in ${
+            activeNotice.status === "approved"
+              ? "bg-emerald-50/90 border-emerald-200/80 text-emerald-950"
+              : "bg-red-50/90 border-red-200/80 text-red-950"
+          }`}>
+            <div className="flex items-start gap-3.5">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-2xl shrink-0 text-white shadow-xs ${
+                activeNotice.status === "approved" ? "bg-emerald-600" : "bg-red-600"
+              }`}>
+                {activeNotice.status === "approved" ? (
+                  <CheckCircleIcon className="h-6 w-6" />
+                ) : (
+                  <XCircleIcon className="h-6 w-6" />
+                )}
               </div>
-              <div>
-                <p className="font-bold text-emerald-950">Manager Approval Center</p>
-                <p className="text-emerald-800 mt-0.5">
-                  Review notifications and workflow status are synchronized in real time.
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-extrabold text-sm tracking-tight">
+                    {activeNotice.status === "approved" ? "Manager Approval Notification" : "Manager Decision Notice"}
+                  </span>
+                  <span className="rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-700 ring-1 ring-black/5">
+                    {activeNotice.type}
+                  </span>
+                  <span className="text-[11px] text-gray-500 font-medium">
+                    Reviewed on {activeNotice.reviewedAt.slice(0, 10)} by {activeNotice.reviewedBy}
+                  </span>
+                </div>
+                <p className="font-bold text-gray-900 text-xs">
+                  {activeNotice.title} &bull; <span className="text-gray-600">{activeNotice.meta}</span>
                 </p>
+                <div className={`mt-1.5 rounded-xl p-3 text-xs border ${
+                  activeNotice.status === "approved"
+                    ? "bg-white border-emerald-100 text-emerald-900 shadow-2xs"
+                    : "bg-white border-red-100 text-red-900 shadow-2xs"
+                }`}>
+                  <span className="font-bold block text-[11px] uppercase tracking-wider opacity-75 mb-0.5">
+                    Approval Message to Staff:
+                  </span>
+                  <p className="font-medium text-gray-900 leading-relaxed">
+                    {activeNotice.note}
+                  </p>
+                </div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowReviewBanner(false)}
-              className="text-emerald-800 hover:text-emerald-950 text-xs font-bold px-2.5 py-1 rounded-lg hover:bg-emerald-100 transition cursor-pointer"
-            >
-              Dismiss
-            </button>
+
+            <div className="flex items-center gap-2 sm:self-center shrink-0">
+              <button
+                type="button"
+                onClick={() => setDismissedNoticeIds((prev) => [...prev, activeNotice.id])}
+                className="rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs font-bold text-gray-700 shadow-2xs hover:bg-gray-50 active:scale-95 transition cursor-pointer"
+              >
+                Acknowledge
+              </button>
+            </div>
           </div>
         )}
 
@@ -373,41 +444,7 @@ export function DashboardShell({
               existingRequests={allLeaveRequests}
             />
 
-            {/* Policy Reference Card */}
-            <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <InformationCircleIcon className="h-5 w-5 text-brand" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">
-                  Safaricom Leave Policy Guidelines
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs text-gray-600">
-                <div className="rounded-xl bg-white p-3 border border-gray-200">
-                  <span className="font-bold text-gray-900 block">Annual Leave (21d)</span>
-                  <span className="text-[11px] text-gray-500">
-                    Plan in advance with your designated handover colleague. Weekends are automatically excluded.
-                  </span>
-                </div>
-                <div className="rounded-xl bg-white p-3 border border-gray-200">
-                  <span className="font-bold text-gray-900 block">Sick Leave (14d)</span>
-                  <span className="text-[11px] text-gray-500">
-                    Medical and recovery leave. Submit medical slip for absence exceeding 2 consecutive days.
-                  </span>
-                </div>
-                <div className="rounded-xl bg-white p-3 border border-gray-200">
-                  <span className="font-bold text-gray-900 block">Compassionate (5d)</span>
-                  <span className="text-[11px] text-gray-500">
-                    For family bereavement or urgent critical emergencies. Inform manager as soon as practical.
-                  </span>
-                </div>
-                <div className="rounded-xl bg-white p-3 border border-gray-200">
-                  <span className="font-bold text-gray-900 block">Study / Exams (5d)</span>
-                  <span className="text-[11px] text-gray-500">
-                    Granted for recognized certifications, university exams, or pre-approved professional courses.
-                  </span>
-                </div>
-              </div>
-            </div>
+
 
             {/* My Leave Requests Table */}
             <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
@@ -495,13 +532,23 @@ export function DashboardShell({
                                     </button>
                                   </div>
 
-                                  <div className="w-1/4 pr-4 font-semibold text-gray-900">
-                                    {type?.name ?? r.leave_type}
+                                  <div className="w-1/3 pr-4">
+                                    <span className="font-semibold text-gray-900 block">
+                                      {type?.name ?? r.leave_type}
+                                    </span>
+                                    {r.reviewer_note && (r.status === "approved" || r.status === "rejected") && (
+                                      <p className={`mt-0.5 text-[11px] leading-tight truncate ${
+                                        r.status === "approved" ? "text-emerald-700 font-medium" : "text-red-600 font-medium"
+                                      }`} title={r.reviewer_note}>
+                                        <span className="font-bold">Note: </span>
+                                        {r.reviewer_note}
+                                      </p>
+                                    )}
                                   </div>
 
-                                  <div className="w-24 px-3 font-mono text-gray-700">{r.start_date}</div>
-                                  <div className="w-24 px-3 font-mono text-gray-700">{r.end_date}</div>
-                                  <div className="w-24 px-3 font-semibold text-gray-900">{r.working_days}d</div>
+                                  <div className="w-24 px-3 tabular-nums font-medium text-gray-700">{r.start_date}</div>
+                                  <div className="w-24 px-3 tabular-nums font-medium text-gray-700">{r.end_date}</div>
+                                  <div className="w-24 px-3 font-semibold tabular-nums text-gray-900">{r.working_days}d</div>
 
                                   <div className="flex-1 px-3 text-gray-600 truncate">
                                     {handover ? handover.full_name : r.handover_email || "—"}
@@ -559,7 +606,7 @@ export function DashboardShell({
                                           {r.reviewed_at && (
                                             <div className="flex items-center justify-between text-[11px]">
                                               <span className="text-gray-500">Decision Date:</span>
-                                              <span className="font-mono text-gray-700">{r.reviewed_at.slice(0, 10)}</span>
+                                              <span className="tabular-nums text-gray-700">{r.reviewed_at.slice(0, 10)}</span>
                                             </div>
                                           )}
                                           {r.reviewer_note && (
@@ -744,11 +791,11 @@ export function DashboardShell({
                                     </button>
                                   </div>
 
-                                  <div className="w-28 pr-4 font-mono font-medium text-gray-900">
+                                  <div className="w-28 pr-4 tabular-nums font-medium text-gray-900">
                                     {record.overtime_date}
                                   </div>
 
-                                  <div className="w-20 px-3 font-semibold text-gray-900 font-mono">
+                                  <div className="w-20 px-3 font-semibold tabular-nums text-gray-900">
                                     {record.hours}h
                                   </div>
 
@@ -769,9 +816,17 @@ export function DashboardShell({
                                       {record.task_summary.split("\n")[0]}
                                     </span>
                                     {record.ticket_ref && (
-                                      <span className="ml-2 font-mono text-[11px] text-gray-400">
+                                      <span className="ml-2 tabular-nums text-[11px] text-gray-400">
                                         Ref: {record.ticket_ref}
                                       </span>
+                                    )}
+                                    {record.reviewer_note && (record.status === "approved" || record.status === "rejected") && (
+                                      <p className={`mt-0.5 text-[11px] leading-tight truncate ${
+                                        record.status === "approved" ? "text-emerald-700 font-medium" : "text-red-600 font-medium"
+                                      }`} title={record.reviewer_note}>
+                                        <span className="font-bold">Note: </span>
+                                        {record.reviewer_note}
+                                      </p>
                                     )}
                                   </div>
 
@@ -828,7 +883,7 @@ export function DashboardShell({
                                         <span className="text-[10px] uppercase font-bold text-gray-400 block mb-0.5">
                                           Detailed Shift &amp; Task Notes:
                                         </span>
-                                        <div className="text-gray-800 bg-white p-2.5 rounded-lg border border-gray-200 whitespace-pre-wrap font-mono text-[11px]">
+                                        <div className="text-gray-800 bg-white p-2.5 rounded-lg border border-gray-200 whitespace-pre-wrap text-[11px]">
                                           {record.task_summary}
                                         </div>
                                       </div>
@@ -847,7 +902,7 @@ export function DashboardShell({
                                           {record.reviewed_at && (
                                             <div className="flex items-center justify-between text-[11px]">
                                               <span className="text-gray-500">Authorization Date:</span>
-                                              <span className="font-mono text-gray-700">{record.reviewed_at.slice(0, 10)}</span>
+                                              <span className="tabular-nums text-gray-700">{record.reviewed_at.slice(0, 10)}</span>
                                             </div>
                                           )}
                                           {record.reviewer_note && (
@@ -948,7 +1003,7 @@ export function DashboardShell({
                     <h4 className="font-bold text-gray-900 text-sm">
                       {currentMember.full_name || currentUserEmail}
                     </h4>
-                    <p className="text-gray-500 font-mono text-[11px]">{currentUserEmail}</p>
+                    <p className="text-gray-500 text-[11px]">{currentUserEmail}</p>
                     <div className="mt-1 flex items-center gap-1.5">
                       <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand-dark">
                         {currentMember.role === "approver" ? "Approver / Manager" : "Team Member (Staff)"}
@@ -979,7 +1034,7 @@ export function DashboardShell({
                     {myBalances.map((b) => (
                       <div key={b.leaveType.code} className="rounded-lg bg-white p-2 border border-gray-100">
                         <span className="text-gray-500 block text-[10px]">{b.leaveType.name}</span>
-                        <strong className="text-gray-900 font-mono text-sm">{b.remaining}d</strong>
+                        <strong className="text-gray-900 tabular-nums text-sm">{b.remaining}d</strong>
                         <span className="text-gray-400 text-[10px]"> /{b.entitled}d</span>
                       </div>
                     ))}
@@ -991,15 +1046,15 @@ export function DashboardShell({
                   <p className="font-bold text-gray-700">Overtime Summary ({currentYear})</p>
                   <div className="flex justify-between items-center text-xs pt-1">
                     <span className="text-gray-500">Total Approved Hours:</span>
-                    <strong className="font-mono text-gray-900">{myOvertimeStats.totalHoursApproved.toFixed(1)}h</strong>
+                    <strong className="tabular-nums text-gray-900">{myOvertimeStats.totalHoursApproved.toFixed(1)}h</strong>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500">Paid Payroll Hours:</span>
-                    <strong className="font-mono text-blue-700">{myOvertimeStats.paidHoursApproved.toFixed(1)}h</strong>
+                    <strong className="tabular-nums text-blue-700">{myOvertimeStats.paidHoursApproved.toFixed(1)}h</strong>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500">TOIL Rest Days Banked:</span>
-                    <strong className="font-mono text-purple-700">~{(myOvertimeStats.toilHoursApproved / 8).toFixed(1)} days</strong>
+                    <strong className="tabular-nums text-purple-700">~{(myOvertimeStats.toilHoursApproved / 8).toFixed(1)} days</strong>
                   </div>
                 </div>
 

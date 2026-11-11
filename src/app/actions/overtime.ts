@@ -105,13 +105,28 @@ export async function reviewOvertimeRequest(formData: FormData): Promise<void> {
     return;
   }
 
+  // Fetch claim details so an explicit approval message is sent to staff
+  const { data: rec } = await supabase
+    .from("overtime_records")
+    .select("overtime_date, hours, compensatory_choice, user_email, task_summary")
+    .eq("id", recordId)
+    .single();
+
+  const approverLabel = "F. Mbuthia (Manager)";
+  const defaultMessage =
+    decision === "approved"
+      ? `Approved by ${approverLabel}. Overtime of ${rec?.hours ?? ""}h on ${rec?.overtime_date ?? ""} (${rec?.compensatory_choice ? rec.compensatory_choice.toUpperCase() : ""}) authorized for payroll cutoff.`
+      : `Declined by ${approverLabel}. Please consult your manager for clarification.`;
+
+  const finalNote = reviewerNote || defaultMessage;
+
   await supabase
     .from("overtime_records")
     .update({
       status: decision,
       reviewed_by: email,
       reviewed_at: new Date().toISOString(),
-      reviewer_note: reviewerNote || null,
+      reviewer_note: finalNote,
     })
     .eq("id", recordId);
 
@@ -155,13 +170,21 @@ export async function batchReviewOvertimeRequests(formData: FormData): Promise<v
     return;
   }
 
+  const approverLabel = "F. Mbuthia (Manager)";
+  const defaultMessage =
+    decision === "approved"
+      ? `Approved by ${approverLabel} in batch authorization for payroll cutoff.`
+      : `Batch declined by ${approverLabel}.`;
+
+  const finalNote = reviewerNote || defaultMessage;
+
   await supabase
     .from("overtime_records")
     .update({
       status: decision,
       reviewed_by: email,
       reviewed_at: new Date().toISOString(),
-      reviewer_note: reviewerNote || `Batch ${decision} by manager`,
+      reviewer_note: finalNote,
     })
     .in("id", recordIds)
     .eq("status", "pending");

@@ -1355,7 +1355,7 @@ export function AdminOverview({
                   <div key={type.code}>
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-gray-700">{type.name}</span>
-                      <span className="font-mono text-gray-600">
+                      <span className="tabular-nums text-gray-600">
                         {days}d ({percent}%)
                       </span>
                     </div>
@@ -1674,8 +1674,8 @@ export function AdminOverview({
                               </div>
 
                               <p className="mt-1 text-xs text-gray-600">
-                                <span className="font-mono font-semibold">{request.start_date}</span> to{" "}
-                                <span className="font-mono font-semibold">{request.end_date}</span> (
+                                <span className="tabular-nums font-semibold">{request.start_date}</span> to{" "}
+                                <span className="tabular-nums font-semibold">{request.end_date}</span> (
                                 <strong className="text-gray-900">{request.working_days} working days</strong>)
                               </p>
 
@@ -1687,7 +1687,7 @@ export function AdminOverview({
                               )}
 
                               {request.reason && (
-                                <p className="mt-1.5 text-xs italic text-gray-700 bg-gray-50 p-2 rounded-lg border border-gray-100 font-mono text-[11px]">
+                                <p className="mt-1.5 text-xs italic text-gray-700 bg-gray-50 p-2 rounded-lg border border-gray-100 tabular-nums text-[11px]">
                                   &quot;{request.reason}&quot;
                                 </p>
                               )}
@@ -1880,21 +1880,21 @@ export function AdminOverview({
                                 >
                                   {record.compensatory_choice === "paid" ? "PAID PAYROLL" : "TOIL CREDIT"}
                                 </span>
-                                <span className="font-mono text-xs font-extrabold text-gray-900">
+                                <span className="tabular-nums text-xs font-extrabold text-gray-900">
                                   {record.hours} Hours
                                 </span>
                               </div>
 
                               <p className="mt-1 text-xs text-gray-600">
-                                Date Worked: <span className="font-mono font-semibold">{record.overtime_date}</span>
+                                Date Worked: <span className="tabular-nums font-semibold">{record.overtime_date}</span>
                                 {record.ticket_ref && (
-                                  <span className="ml-2 font-mono text-[11px] text-gray-500">
+                                  <span className="ml-2 tabular-nums text-[11px] text-gray-500">
                                     Ref: {record.ticket_ref}
                                   </span>
                                 )}
                               </p>
 
-                              <p className="mt-1.5 text-xs italic text-gray-700 bg-gray-50 p-2 rounded-lg border border-gray-100 font-mono text-[11px] whitespace-pre-wrap">
+                              <p className="mt-1.5 text-xs italic text-gray-700 bg-gray-50 p-2 rounded-lg border border-gray-100 tabular-nums text-[11px] whitespace-pre-wrap">
                                 &quot;{record.task_summary}&quot;
                               </p>
                             </div>
@@ -2041,13 +2041,13 @@ export function AdminOverview({
                   <tr key={`${rec.category}-${rec.id}`} className="hover:bg-gray-50/60 transition">
                     <td className="px-4 py-3">
                       <div className="font-bold text-gray-900">{rec.fullName}</div>
-                      <div className="text-[11px] text-gray-400 font-mono">{rec.userEmail}</div>
+                      <div className="text-[11px] text-gray-400 tabular-nums">{rec.userEmail}</div>
                     </td>
                     <td className="px-4 py-3">
                       <span className="font-semibold text-gray-800">{rec.title}</span>
                       <div className="text-[11px] text-gray-500">{rec.detail}</div>
                     </td>
-                    <td className="px-4 py-3 font-mono font-bold text-gray-900">
+                    <td className="px-4 py-3 tabular-nums font-bold text-gray-900">
                       {rec.quantity}
                     </td>
                     <td className="px-4 py-3">
@@ -2115,7 +2115,7 @@ export function AdminOverview({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
             <span className="text-[11px] uppercase font-bold text-gray-500 block">Total Carried Over</span>
-            <span className="text-xl font-black text-gray-900 font-mono mt-1 block">
+            <span className="text-xl font-black text-gray-900 tabular-nums mt-1 block">
               +{carryForwardSummary.totalCarriedAcrossTeam} days
             </span>
             <span className="text-[11px] text-gray-500">Across active team members</span>
@@ -2123,7 +2123,7 @@ export function AdminOverview({
 
           <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
             <span className="text-[11px] uppercase font-bold text-gray-500 block">Members with Rollover</span>
-            <span className="text-xl font-black text-brand-dark font-mono mt-1 block">
+            <span className="text-xl font-black text-brand-dark tabular-nums mt-1 block">
               {carryForwardSummary.membersWithRollover} / {activeMembers.length}
             </span>
             <span className="text-[11px] text-gray-500">Holding carried-forward days</span>
@@ -2131,7 +2131,7 @@ export function AdminOverview({
 
           <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5">
             <span className="text-[11px] uppercase font-bold text-gray-500 block">Base Annual Allowance</span>
-            <span className="text-xl font-black text-gray-900 font-mono mt-1 block">
+            <span className="text-xl font-black text-gray-900 tabular-nums mt-1 block">
               21 days / yr
             </span>
             <span className="text-[11px] text-gray-500">Standard contractual entitlement</span>
@@ -2157,12 +2157,12 @@ export function AdminOverview({
                 <tr key={member.email} className="hover:bg-gray-50/60 transition">
                   <td className="px-4 py-3">
                     <div className="font-bold text-gray-900">{member.full_name || member.email}</div>
-                    <div className="text-[11px] text-gray-400 font-mono">{member.email}</div>
+                    <div className="text-[11px] text-gray-400 tabular-nums">{member.email}</div>
                   </td>
-                  <td className="px-4 py-3 text-center font-mono text-gray-700">
+                  <td className="px-4 py-3 text-center tabular-nums text-gray-700">
                     {baseEntitled}d
                   </td>
-                  <td className="px-4 py-3 text-center font-mono">
+                  <td className="px-4 py-3 text-center tabular-nums">
                     {carriedForward > 0 ? (
                       <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
                         +{carriedForward}d
@@ -2171,13 +2171,13 @@ export function AdminOverview({
                       <span className="text-gray-400">0d</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-center font-mono font-bold text-gray-900">
+                  <td className="px-4 py-3 text-center tabular-nums font-bold text-gray-900">
                     {totalEntitled}d
                   </td>
-                  <td className="px-4 py-3 text-center font-mono text-gray-600">
+                  <td className="px-4 py-3 text-center tabular-nums text-gray-600">
                     {approved}d
                   </td>
-                  <td className="px-4 py-3 text-center font-mono font-bold text-emerald-700">
+                  <td className="px-4 py-3 text-center tabular-nums font-bold text-emerald-700">
                     {remaining}d
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -2227,7 +2227,7 @@ export function AdminOverview({
                 <div>
                   <span className="text-xs font-semibold text-gray-500 block">Colleague</span>
                   <span className="text-sm font-bold text-gray-900 block">{adjustingMember.fullName}</span>
-                  <span className="text-xs text-gray-400 font-mono block">{adjustingMember.email}</span>
+                  <span className="text-xs text-gray-400 tabular-nums block">{adjustingMember.email}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-xs bg-gray-50 p-3 rounded-xl border border-gray-100">
@@ -2414,7 +2414,7 @@ export function AdminOverview({
               />
             </div>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black font-mono">
+              <span className="text-2xl font-black tabular-nums">
                 {forwardRadarData.criticalDaysCount}
               </span>
               <span className="text-xs font-medium">days under minimum staffing</span>
@@ -2442,7 +2442,7 @@ export function AdminOverview({
               />
             </div>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black font-mono">
+              <span className="text-2xl font-black tabular-nums">
                 {forwardRadarData.pendingRiskDaysCount}
               </span>
               <span className="text-xs font-medium">days at potential risk</span>
@@ -2470,7 +2470,7 @@ export function AdminOverview({
               />
             </div>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black font-mono">
+              <span className="text-2xl font-black tabular-nums">
                 {forwardRadarData.clashDaysCount}
               </span>
               <span className="text-xs font-medium">relief clash dates</span>
@@ -2542,7 +2542,7 @@ export function AdminOverview({
                     </div>
 
                     <div className="mt-2">
-                      <div className="flex items-baseline justify-between text-[11px] font-mono">
+                      <div className="flex items-baseline justify-between text-[11px] tabular-nums">
                         <span className="font-extrabold text-gray-900">
                           {day.availableStaff}/{activeMembers.length}
                         </span>
@@ -2775,7 +2775,7 @@ export function AdminOverview({
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-mono font-bold text-gray-900">
+                        <span className="tabular-nums font-bold text-gray-900">
                           {annualRemaining}{" "}
                           <span className="font-normal text-gray-400">
                             /{annualEntitled} left
@@ -2811,22 +2811,22 @@ export function AdminOverview({
                         />
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-right font-mono font-semibold text-gray-800">
+                    <td className="px-3 py-3 text-right tabular-nums font-semibold text-gray-800">
                       {sickBal?.remaining ?? 14}
                       <span className="font-normal text-gray-400">/14</span>
                     </td>
-                    <td className="px-3 py-3 text-right font-mono font-semibold text-gray-800">
+                    <td className="px-3 py-3 text-right tabular-nums font-semibold text-gray-800">
                       {compassionateBal?.remaining ?? 5}
                       <span className="font-normal text-gray-400">/5</span>
                     </td>
-                    <td className="px-3 py-3 text-right font-mono font-semibold text-gray-800">
+                    <td className="px-3 py-3 text-right tabular-nums font-semibold text-gray-800">
                       {studyBal?.remaining ?? 5}
                       <span className="font-normal text-gray-400">/5</span>
                     </td>
-                    <td className="px-3 py-3 text-right font-mono font-bold text-gray-900">
+                    <td className="px-3 py-3 text-right tabular-nums font-bold text-gray-900">
                       {totalTaken}d
                     </td>
-                    <td className="px-3 py-3 text-right font-mono font-bold text-blue-700">
+                    <td className="px-3 py-3 text-right tabular-nums font-bold text-blue-700">
                       {totalOtHours > 0 ? `${totalOtHours.toFixed(1)}h` : "-"}
                     </td>
                   </tr>
@@ -2977,7 +2977,7 @@ export function AdminOverview({
           <div className="flex flex-wrap items-center gap-4 text-xs">
             <div>
               <span className="text-gray-500">Cycle Range:</span>{" "}
-              <strong className="text-gray-900 font-mono">
+              <strong className="text-gray-900 tabular-nums">
                 {reportStartDate} &rarr; {reportEndDate}
               </strong>
             </div>

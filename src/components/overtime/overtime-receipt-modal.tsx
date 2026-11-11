@@ -98,7 +98,7 @@ export function OvertimeReceiptModal({ record, employeeName, onClose }: Props) {
             </div>
 
             <div className="text-right">
-              <span className="rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-bold text-gray-800 border border-gray-200">
+              <span className="rounded-lg bg-gray-100 px-2.5 py-1 tabular-nums text-xs font-bold text-gray-800 border border-gray-200">
                 {voucherNumber}
               </span>
               <p className="mt-1 text-[11px] text-gray-500">Issued: {printDate}</p>
@@ -123,7 +123,7 @@ export function OvertimeReceiptModal({ record, employeeName, onClose }: Props) {
                 Employee Name
               </span>
               <span className="font-bold text-gray-900 text-sm">{employeeName}</span>
-              <span className="block text-gray-600 mt-0.5 font-mono text-[11px]">
+              <span className="block text-gray-600 mt-0.5 tabular-nums text-[11px]">
                 {record.user_email}
               </span>
             </div>
@@ -132,7 +132,7 @@ export function OvertimeReceiptModal({ record, employeeName, onClose }: Props) {
               <span className="text-gray-400 uppercase font-bold text-[10px] block">
                 Date Worked
               </span>
-              <span className="font-bold text-gray-900 text-sm font-mono">
+              <span className="font-bold text-gray-900 text-sm tabular-nums">
                 {record.overtime_date}
               </span>
             </div>
@@ -141,7 +141,7 @@ export function OvertimeReceiptModal({ record, employeeName, onClose }: Props) {
               <span className="text-gray-400 uppercase font-bold text-[10px] block">
                 Approved Hours
               </span>
-              <span className="font-bold text-gray-900 text-base font-mono">
+              <span className="font-bold text-gray-900 text-base tabular-nums">
                 {record.hours} Hours
               </span>
             </div>
@@ -162,7 +162,7 @@ export function OvertimeReceiptModal({ record, employeeName, onClose }: Props) {
                 <span className="text-gray-400 uppercase font-bold text-[10px] block">
                   Incident / Change Reference
                 </span>
-                <span className="font-mono font-semibold text-gray-800">
+                <span className="tabular-nums font-semibold text-gray-800">
                   {record.ticket_ref}
                 </span>
               </div>
@@ -174,7 +174,7 @@ export function OvertimeReceiptModal({ record, employeeName, onClose }: Props) {
             <span className="text-gray-400 uppercase font-bold text-[10px] block mb-1">
               Work &amp; Operational Task Summary
             </span>
-            <div className="rounded-xl bg-gray-50/90 p-3.5 text-gray-800 leading-relaxed font-mono text-[11px] border border-gray-200/70 whitespace-pre-wrap">
+            <div className="rounded-xl bg-gray-50/90 p-3.5 text-gray-800 leading-relaxed tabular-nums text-[11px] border border-gray-200/70 whitespace-pre-wrap">
               {record.task_summary}
             </div>
           </div>
@@ -186,7 +186,7 @@ export function OvertimeReceiptModal({ record, employeeName, onClose }: Props) {
                 Employee Electronic Submission
               </span>
               <div className="mt-4 border-b border-gray-300 pb-1">
-                <span className="font-serif italic text-gray-800 text-sm font-semibold">
+                <span className="font-medium tracking-tight text-gray-800 text-sm font-semibold">
                   {employeeName}
                 </span>
               </div>
@@ -200,7 +200,7 @@ export function OvertimeReceiptModal({ record, employeeName, onClose }: Props) {
                 Manager Authorization
               </span>
               <div className="mt-4 border-b border-gray-300 pb-1">
-                <span className="font-serif italic font-bold text-gray-900 text-sm">
+                <span className="font-medium tracking-tight font-bold text-gray-900 text-sm">
                   {record.reviewed_by || "F. Mbuthia (Manager & Approver)"}
                 </span>
               </div>
@@ -213,7 +213,7 @@ export function OvertimeReceiptModal({ record, employeeName, onClose }: Props) {
 
           {/* Digital Stamp Seal */}
           <div className="mt-8 rounded-xl border border-dashed border-brand/40 bg-brand/5 p-3 text-center">
-            <div className="flex items-center justify-center gap-1.5 text-brand-dark font-mono text-[11px] font-bold uppercase tracking-wider">
+            <div className="flex items-center justify-center gap-1.5 text-brand-dark tabular-nums text-[11px] font-bold uppercase tracking-wider">
               <CheckCircleIcon className="h-4 w-4 text-brand" />
               <span>Safaricom Digital Audit Verified Record</span>
             </div>

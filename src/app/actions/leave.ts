@@ -127,13 +127,28 @@ export async function reviewLeaveRequest(formData: FormData): Promise<void> {
     return;
   }
 
+  // Fetch request details so a comprehensive approval message is recorded and sent to staff
+  const { data: req } = await supabase
+    .from("leave_requests")
+    .select("start_date, end_date, working_days, leave_type, user_email")
+    .eq("id", requestId)
+    .single();
+
+  const approverLabel = "F. Mbuthia (Manager)";
+  const defaultMessage =
+    decision === "approved"
+      ? `Approved by ${approverLabel}. Your ${req?.leave_type ? req.leave_type.toUpperCase() : "leave"} request from ${req?.start_date || ""} to ${req?.end_date || ""} (${req?.working_days || ""} working day(s)) is authorized.`
+      : `Declined by ${approverLabel}. Please consult your manager for further details.`;
+
+  const finalNote = reviewerNote || defaultMessage;
+
   await supabase
     .from("leave_requests")
     .update({
       status: decision,
       reviewed_by: email,
       reviewed_at: new Date().toISOString(),
-      reviewer_note: reviewerNote || null,
+      reviewer_note: finalNote,
     })
     .eq("id", requestId);
 
@@ -177,13 +192,21 @@ export async function batchReviewLeaveRequests(formData: FormData): Promise<void
     return;
   }
 
+  const approverLabel = "F. Mbuthia (Manager)";
+  const defaultMessage =
+    decision === "approved"
+      ? `Approved by ${approverLabel} in batch authorization.`
+      : `Batch declined by ${approverLabel}.`;
+
+  const finalNote = reviewerNote || defaultMessage;
+
   await supabase
     .from("leave_requests")
     .update({
       status: decision,
       reviewed_by: email,
       reviewed_at: new Date().toISOString(),
-      reviewer_note: reviewerNote || `Batch ${decision} by manager`,
+      reviewer_note: finalNote,
     })
     .in("id", requestIds)
     .eq("status", "pending");
