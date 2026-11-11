@@ -5,7 +5,6 @@ import {
   CalendarDaysIcon,
   ClockIcon,
   UsersIcon,
-  ShieldCheckIcon,
   ArrowTrendingUpIcon,
 } from "@/components/ui/icons";
 
@@ -61,12 +60,9 @@ export function LoginShowcase() {
           </svg>
         </div>
         <div>
-          <div className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
-            <span>Safaricom PLC</span>
-            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-              Internal Portal
-            </span>
-          </div>
+          <span className="text-base font-bold tracking-tight text-white">
+            Safaricom PLC
+          </span>
         </div>
       </div>
 
@@ -79,8 +75,6 @@ export function LoginShowcase() {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
           <span className="font-semibold">{greeting}, Team</span>
-          <span className="text-emerald-500/60">•</span>
-          <span className="text-emerald-200/80">Authorized Workspace</span>
         </div>
 
         <h1 className="text-3xl xl:text-4xl font-bold tracking-tight text-white leading-tight max-w-lg">
@@ -156,15 +150,6 @@ export function LoginShowcase() {
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Bottom Footer: Corporate Compliance */}
-      <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-4 text-[11px] text-emerald-200/60">
-        <span className="flex items-center gap-1.5 font-medium">
-          <ShieldCheckIcon className="h-3.5 w-3.5 text-emerald-400" />
-          <span>Safaricom Corporate Single Sign-On Security</span>
-        </span>
-        <span className="font-semibold text-emerald-400/80">Enterprise v2.4</span>
       </div>
     </div>
   );
