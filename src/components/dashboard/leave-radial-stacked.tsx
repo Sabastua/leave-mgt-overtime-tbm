@@ -411,68 +411,16 @@ export function LeaveRadialStackedCard({
         </div>
       )}
 
-      {/* Annual Days Stacked Breakdown Bar & Legend */}
-      <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-2.5">
-
-
-        {/* Stacked Legend Grid */}
-        <div className={`grid ${annualCarried > 0 ? "grid-cols-4" : "grid-cols-3"} gap-1 pt-1 text-center text-[11px]`}>
-          <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
-            <span className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
-              <span className="inline-block h-2 w-2 rounded-full bg-emerald-600 shrink-0" />
-              Left
-            </span>
-            <strong className="tabular-nums text-emerald-700 font-bold mt-0.5">{annualRemaining}d</strong>
-          </div>
-
-          <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
-            <span className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
-              <span className="inline-block h-2 w-2 rounded-full bg-slate-500 shrink-0" />
-              Taken
-            </span>
-            <strong className="tabular-nums text-gray-800 font-bold mt-0.5">{annualApproved}d</strong>
-          </div>
-
-          {annualCarried > 0 ? (
-            <>
-              <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
-                <span className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
-                  <span className="inline-block h-2 w-2 rounded-full bg-teal-500 shrink-0" />
-                  Carried
-                </span>
-                <strong className="tabular-nums text-teal-700 font-bold mt-0.5">+{annualCarried}d</strong>
-              </div>
-
-              <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
-                <span className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
-                  <span className="inline-block h-2 w-2 rounded-full bg-gray-300 shrink-0" />
-                  Total
-                </span>
-                <strong className="tabular-nums text-gray-900 font-bold mt-0.5">{annualEntitled}d</strong>
-              </div>
-            </>
-          ) : (
-            <div className="rounded-lg bg-white p-1.5 border border-gray-100 flex flex-col items-center">
-              <span className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
-                <span className="inline-block h-2 w-2 rounded-full bg-gray-300 shrink-0" />
-                Entitled
-              </span>
-              <strong className="tabular-nums text-gray-900 font-bold mt-0.5">{annualEntitled}d</strong>
-            </div>
-          )}
+      {/* Pending Requests Notice */}
+      {annualPending > 0 && (
+        <div className="mt-2 flex items-center justify-between rounded-xl bg-amber-50/80 px-3 py-1.5 text-[11px] text-amber-800 border border-amber-200/60">
+          <span className="flex items-center gap-1 font-medium">
+            <ClockIcon className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+            <span>Pending manager review:</span>
+          </span>
+          <strong className="tabular-nums font-bold">{annualPending}d requested</strong>
         </div>
-
-        {/* Pending Requests Notice */}
-        {annualPending > 0 && (
-          <div className="mt-2 flex items-center justify-between border-t border-gray-200/60 pt-1.5 text-[10px] text-amber-700 font-medium">
-            <span className="flex items-center gap-1">
-              <ClockIcon className="h-3 w-3 shrink-0" />
-              <span>Pending manager review:</span>
-            </span>
-            <strong className="tabular-nums font-semibold">{annualPending}d requested</strong>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
