@@ -237,51 +237,6 @@ export function LeaveRequestForm({
           </div>
         </div>
 
-        {/* 3. Live Duration & Holiday Breakdown Widget */}
-        <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4 text-brand shrink-0" />
-              <span className="text-xs font-bold text-gray-800">
-                Calculated Working Duration:
-              </span>
-              <span className="text-sm font-bold text-brand-dark tabular-nums">
-                {workingDays} {workingDays === 1 ? "day" : "days"}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 text-[11px] text-gray-500 tabular-nums">
-              <span>{calendarDays} calendar days</span>
-              <span>•</span>
-              <span>{weekendDays} weekend days</span>
-              {holidays.length > 0 && (
-                <>
-                  <span>•</span>
-                  <span className="font-semibold text-purple-700">
-                    {holidays.length} holiday{holidays.length > 1 ? "s" : ""}
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* List excluded holidays if any fall in range */}
-          {holidays.length > 0 && (
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-200/60">
-              <span className="text-[10px] uppercase font-semibold text-gray-400">
-                Statutory Holidays Excluded:
-              </span>
-              {holidays.map((h) => (
-                <span
-                  key={h.date}
-                  className="rounded bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-800"
-                >
-                  {h.name} ({h.date})
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* 4. Live Leave Balance Simulator */}
         {selectedBalance && (
