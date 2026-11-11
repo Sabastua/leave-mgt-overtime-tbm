@@ -47,6 +47,9 @@ export function AdminOverview({
   const memberMap = useMemo(() => new Map(teamMembers.map((m) => [m.email.toLowerCase(), m])), [teamMembers]);
   const leaveTypeMap = useMemo(() => new Map(leaveTypes.map((t) => [t.code, t])), [leaveTypes]);
 
+  // Top-Level Executive Mode Switcher for Clean, Focused UI
+  const [adminActiveView, setAdminActiveView] = useState<"overview" | "approvals" | "radar" | "roster" | "payroll">("overview");
+
   // Approval Center State
   const [approvalTab, setApprovalTab] = useState<"all" | "leaves" | "overtime">("all");
   const [selectedLeaveBatch, setSelectedLeaveBatch] = useState<string[]>([]);
@@ -722,150 +725,349 @@ export function AdminOverview({
 
   return (
     <div className="space-y-8">
-      {/* Top Banner & Quick Controls */}
-      <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-white font-black text-xs shadow-xs">
+      {/* Top Executive Header & Segmented View Switcher */}
+      <div className="space-y-4">
+        <div className="flex flex-col gap-4 rounded-3xl bg-white p-5 shadow-xs ring-1 ring-black/5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand text-white font-black text-sm shadow-xs">
               M
             </span>
-            <h1 className="text-xl font-bold text-gray-900">Admin Metrics &amp; Analytics Center</h1>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight text-gray-900">Admin Metrics &amp; Executive Suite</h1>
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
+                  Live Operations
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                Safaricom Technology Division • Operational capacity, workforce risk radar, approvals, and payroll cutoff
+              </p>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-gray-500">
-            Safaricom Technology Division • Operational capacity, overtime payroll expenditure, and leave liability
-          </p>
+
+          {/* Quick Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setAdminActiveView("payroll")}
+              className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition shadow-xs ${
+                adminActiveView === "payroll"
+                  ? "bg-brand text-white shadow-2xs"
+                  : "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
+              }`}
+            >
+              <BanknotesIcon className="h-4 w-4" />
+              <span>Payroll Generator</span>
+            </button>
+            <button
+              type="button"
+              onClick={exportEntitlementsCSV}
+              className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-2xs transition hover:bg-gray-50 active:scale-95"
+              title="Download full team entitlement balances as CSV"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4 text-gray-500" />
+              <span>Team Balances CSV</span>
+            </button>
+          </div>
         </div>
 
-        {/* Quick Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => {
-              const el = document.getElementById("payroll-report-generator");
-              el?.scrollIntoView({ behavior: "smooth" });
-            }}
-            className="flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-brand-dark active:scale-95"
-          >
-            <BanknotesIcon className="h-4 w-4" />
-            <span>Payroll CSV Generator</span>
-          </button>
-          <button
-            onClick={exportEntitlementsCSV}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-2xs transition hover:bg-gray-50"
-            title="Download full team entitlement balances as CSV"
-          >
-            <ArrowDownTrayIcon className="h-4 w-4 text-gray-500" />
-            <span>Team Entitlements CSV</span>
-          </button>
+        {/* Apple-Style Segmented View Switcher */}
+        <div className="flex items-center overflow-x-auto pb-1 scrollbar-none">
+          <div className="inline-flex p-1.5 bg-[#F2F2F7] rounded-2xl border border-black/[0.04] shadow-inner text-xs font-medium gap-1">
+            <button
+              type="button"
+              onClick={() => setAdminActiveView("overview")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                adminActiveView === "overview"
+                  ? "bg-white text-gray-900 font-bold shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <ChartBarIcon className="h-4 w-4 text-brand" />
+              <span>Executive Overview</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAdminActiveView("approvals")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                adminActiveView === "approvals"
+                  ? "bg-white text-gray-900 font-bold shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <CheckCircleIcon className="h-4 w-4 text-emerald-600" />
+              <span>Approvals &amp; Governance</span>
+              {totalPending > 0 && (
+                <span className="ml-1 rounded-full bg-amber-500 text-white px-2 py-0.5 text-[10px] font-black animate-pulse">
+                  {totalPending}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAdminActiveView("radar")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                adminActiveView === "radar"
+                  ? "bg-white text-gray-900 font-bold shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <ShieldCheckIcon className="h-4 w-4 text-blue-600" />
+              <span>Staffing Risk Radar</span>
+              {forwardRadarData.criticalDaysCount > 0 && (
+                <span className="ml-1 rounded-full bg-rose-500 text-white px-2 py-0.5 text-[10px] font-black">
+                  {forwardRadarData.criticalDaysCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAdminActiveView("roster")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                adminActiveView === "roster"
+                  ? "bg-white text-gray-900 font-bold shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <UsersIcon className="h-4 w-4 text-indigo-600" />
+              <span>Team Balances Roster</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAdminActiveView("payroll")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                adminActiveView === "payroll"
+                  ? "bg-white text-gray-900 font-bold shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <BanknotesIcon className="h-4 w-4 text-emerald-600" />
+              <span>Payroll Cutoff</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* KPI Cards (5 Strategic Cards) */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {/* Card 1: Active Capacity */}
-        <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-              Active Capacity
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <UsersIcon className="h-4 w-4" />
+      {/* 1. EXECUTIVE OVERVIEW VIEW */}
+      {adminActiveView === "overview" && (
+        <div className="space-y-8 animate-in fade-in duration-200">
+          {/* KPI Cards (5 Strategic Cards - Interactive Shortcuts) */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {/* Card 1: Active Capacity */}
+            <div
+              onClick={() => setAdminActiveView("radar")}
+              className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition hover:ring-blue-500/30 hover:shadow-sm cursor-pointer group"
+              title="Click to view Forward Coverage Risk Radar"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 group-hover:text-blue-600 transition">
+                  Active Capacity
+                </span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition">
+                  <UsersIcon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-gray-900">
+                  {capacityPercent}%
+                </span>
+                <span className="text-xs text-gray-500 font-medium">on duty</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+                <span>{activeDutyCount} of {activeMembers.length} available</span>
+                <span className="text-[11px] font-semibold text-blue-600 group-hover:underline">Radar &rarr;</span>
+              </div>
             </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-gray-900">
-              {capacityPercent}%
-            </span>
-            <span className="text-xs text-gray-500 font-medium">on duty</span>
-          </div>
-          <p className="mt-2 text-xs text-gray-600">
-            {activeDutyCount} of {activeMembers.length} available today
-          </p>
-        </div>
 
-        {/* Card 2: Pending Approvals */}
-        <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-              Pending Approvals
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-              <ClockIcon className="h-4 w-4" />
+            {/* Card 2: Pending Approvals */}
+            <div
+              onClick={() => setAdminActiveView("approvals")}
+              className={`rounded-2xl bg-white p-5 shadow-xs ring-1 transition cursor-pointer group hover:shadow-sm ${
+                totalPending > 0
+                  ? "ring-amber-400/80 bg-amber-50/20 hover:ring-amber-500"
+                  : "ring-black/5 hover:ring-amber-500/30"
+              }`}
+              title="Click to open Approvals & Governance Suite"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 group-hover:text-amber-600 transition">
+                  Pending Approvals
+                </span>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${
+                  totalPending > 0 ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-500"
+                }`}>
+                  <ClockIcon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className={`text-2xl font-black ${totalPending > 0 ? "text-amber-700" : "text-gray-900"}`}>
+                  {totalPending}
+                </span>
+                <span className="text-xs text-gray-500 font-medium">requests</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+                <span>{pendingLeaves.length} leave, {pendingOvertime.length} OT</span>
+                <span className="text-[11px] font-semibold text-amber-600 group-hover:underline">Review &rarr;</span>
+              </div>
             </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-amber-700">
-              {totalPending}
-            </span>
-            <span className="text-xs text-gray-500 font-medium">requests</span>
-          </div>
-          <p className="mt-2 text-xs text-gray-600">
-            {pendingLeaves.length} leave, {pendingOvertime.length} overtime
-          </p>
-        </div>
 
-        {/* Card 3: Days Taken this Year */}
-        <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-              Leaves Taken ({currentYear})
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-              <CalendarIcon className="h-4 w-4" />
+            {/* Card 3: Days Taken this Year */}
+            <div
+              onClick={() => setAdminActiveView("roster")}
+              className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition hover:ring-emerald-500/30 hover:shadow-sm cursor-pointer group"
+              title="Click to view Team Leave Entitlements & Balances"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 group-hover:text-emerald-600 transition">
+                  Leaves Taken ({currentYear})
+                </span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition">
+                  <CalendarIcon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-gray-900">
+                  {totalLeaveDaysTaken}
+                </span>
+                <span className="text-xs text-gray-500 font-medium">working days</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+                <span>Avg {(totalLeaveDaysTaken / (activeMembers.length || 1)).toFixed(1)} days/mbr</span>
+                <span className="text-[11px] font-semibold text-emerald-600 group-hover:underline">Roster &rarr;</span>
+              </div>
             </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-gray-900">
-              {totalLeaveDaysTaken}
-            </span>
-            <span className="text-xs text-gray-500 font-medium">working days</span>
-          </div>
-          <p className="mt-2 text-xs text-gray-600">
-            Avg {(totalLeaveDaysTaken / (activeMembers.length || 1)).toFixed(1)} days / member
-          </p>
-        </div>
 
-        {/* Card 4: Overtime Expenditure */}
-        <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-              Approved Overtime
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-              <ClockIcon className="h-4 w-4" />
+            {/* Card 4: Overtime Expenditure */}
+            <div
+              onClick={() => setAdminActiveView("payroll")}
+              className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition hover:ring-purple-500/30 hover:shadow-sm cursor-pointer group"
+              title="Click to view Payroll Cutoff Generator"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 group-hover:text-purple-600 transition">
+                  Approved Overtime
+                </span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition">
+                  <ClockIcon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-gray-900">
+                  {totalOvertimeHours.toFixed(1)}
+                </span>
+                <span className="text-xs text-gray-500 font-medium">hours</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+                <span>{paidOvertimeHours.toFixed(1)}h Paid • {toilOvertimeHours.toFixed(1)}h TOIL</span>
+                <span className="text-[11px] font-semibold text-purple-600 group-hover:underline">Payroll &rarr;</span>
+              </div>
             </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-gray-900">
-              {totalOvertimeHours.toFixed(1)}
-            </span>
-            <span className="text-xs text-gray-500 font-medium">hours</span>
-          </div>
-          <p className="mt-2 text-xs text-gray-600">
-            {paidOvertimeHours.toFixed(1)}h Paid • {toilOvertimeHours.toFixed(1)}h TOIL
-          </p>
-        </div>
 
-        {/* Card 5: Unspent Team Liability */}
-        <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-              Unspent Liability
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
-              <BuildingOfficeIcon className="h-4 w-4" />
+            {/* Card 5: Staffing Risk / Liability */}
+            <div
+              onClick={() => setAdminActiveView(forwardRadarData.criticalDaysCount > 0 ? "radar" : "roster")}
+              className={`rounded-2xl bg-white p-5 shadow-xs ring-1 transition cursor-pointer group hover:shadow-sm ${
+                forwardRadarData.criticalDaysCount > 0
+                  ? "ring-rose-400/80 bg-rose-50/20 hover:ring-rose-500"
+                  : "ring-black/5 hover:ring-indigo-500/30"
+              }`}
+              title={forwardRadarData.criticalDaysCount > 0 ? "Click to view Risk Radar" : "Click to view Team Balances"}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 group-hover:text-rose-600 transition">
+                  {forwardRadarData.criticalDaysCount > 0 ? "Staffing Risk Days" : "Unspent Liability"}
+                </span>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${
+                  forwardRadarData.criticalDaysCount > 0 ? "bg-rose-100 text-rose-700" : "bg-rose-50 text-rose-600"
+                }`}>
+                  {forwardRadarData.criticalDaysCount > 0 ? (
+                    <ShieldCheckIcon className="h-4 w-4" />
+                  ) : (
+                    <BuildingOfficeIcon className="h-4 w-4" />
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className={`text-2xl font-black ${forwardRadarData.criticalDaysCount > 0 ? "text-rose-700" : "text-gray-900"}`}>
+                  {forwardRadarData.criticalDaysCount > 0 ? forwardRadarData.criticalDaysCount : teamLiability.totalRemaining}
+                </span>
+                <span className="text-xs text-gray-500 font-medium">
+                  {forwardRadarData.criticalDaysCount > 0 ? "critical days" : "days left"}
+                </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+                <span>
+                  {forwardRadarData.criticalDaysCount > 0
+                    ? `< ${minOnDutyStaff} on duty in ${radarWindowDays}d`
+                    : `${activeMembers.length} active team members`}
+                </span>
+                <span className={`text-[11px] font-semibold ${
+                  forwardRadarData.criticalDaysCount > 0 ? "text-rose-600" : "text-indigo-600"
+                } group-hover:underline`}>
+                  {forwardRadarData.criticalDaysCount > 0 ? "Inspect &rarr;" : "Roster &rarr;"}
+                </span>
+              </div>
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-gray-900">
-              {teamLiability.totalRemaining}
-            </span>
-            <span className="text-xs text-gray-500 font-medium">days left</span>
-          </div>
-          <p className="mt-2 text-xs text-gray-600">
-            Across {activeMembers.length} active team members
-          </p>
-        </div>
-      </div>
+
+          {/* Proactive Risk & Action Banners */}
+          {(totalPending > 0 || forwardRadarData.criticalDaysCount > 0) && (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {totalPending > 0 && (
+                <div className="flex items-center justify-between rounded-2xl bg-amber-50/80 p-4 border border-amber-200/60 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                      <ClockIcon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-amber-900">
+                        {totalPending} Request{totalPending > 1 ? "s" : ""} Awaiting Review
+                      </p>
+                      <p className="text-[11px] text-amber-700">
+                        {pendingLeaves.length} leave, {pendingOvertime.length} overtime submissions pending your decision.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAdminActiveView("approvals")}
+                    className="ml-3 shrink-0 rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-amber-700 active:scale-95"
+                  >
+                    Review Queue
+                  </button>
+                </div>
+              )}
+
+              {forwardRadarData.criticalDaysCount > 0 && (
+                <div className="flex items-center justify-between rounded-2xl bg-rose-50/80 p-4 border border-rose-200/60 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+                      <ShieldCheckIcon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-rose-900">
+                        {forwardRadarData.criticalDaysCount} Critical Staffing Day{forwardRadarData.criticalDaysCount > 1 ? "s" : ""}
+                      </p>
+                      <p className="text-[11px] text-rose-700">
+                        On-duty staffing drops below minimum threshold ({minOnDutyStaff}) in next {radarWindowDays} days.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAdminActiveView("radar")}
+                    className="ml-3 shrink-0 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-rose-700 active:scale-95"
+                  >
+                    Inspect Radar
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
       {/* Currently On Leave & Ongoing Progress */}
       <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
@@ -955,375 +1157,6 @@ export function AdminOverview({
             })}
           </div>
         )}
-      </section>
-
-      {/* Step 3: Forward Coverage & Minimum Staffing Risk Radar */}
-      <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5" id="forward-coverage-risk-radar">
-        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-gray-100 pb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white text-xs font-black shadow-xs">
-                <ShieldCheckIcon className="h-4 w-4" />
-              </span>
-              <h2 className="text-base font-bold text-gray-900">
-                Forward Coverage &amp; Minimum Staffing Risk Radar
-              </h2>
-            </div>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Next {radarWindowDays} days forward projection • Proactively flags minimum staffing breaches, understaffing risks, and relief clashes
-            </p>
-          </div>
-
-          {/* Radar Controls: Horizon, SLA Minimums, Filter */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Window Toggle */}
-            <div className="flex items-center rounded-xl bg-gray-100 p-1 text-xs">
-              <button
-                type="button"
-                onClick={() => setRadarWindowDays(30)}
-                className={`rounded-lg px-2.5 py-1 font-bold transition active:scale-95 ${
-                  radarWindowDays === 30
-                    ? "bg-white text-gray-900 shadow-2xs"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                30 Days
-              </button>
-              <button
-                type="button"
-                onClick={() => setRadarWindowDays(60)}
-                className={`rounded-lg px-2.5 py-1 font-bold transition active:scale-95 ${
-                  radarWindowDays === 60
-                    ? "bg-white text-gray-900 shadow-2xs"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                60 Days
-              </button>
-            </div>
-
-            {/* Minimum On-Duty Selector */}
-            <div className="flex items-center gap-1.5 rounded-xl border border-black/10 bg-[#F2F2F7] px-2.5 py-1 text-xs">
-              <span className="font-semibold text-gray-500">Min On-Duty:</span>
-              <select
-                value={minOnDutyStaff}
-                onChange={(e) => setMinOnDutyStaff(Number(e.target.value))}
-                className="bg-transparent font-bold text-gray-900 focus:outline-none cursor-pointer"
-              >
-                <option value={1}>1 Engineer</option>
-                <option value={2}>2 Engineers (SLA)</option>
-                <option value={3}>3 Engineers</option>
-                <option value={4}>4 Engineers</option>
-              </select>
-            </div>
-
-            {/* Filter Toggle */}
-            <button
-              type="button"
-              onClick={() => setRadarFilter((f) => (f === "all" ? "risk_only" : "all"))}
-              className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
-                radarFilter === "risk_only"
-                  ? "bg-rose-600 text-white shadow-2xs"
-                  : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <FunnelIcon className="h-3.5 w-3.5" />
-              <span>{radarFilter === "risk_only" ? "Showing Risks Only" : "Show All Days"}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* SLA Status Summary Cards */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 mb-5">
-          <div
-            className={`rounded-xl border p-3.5 transition ${
-              forwardRadarData.criticalDaysCount > 0
-                ? "border-red-200 bg-red-50/70 text-red-900"
-                : "border-gray-200 bg-gray-50/60 text-gray-700"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider">
-                Critical SLA Breaches
-              </span>
-              <ExclamationTriangleIcon
-                className={`h-4 w-4 ${
-                  forwardRadarData.criticalDaysCount > 0 ? "text-red-600" : "text-gray-400"
-                }`}
-              />
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black font-mono">
-                {forwardRadarData.criticalDaysCount}
-              </span>
-              <span className="text-xs font-medium">days under minimum staffing</span>
-            </div>
-            <p className="mt-1 text-[11px] opacity-80">
-              Approved leaves cause staffing to fall below {minOnDutyStaff} engineers
-            </p>
-          </div>
-
-          <div
-            className={`rounded-xl border p-3.5 transition ${
-              forwardRadarData.pendingRiskDaysCount > 0
-                ? "border-amber-200 bg-amber-50/70 text-amber-900"
-                : "border-gray-200 bg-gray-50/60 text-gray-700"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider">
-                Pending Approval Warnings
-              </span>
-              <ClockIcon
-                className={`h-4 w-4 ${
-                  forwardRadarData.pendingRiskDaysCount > 0 ? "text-amber-600" : "text-gray-400"
-                }`}
-              />
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black font-mono">
-                {forwardRadarData.pendingRiskDaysCount}
-              </span>
-              <span className="text-xs font-medium">days at potential risk</span>
-            </div>
-            <p className="mt-1 text-[11px] opacity-80">
-              If pending leave requests are approved, staffing SLA will be breached
-            </p>
-          </div>
-
-          <div
-            className={`rounded-xl border p-3.5 transition ${
-              forwardRadarData.clashDaysCount > 0
-                ? "border-purple-200 bg-purple-50/70 text-purple-900"
-                : "border-gray-200 bg-gray-50/60 text-gray-700"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider">
-                Double Handover Conflicts
-              </span>
-              <UsersIcon
-                className={`h-4 w-4 ${
-                  forwardRadarData.clashDaysCount > 0 ? "text-purple-600" : "text-gray-400"
-                }`}
-              />
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black font-mono">
-                {forwardRadarData.clashDaysCount}
-              </span>
-              <span className="text-xs font-medium">relief clash dates</span>
-            </div>
-            <p className="mt-1 text-[11px] opacity-80">
-              One colleague assigned as relief for 2+ members simultaneously
-            </p>
-          </div>
-        </div>
-
-        {/* Forward Radar Horizon Strip / Matrix */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-gray-500 font-medium px-1">
-            <span>Forward Timeline Radar ({radarWindowDays} Days Horizon)</span>
-            <span className="text-[11px]">Click any date to inspect full daily on-duty roster</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10">
-            {forwardRadarData.days
-              .filter((day) => {
-                if (radarFilter === "risk_only") {
-                  return day.isCritical || day.isPendingRisk || day.handoverClashes.length > 0;
-                }
-                return true;
-              })
-              .map((day) => {
-                const isSelected = selectedRadarDate === day.dateStr;
-                let borderClass = "border-gray-200 bg-white hover:border-gray-300";
-                let badgeClass = "bg-gray-100 text-gray-600";
-                let statusLabel = "Healthy";
-
-                if (day.isCritical) {
-                  borderClass = "border-red-400 bg-red-50/50 hover:border-red-500 ring-1 ring-red-400/30";
-                  badgeClass = "bg-red-100 text-red-800 font-bold";
-                  statusLabel = "Breach";
-                } else if (day.isPendingRisk) {
-                  borderClass = "border-amber-300 bg-amber-50/40 hover:border-amber-400 ring-1 ring-amber-300/30";
-                  badgeClass = "bg-amber-100 text-amber-800 font-bold";
-                  statusLabel = "Risk";
-                } else if (day.handoverClashes.length > 0) {
-                  borderClass = "border-purple-300 bg-purple-50/40 hover:border-purple-400 ring-1 ring-purple-300/30";
-                  badgeClass = "bg-purple-100 text-purple-800 font-bold";
-                  statusLabel = "Clash";
-                } else if (day.isWeekend) {
-                  borderClass = "border-gray-100 bg-gray-50/60";
-                  badgeClass = "bg-gray-100 text-gray-400";
-                  statusLabel = "Weekend";
-                }
-
-                return (
-                  <button
-                    key={day.dateStr}
-                    type="button"
-                    onClick={() => setSelectedRadarDate(isSelected ? null : day.dateStr)}
-                    className={`flex flex-col justify-between rounded-xl border p-2.5 text-left transition-all duration-200 active:scale-95 ${borderClass} ${
-                      isSelected ? "ring-2 ring-brand" : ""
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between text-[10px] text-gray-400">
-                        <span className="font-semibold uppercase">{day.dayOfWeek}</span>
-                        <span className={`rounded-sm px-1 py-0.2 text-[9px] ${badgeClass}`}>
-                          {statusLabel}
-                        </span>
-                      </div>
-                      <div className="text-xs font-bold text-gray-900 mt-0.5">
-                        {day.displayDate}
-                      </div>
-                    </div>
-
-                    <div className="mt-2">
-                      <div className="flex items-baseline justify-between text-[11px] font-mono">
-                        <span className="font-extrabold text-gray-900">
-                          {day.availableStaff}/{activeMembers.length}
-                        </span>
-                        <span className="text-[10px] text-gray-400">
-                          {day.capacityPercent}%
-                        </span>
-                      </div>
-                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                        <div
-                          className={`h-full rounded-full transition-all duration-300 ${
-                            day.isCritical
-                              ? "bg-red-500"
-                              : day.isPendingRisk
-                              ? "bg-amber-500"
-                              : "bg-emerald-500"
-                          }`}
-                          style={{ width: `${day.capacityPercent}%` }}
-                        />
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-          </div>
-        </div>
-
-        {/* Selected Day Inspector Modal / Drawer */}
-        {selectedRadarDate && (() => {
-          const inspectedDay = forwardRadarData.days.find((d) => d.dateStr === selectedRadarDate);
-          if (!inspectedDay) return null;
-
-          const onDutyMembers = activeMembers.filter(
-            (m) =>
-              !inspectedDay.approvedLeaves.some((l) => l.email.toLowerCase() === m.email.toLowerCase()) &&
-              !inspectedDay.pendingLeaves.some((l) => l.email.toLowerCase() === m.email.toLowerCase())
-          );
-
-          return (
-            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/70 p-4 animate-in fade-in">
-              <div className="flex items-center justify-between border-b border-gray-200/80 pb-2.5 mb-3">
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-4 w-4 text-brand" />
-                  <span className="font-bold text-gray-900 text-sm">
-                    Staffing Roster Breakdown for {inspectedDay.dayOfWeek}, {inspectedDay.dateStr}
-                  </span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                      inspectedDay.isCritical
-                        ? "bg-red-100 text-red-800"
-                        : inspectedDay.isPendingRisk
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-emerald-100 text-emerald-800"
-                    }`}
-                  >
-                    {inspectedDay.availableStaff} of {activeMembers.length} Available On Duty ({inspectedDay.capacityPercent}%)
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRadarDate(null)}
-                  className="rounded-lg text-xs font-semibold text-gray-500 hover:text-gray-800"
-                >
-                  Close Inspector
-                </button>
-              </div>
-
-              {/* Handover Overload Alerts */}
-              {inspectedDay.handoverClashes.length > 0 && (
-                <div className="mb-3 rounded-lg border border-purple-200 bg-purple-50 p-2.5 text-xs text-purple-900">
-                  <span className="font-bold block">Relief Overload Conflict Detected:</span>
-                  {inspectedDay.handoverClashes.map((c) => (
-                    <div key={c.handoverEmail} className="mt-0.5 text-[11px]">
-                      • <strong>{c.handoverName}</strong> is assigned as relief for {c.count} team members ({c.coveringFor.join(", ")}) on this date.
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 text-xs">
-                {/* On Duty */}
-                <div className="rounded-lg bg-white p-3 border border-gray-200">
-                  <span className="font-bold text-emerald-800 uppercase text-[10px] block mb-1.5">
-                    Active On Duty ({onDutyMembers.length})
-                  </span>
-                  <div className="space-y-1">
-                    {onDutyMembers.length === 0 ? (
-                      <span className="text-gray-400 italic">No engineers on active duty</span>
-                    ) : (
-                      onDutyMembers.map((m) => (
-                        <div key={m.email} className="font-medium text-gray-800">
-                          {m.full_name || m.email}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Approved Leaves */}
-                <div className="rounded-lg bg-white p-3 border border-gray-200">
-                  <span className="font-bold text-gray-700 uppercase text-[10px] block mb-1.5">
-                    On Approved Leave ({inspectedDay.approvedLeaves.length})
-                  </span>
-                  <div className="space-y-1.5">
-                    {inspectedDay.approvedLeaves.length === 0 ? (
-                      <span className="text-gray-400 italic">No approved leaves</span>
-                    ) : (
-                      inspectedDay.approvedLeaves.map((l) => (
-                        <div key={l.email}>
-                          <span className="font-semibold text-gray-900">{l.requester}</span>
-                          <span className="text-[10px] text-gray-500 block">
-                            {l.type} {l.handover ? `• Relief: ${memberMap.get(l.handover.toLowerCase())?.full_name || l.handover}` : ""}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Pending Requests */}
-                <div className="rounded-lg bg-white p-3 border border-gray-200">
-                  <span className="font-bold text-amber-800 uppercase text-[10px] block mb-1.5">
-                    Pending Leave Requests ({inspectedDay.pendingLeaves.length})
-                  </span>
-                  <div className="space-y-1.5">
-                    {inspectedDay.pendingLeaves.length === 0 ? (
-                      <span className="text-gray-400 italic">No pending requests</span>
-                    ) : (
-                      inspectedDay.pendingLeaves.map((l) => (
-                        <div key={l.email}>
-                          <span className="font-semibold text-amber-900">{l.requester}</span>
-                          <span className="text-[10px] text-amber-700 block">
-                            {l.type} {l.handover ? `• Relief: ${memberMap.get(l.handover.toLowerCase())?.full_name || l.handover}` : ""}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
       </section>
 
       {/* Visual Analytics & Charts Center */}
@@ -1589,325 +1422,12 @@ export function AdminOverview({
           </div>
         </section>
       </div>
-
-      {/* Automated Payroll Report Generator (Date-Range & Filterable CSV) */}
-      <section
-        id="payroll-report-generator"
-        className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5 border-2 border-brand/20"
-      >
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-xs">
-                P
-              </span>
-              <h2 className="text-lg font-bold text-gray-900">
-                Automated Payroll &amp; HR Report Generator
-              </h2>
-            </div>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Generate structured, audit-ready CSV exports for HR payroll processing within custom cut-off dates
-            </p>
-          </div>
-
-          {/* Quick cycle presets */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] uppercase font-bold text-gray-400">Cycles:</span>
-            <button
-              type="button"
-              onClick={() => {
-                setReportStartDate(firstDayOfMonth);
-                setReportEndDate(todayStr);
-              }}
-              className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200 transition"
-            >
-              This Month
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const prevMonth = new Date().getMonth();
-                const m = prevMonth === 0 ? 12 : prevMonth;
-                const y = prevMonth === 0 ? currentYear - 1 : currentYear;
-                const mStr = String(m).padStart(2, "0");
-                const lastDay = new Date(y, m, 0).getDate();
-                setReportStartDate(`${y}-${mStr}-01`);
-                setReportEndDate(`${y}-${mStr}-${lastDay}`);
-              }}
-              className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200 transition"
-            >
-              Last Month
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                // Safaricom standard 21st to 20th cut-off cycle
-                const curMonth = new Date().getMonth() + 1;
-                const prevM = curMonth === 1 ? 12 : curMonth - 1;
-                const y = curMonth === 1 ? currentYear - 1 : currentYear;
-                setReportStartDate(`${y}-${String(prevM).padStart(2, "0")}-21`);
-                setReportEndDate(`${currentYear}-${String(curMonth).padStart(2, "0")}-20`);
-              }}
-              className="rounded-lg bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand-dark hover:bg-brand/20 transition"
-            >
-              Cycle (21st - 20th)
-            </button>
-          </div>
         </div>
+      )}
 
-        {/* Filter Controls Grid */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 bg-gray-50/70 p-4 rounded-xl border border-gray-200 mb-5">
-          {/* Start Date */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
-              Start Date (Cut-off From)
-            </label>
-            <input
-              type="date"
-              value={reportStartDate}
-              onChange={(e) => setReportStartDate(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
-            />
-          </div>
-
-          {/* End Date */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
-              End Date (Cut-off To)
-            </label>
-            <input
-              type="date"
-              value={reportEndDate}
-              onChange={(e) => setReportEndDate(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
-            />
-          </div>
-
-          {/* Member Filter */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
-              Filter by Colleague
-            </label>
-            <select
-              value={reportMemberFilter}
-              onChange={(e) => setReportMemberFilter(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
-            >
-              <option value="all">All Team Members ({activeMembers.length})</option>
-              {activeMembers.map((m) => (
-                <option key={m.email} value={m.email}>
-                  {m.full_name || m.email}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Report Category */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
-              Record Category
-            </label>
-            <select
-              value={reportTypeFilter}
-              onChange={(e) => setReportTypeFilter(e.target.value as any)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
-            >
-              <option value="all">Unified (Overtime &amp; Leaves)</option>
-              <option value="overtime_paid">Paid Overtime Claims Only</option>
-              <option value="overtime_toil">TOIL Claims Only</option>
-              <option value="leaves">Approved Leaves Only</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Live Filter Summary & Download Action */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-xl bg-emerald-50/60 p-4 border border-emerald-200">
-          <div className="flex flex-wrap items-center gap-4 text-xs">
-            <div>
-              <span className="text-gray-500">Cycle Range:</span>{" "}
-              <strong className="text-gray-900 font-mono">
-                {reportStartDate} &rarr; {reportEndDate}
-              </strong>
-            </div>
-            <div>
-              <span className="text-gray-500">Overtime Claims:</span>{" "}
-              <strong className="text-blue-900 font-bold">
-                {matchedPayrollRecords.overtime.length} ({matchedPayrollRecords.totalOtHours.toFixed(1)}h total)
-              </strong>
-            </div>
-            <div>
-              <span className="text-gray-500">Paid OT:</span>{" "}
-              <strong className="text-emerald-900 font-bold">
-                {matchedPayrollRecords.totalPaidOtHours.toFixed(1)}h
-              </strong>
-            </div>
-            <div>
-              <span className="text-gray-500">Leave Days:</span>{" "}
-              <strong className="text-purple-900 font-bold">
-                {matchedPayrollRecords.totalLeaveDays} working days
-              </strong>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={generateFilteredPayrollCSV}
-            disabled={matchedPayrollRecords.overtime.length === 0 && matchedPayrollRecords.leaves.length === 0}
-            className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ArrowDownTrayIcon className="h-4 w-4" />
-            <span>
-              Download Payroll CSV ({matchedPayrollRecords.overtime.length + matchedPayrollRecords.leaves.length} records)
-            </span>
-          </button>
-        </div>
-      </section>
-
-      {/* Team Entitlements & Balances Table with Search and Progress Bars */}
-      <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">
-              Team Leave Entitlements &amp; Exhaustion Tracker ({currentYear})
-            </h2>
-            <p className="text-xs text-gray-500">
-              Allowance balances and exhaustion rate for all {activeMembers.length} active team members
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Sorting */}
-            <div className="flex items-center gap-1 text-xs">
-              <span className="text-gray-400 font-bold uppercase text-[10px]">Sort:</span>
-              <select
-                value={memberSort}
-                onChange={(e) => setMemberSort(e.target.value as any)}
-                className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-2xs focus:border-brand focus:outline-none"
-              >
-                <option value="least_remaining">Least Annual Leave Left</option>
-                <option value="most_taken">Most Days Taken</option>
-                <option value="name">Name (A-Z)</option>
-              </select>
-            </div>
-
-            {/* Search */}
-            <div className="relative w-full sm:w-56">
-              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Search member..."
-                className="block w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
-              >
-              </input>
-            </div>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
-                <th className="py-3 pr-4">Team Member</th>
-                <th className="px-3 py-3">Role</th>
-                <th className="px-3 py-3 min-w-[180px]">Annual Leave (21d)</th>
-                <th className="px-3 py-3 text-right">Sick (14d)</th>
-                <th className="px-3 py-3 text-right">Compassionate (5d)</th>
-                <th className="px-3 py-3 text-right">Study (5d)</th>
-                <th className="px-3 py-3 text-right">Leave Taken</th>
-                <th className="px-3 py-3 text-right">OT Logged</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {processedMembers.map(({ member, bals, annualRemaining, annualEntitled, annualCarried, annualPercent, totalTaken, totalOtHours }) => {
-                const sickBal = bals.find((b) => b.leaveType.code === "sick");
-                const compassionateBal = bals.find((b) => b.leaveType.code === "compassionate");
-                const studyBal = bals.find((b) => b.leaveType.code === "study");
-
-                return (
-                  <tr key={member.email} className="hover:bg-gray-50/50 transition">
-                    <td className="py-3 pr-4">
-                      <div className="font-bold text-gray-900">
-                        {member.full_name || member.email}
-                      </div>
-                      <div className="text-[11px] text-gray-400">{member.email}</div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          member.role === "approver"
-                            ? "bg-brand/10 text-brand-dark"
-                            : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {member.role === "approver" ? "Approver" : "Staff"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-mono font-bold text-gray-900">
-                          {annualRemaining}{" "}
-                          <span className="font-normal text-gray-400">
-                            /{annualEntitled} left
-                          </span>
-                          {annualCarried > 0 && (
-                            <span className="ml-1 text-[10px] text-emerald-700 font-medium">
-                              (+{annualCarried}d)
-                            </span>
-                          )}
-                        </span>
-                        <span
-                          className={`font-semibold ${
-                            annualRemaining <= 5
-                              ? "text-red-600 font-bold"
-                              : annualRemaining <= 10
-                              ? "text-amber-600"
-                              : "text-gray-500"
-                          }`}
-                        >
-                          {annualPercent}%
-                        </span>
-                      </div>
-                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                        <div
-                          className={`h-full rounded-full transition-all duration-300 ${
-                            annualPercent > 50
-                              ? "bg-emerald-500"
-                              : annualPercent > 20
-                              ? "bg-amber-500"
-                              : "bg-red-500"
-                          }`}
-                          style={{ width: `${annualPercent}%` }}
-                        />
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-right font-mono font-semibold text-gray-800">
-                      {sickBal?.remaining ?? 14}
-                      <span className="font-normal text-gray-400">/14</span>
-                    </td>
-                    <td className="px-3 py-3 text-right font-mono font-semibold text-gray-800">
-                      {compassionateBal?.remaining ?? 5}
-                      <span className="font-normal text-gray-400">/5</span>
-                    </td>
-                    <td className="px-3 py-3 text-right font-mono font-semibold text-gray-800">
-                      {studyBal?.remaining ?? 5}
-                      <span className="font-normal text-gray-400">/5</span>
-                    </td>
-                    <td className="px-3 py-3 text-right font-mono font-bold text-gray-900">
-                      {totalTaken}d
-                    </td>
-                    <td className="px-3 py-3 text-right font-mono font-bold text-blue-700">
-                      {totalOtHours > 0 ? `${totalOtHours.toFixed(1)}h` : "-"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
+      {/* 2. APPROVALS & GOVERNANCE VIEW */}
+      {adminActiveView === "approvals" && (
+        <div className="animate-in fade-in duration-200">
       {/* Manager Governance & Decision Suite */}
       <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5" id="manager-governance-center">
         {/* Top-level Suite Navigation Tabs */}
@@ -2792,6 +2312,710 @@ export function AdminOverview({
       </div>
     )}
       </section>
+        </div>
+      )}
+
+      {/* 3. FORWARD RISK RADAR VIEW */}
+      {adminActiveView === "radar" && (
+        <div className="animate-in fade-in duration-200">
+      {/* Step 3: Forward Coverage & Minimum Staffing Risk Radar */}
+      <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5" id="forward-coverage-risk-radar">
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-gray-100 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white text-xs font-black shadow-xs">
+                <ShieldCheckIcon className="h-4 w-4" />
+              </span>
+              <h2 className="text-base font-bold text-gray-900">
+                Forward Coverage &amp; Minimum Staffing Risk Radar
+              </h2>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Next {radarWindowDays} days forward projection • Proactively flags minimum staffing breaches, understaffing risks, and relief clashes
+            </p>
+          </div>
+
+          {/* Radar Controls: Horizon, SLA Minimums, Filter */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Window Toggle */}
+            <div className="flex items-center rounded-xl bg-gray-100 p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setRadarWindowDays(30)}
+                className={`rounded-lg px-2.5 py-1 font-bold transition active:scale-95 ${
+                  radarWindowDays === 30
+                    ? "bg-white text-gray-900 shadow-2xs"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                30 Days
+              </button>
+              <button
+                type="button"
+                onClick={() => setRadarWindowDays(60)}
+                className={`rounded-lg px-2.5 py-1 font-bold transition active:scale-95 ${
+                  radarWindowDays === 60
+                    ? "bg-white text-gray-900 shadow-2xs"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                60 Days
+              </button>
+            </div>
+
+            {/* Minimum On-Duty Selector */}
+            <div className="flex items-center gap-1.5 rounded-xl border border-black/10 bg-[#F2F2F7] px-2.5 py-1 text-xs">
+              <span className="font-semibold text-gray-500">Min On-Duty:</span>
+              <select
+                value={minOnDutyStaff}
+                onChange={(e) => setMinOnDutyStaff(Number(e.target.value))}
+                className="bg-transparent font-bold text-gray-900 focus:outline-none cursor-pointer"
+              >
+                <option value={1}>1 Engineer</option>
+                <option value={2}>2 Engineers (SLA)</option>
+                <option value={3}>3 Engineers</option>
+                <option value={4}>4 Engineers</option>
+              </select>
+            </div>
+
+            {/* Filter Toggle */}
+            <button
+              type="button"
+              onClick={() => setRadarFilter((f) => (f === "all" ? "risk_only" : "all"))}
+              className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
+                radarFilter === "risk_only"
+                  ? "bg-rose-600 text-white shadow-2xs"
+                  : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <FunnelIcon className="h-3.5 w-3.5" />
+              <span>{radarFilter === "risk_only" ? "Showing Risks Only" : "Show All Days"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* SLA Status Summary Cards */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 mb-5">
+          <div
+            className={`rounded-xl border p-3.5 transition ${
+              forwardRadarData.criticalDaysCount > 0
+                ? "border-red-200 bg-red-50/70 text-red-900"
+                : "border-gray-200 bg-gray-50/60 text-gray-700"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider">
+                Critical SLA Breaches
+              </span>
+              <ExclamationTriangleIcon
+                className={`h-4 w-4 ${
+                  forwardRadarData.criticalDaysCount > 0 ? "text-red-600" : "text-gray-400"
+                }`}
+              />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono">
+                {forwardRadarData.criticalDaysCount}
+              </span>
+              <span className="text-xs font-medium">days under minimum staffing</span>
+            </div>
+            <p className="mt-1 text-[11px] opacity-80">
+              Approved leaves cause staffing to fall below {minOnDutyStaff} engineers
+            </p>
+          </div>
+
+          <div
+            className={`rounded-xl border p-3.5 transition ${
+              forwardRadarData.pendingRiskDaysCount > 0
+                ? "border-amber-200 bg-amber-50/70 text-amber-900"
+                : "border-gray-200 bg-gray-50/60 text-gray-700"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider">
+                Pending Approval Warnings
+              </span>
+              <ClockIcon
+                className={`h-4 w-4 ${
+                  forwardRadarData.pendingRiskDaysCount > 0 ? "text-amber-600" : "text-gray-400"
+                }`}
+              />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono">
+                {forwardRadarData.pendingRiskDaysCount}
+              </span>
+              <span className="text-xs font-medium">days at potential risk</span>
+            </div>
+            <p className="mt-1 text-[11px] opacity-80">
+              If pending leave requests are approved, staffing SLA will be breached
+            </p>
+          </div>
+
+          <div
+            className={`rounded-xl border p-3.5 transition ${
+              forwardRadarData.clashDaysCount > 0
+                ? "border-purple-200 bg-purple-50/70 text-purple-900"
+                : "border-gray-200 bg-gray-50/60 text-gray-700"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider">
+                Double Handover Conflicts
+              </span>
+              <UsersIcon
+                className={`h-4 w-4 ${
+                  forwardRadarData.clashDaysCount > 0 ? "text-purple-600" : "text-gray-400"
+                }`}
+              />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono">
+                {forwardRadarData.clashDaysCount}
+              </span>
+              <span className="text-xs font-medium">relief clash dates</span>
+            </div>
+            <p className="mt-1 text-[11px] opacity-80">
+              One colleague assigned as relief for 2+ members simultaneously
+            </p>
+          </div>
+        </div>
+
+        {/* Forward Radar Horizon Strip / Matrix */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-gray-500 font-medium px-1">
+            <span>Forward Timeline Radar ({radarWindowDays} Days Horizon)</span>
+            <span className="text-[11px]">Click any date to inspect full daily on-duty roster</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10">
+            {forwardRadarData.days
+              .filter((day) => {
+                if (radarFilter === "risk_only") {
+                  return day.isCritical || day.isPendingRisk || day.handoverClashes.length > 0;
+                }
+                return true;
+              })
+              .map((day) => {
+                const isSelected = selectedRadarDate === day.dateStr;
+                let borderClass = "border-gray-200 bg-white hover:border-gray-300";
+                let badgeClass = "bg-gray-100 text-gray-600";
+                let statusLabel = "Healthy";
+
+                if (day.isCritical) {
+                  borderClass = "border-red-400 bg-red-50/50 hover:border-red-500 ring-1 ring-red-400/30";
+                  badgeClass = "bg-red-100 text-red-800 font-bold";
+                  statusLabel = "Breach";
+                } else if (day.isPendingRisk) {
+                  borderClass = "border-amber-300 bg-amber-50/40 hover:border-amber-400 ring-1 ring-amber-300/30";
+                  badgeClass = "bg-amber-100 text-amber-800 font-bold";
+                  statusLabel = "Risk";
+                } else if (day.handoverClashes.length > 0) {
+                  borderClass = "border-purple-300 bg-purple-50/40 hover:border-purple-400 ring-1 ring-purple-300/30";
+                  badgeClass = "bg-purple-100 text-purple-800 font-bold";
+                  statusLabel = "Clash";
+                } else if (day.isWeekend) {
+                  borderClass = "border-gray-100 bg-gray-50/60";
+                  badgeClass = "bg-gray-100 text-gray-400";
+                  statusLabel = "Weekend";
+                }
+
+                return (
+                  <button
+                    key={day.dateStr}
+                    type="button"
+                    onClick={() => setSelectedRadarDate(isSelected ? null : day.dateStr)}
+                    className={`flex flex-col justify-between rounded-xl border p-2.5 text-left transition-all duration-200 active:scale-95 ${borderClass} ${
+                      isSelected ? "ring-2 ring-brand" : ""
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] text-gray-400">
+                        <span className="font-semibold uppercase">{day.dayOfWeek}</span>
+                        <span className={`rounded-sm px-1 py-0.2 text-[9px] ${badgeClass}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-gray-900 mt-0.5">
+                        {day.displayDate}
+                      </div>
+                    </div>
+
+                    <div className="mt-2">
+                      <div className="flex items-baseline justify-between text-[11px] font-mono">
+                        <span className="font-extrabold text-gray-900">
+                          {day.availableStaff}/{activeMembers.length}
+                        </span>
+                        <span className="text-[10px] text-gray-400">
+                          {day.capacityPercent}%
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            day.isCritical
+                              ? "bg-red-500"
+                              : day.isPendingRisk
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          }`}
+                          style={{ width: `${day.capacityPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+
+        {/* Selected Day Inspector Modal / Drawer */}
+        {selectedRadarDate && (() => {
+          const inspectedDay = forwardRadarData.days.find((d) => d.dateStr === selectedRadarDate);
+          if (!inspectedDay) return null;
+
+          const onDutyMembers = activeMembers.filter(
+            (m) =>
+              !inspectedDay.approvedLeaves.some((l) => l.email.toLowerCase() === m.email.toLowerCase()) &&
+              !inspectedDay.pendingLeaves.some((l) => l.email.toLowerCase() === m.email.toLowerCase())
+          );
+
+          return (
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/70 p-4 animate-in fade-in">
+              <div className="flex items-center justify-between border-b border-gray-200/80 pb-2.5 mb-3">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4 text-brand" />
+                  <span className="font-bold text-gray-900 text-sm">
+                    Staffing Roster Breakdown for {inspectedDay.dayOfWeek}, {inspectedDay.dateStr}
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                      inspectedDay.isCritical
+                        ? "bg-red-100 text-red-800"
+                        : inspectedDay.isPendingRisk
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-emerald-100 text-emerald-800"
+                    }`}
+                  >
+                    {inspectedDay.availableStaff} of {activeMembers.length} Available On Duty ({inspectedDay.capacityPercent}%)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRadarDate(null)}
+                  className="rounded-lg text-xs font-semibold text-gray-500 hover:text-gray-800"
+                >
+                  Close Inspector
+                </button>
+              </div>
+
+              {/* Handover Overload Alerts */}
+              {inspectedDay.handoverClashes.length > 0 && (
+                <div className="mb-3 rounded-lg border border-purple-200 bg-purple-50 p-2.5 text-xs text-purple-900">
+                  <span className="font-bold block">Relief Overload Conflict Detected:</span>
+                  {inspectedDay.handoverClashes.map((c) => (
+                    <div key={c.handoverEmail} className="mt-0.5 text-[11px]">
+                      • <strong>{c.handoverName}</strong> is assigned as relief for {c.count} team members ({c.coveringFor.join(", ")}) on this date.
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 text-xs">
+                {/* On Duty */}
+                <div className="rounded-lg bg-white p-3 border border-gray-200">
+                  <span className="font-bold text-emerald-800 uppercase text-[10px] block mb-1.5">
+                    Active On Duty ({onDutyMembers.length})
+                  </span>
+                  <div className="space-y-1">
+                    {onDutyMembers.length === 0 ? (
+                      <span className="text-gray-400 italic">No engineers on active duty</span>
+                    ) : (
+                      onDutyMembers.map((m) => (
+                        <div key={m.email} className="font-medium text-gray-800">
+                          {m.full_name || m.email}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Approved Leaves */}
+                <div className="rounded-lg bg-white p-3 border border-gray-200">
+                  <span className="font-bold text-gray-700 uppercase text-[10px] block mb-1.5">
+                    On Approved Leave ({inspectedDay.approvedLeaves.length})
+                  </span>
+                  <div className="space-y-1.5">
+                    {inspectedDay.approvedLeaves.length === 0 ? (
+                      <span className="text-gray-400 italic">No approved leaves</span>
+                    ) : (
+                      inspectedDay.approvedLeaves.map((l) => (
+                        <div key={l.email}>
+                          <span className="font-semibold text-gray-900">{l.requester}</span>
+                          <span className="text-[10px] text-gray-500 block">
+                            {l.type} {l.handover ? `• Relief: ${memberMap.get(l.handover.toLowerCase())?.full_name || l.handover}` : ""}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Pending Requests */}
+                <div className="rounded-lg bg-white p-3 border border-gray-200">
+                  <span className="font-bold text-amber-800 uppercase text-[10px] block mb-1.5">
+                    Pending Leave Requests ({inspectedDay.pendingLeaves.length})
+                  </span>
+                  <div className="space-y-1.5">
+                    {inspectedDay.pendingLeaves.length === 0 ? (
+                      <span className="text-gray-400 italic">No pending requests</span>
+                    ) : (
+                      inspectedDay.pendingLeaves.map((l) => (
+                        <div key={l.email}>
+                          <span className="font-semibold text-amber-900">{l.requester}</span>
+                          <span className="text-[10px] text-amber-700 block">
+                            {l.type} {l.handover ? `• Relief: ${memberMap.get(l.handover.toLowerCase())?.full_name || l.handover}` : ""}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      </section>
+        </div>
+      )}
+
+      {/* 4. TEAM ROSTER & BALANCES VIEW */}
+      {adminActiveView === "roster" && (
+        <div className="animate-in fade-in duration-200">
+      {/* Team Entitlements & Balances Table with Search and Progress Bars */}
+      <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">
+              Team Leave Entitlements &amp; Exhaustion Tracker ({currentYear})
+            </h2>
+            <p className="text-xs text-gray-500">
+              Allowance balances and exhaustion rate for all {activeMembers.length} active team members
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Sorting */}
+            <div className="flex items-center gap-1 text-xs">
+              <span className="text-gray-400 font-bold uppercase text-[10px]">Sort:</span>
+              <select
+                value={memberSort}
+                onChange={(e) => setMemberSort(e.target.value as any)}
+                className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-2xs focus:border-brand focus:outline-none"
+              >
+                <option value="least_remaining">Least Annual Leave Left</option>
+                <option value="most_taken">Most Days Taken</option>
+                <option value="name">Name (A-Z)</option>
+              </select>
+            </div>
+
+            {/* Search */}
+            <div className="relative w-full sm:w-56">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="Search member..."
+                className="block w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+              >
+              </input>
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
+                <th className="py-3 pr-4">Team Member</th>
+                <th className="px-3 py-3">Role</th>
+                <th className="px-3 py-3 min-w-[180px]">Annual Leave (21d)</th>
+                <th className="px-3 py-3 text-right">Sick (14d)</th>
+                <th className="px-3 py-3 text-right">Compassionate (5d)</th>
+                <th className="px-3 py-3 text-right">Study (5d)</th>
+                <th className="px-3 py-3 text-right">Leave Taken</th>
+                <th className="px-3 py-3 text-right">OT Logged</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {processedMembers.map(({ member, bals, annualRemaining, annualEntitled, annualCarried, annualPercent, totalTaken, totalOtHours }) => {
+                const sickBal = bals.find((b) => b.leaveType.code === "sick");
+                const compassionateBal = bals.find((b) => b.leaveType.code === "compassionate");
+                const studyBal = bals.find((b) => b.leaveType.code === "study");
+
+                return (
+                  <tr key={member.email} className="hover:bg-gray-50/50 transition">
+                    <td className="py-3 pr-4">
+                      <div className="font-bold text-gray-900">
+                        {member.full_name || member.email}
+                      </div>
+                      <div className="text-[11px] text-gray-400">{member.email}</div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          member.role === "approver"
+                            ? "bg-brand/10 text-brand-dark"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {member.role === "approver" ? "Approver" : "Staff"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-mono font-bold text-gray-900">
+                          {annualRemaining}{" "}
+                          <span className="font-normal text-gray-400">
+                            /{annualEntitled} left
+                          </span>
+                          {annualCarried > 0 && (
+                            <span className="ml-1 text-[10px] text-emerald-700 font-medium">
+                              (+{annualCarried}d)
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className={`font-semibold ${
+                            annualRemaining <= 5
+                              ? "text-red-600 font-bold"
+                              : annualRemaining <= 10
+                              ? "text-amber-600"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {annualPercent}%
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            annualPercent > 50
+                              ? "bg-emerald-500"
+                              : annualPercent > 20
+                              ? "bg-amber-500"
+                              : "bg-red-500"
+                          }`}
+                          style={{ width: `${annualPercent}%` }}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-right font-mono font-semibold text-gray-800">
+                      {sickBal?.remaining ?? 14}
+                      <span className="font-normal text-gray-400">/14</span>
+                    </td>
+                    <td className="px-3 py-3 text-right font-mono font-semibold text-gray-800">
+                      {compassionateBal?.remaining ?? 5}
+                      <span className="font-normal text-gray-400">/5</span>
+                    </td>
+                    <td className="px-3 py-3 text-right font-mono font-semibold text-gray-800">
+                      {studyBal?.remaining ?? 5}
+                      <span className="font-normal text-gray-400">/5</span>
+                    </td>
+                    <td className="px-3 py-3 text-right font-mono font-bold text-gray-900">
+                      {totalTaken}d
+                    </td>
+                    <td className="px-3 py-3 text-right font-mono font-bold text-blue-700">
+                      {totalOtHours > 0 ? `${totalOtHours.toFixed(1)}h` : "-"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+        </div>
+      )}
+
+      {/* 5. PAYROLL REPORT GENERATOR VIEW */}
+      {adminActiveView === "payroll" && (
+        <div className="animate-in fade-in duration-200">
+      {/* Automated Payroll Report Generator (Date-Range & Filterable CSV) */}
+      <section
+        id="payroll-report-generator"
+        className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5 border-2 border-brand/20"
+      >
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-xs">
+                P
+              </span>
+              <h2 className="text-lg font-bold text-gray-900">
+                Automated Payroll &amp; HR Report Generator
+              </h2>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Generate structured, audit-ready CSV exports for HR payroll processing within custom cut-off dates
+            </p>
+          </div>
+
+          {/* Quick cycle presets */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] uppercase font-bold text-gray-400">Cycles:</span>
+            <button
+              type="button"
+              onClick={() => {
+                setReportStartDate(firstDayOfMonth);
+                setReportEndDate(todayStr);
+              }}
+              className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200 transition"
+            >
+              This Month
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const prevMonth = new Date().getMonth();
+                const m = prevMonth === 0 ? 12 : prevMonth;
+                const y = prevMonth === 0 ? currentYear - 1 : currentYear;
+                const mStr = String(m).padStart(2, "0");
+                const lastDay = new Date(y, m, 0).getDate();
+                setReportStartDate(`${y}-${mStr}-01`);
+                setReportEndDate(`${y}-${mStr}-${lastDay}`);
+              }}
+              className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200 transition"
+            >
+              Last Month
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                // Safaricom standard 21st to 20th cut-off cycle
+                const curMonth = new Date().getMonth() + 1;
+                const prevM = curMonth === 1 ? 12 : curMonth - 1;
+                const y = curMonth === 1 ? currentYear - 1 : currentYear;
+                setReportStartDate(`${y}-${String(prevM).padStart(2, "0")}-21`);
+                setReportEndDate(`${currentYear}-${String(curMonth).padStart(2, "0")}-20`);
+              }}
+              className="rounded-lg bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand-dark hover:bg-brand/20 transition"
+            >
+              Cycle (21st - 20th)
+            </button>
+          </div>
+        </div>
+
+        {/* Filter Controls Grid */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 bg-gray-50/70 p-4 rounded-xl border border-gray-200 mb-5">
+          {/* Start Date */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              Start Date (Cut-off From)
+            </label>
+            <input
+              type="date"
+              value={reportStartDate}
+              onChange={(e) => setReportStartDate(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+            />
+          </div>
+
+          {/* End Date */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              End Date (Cut-off To)
+            </label>
+            <input
+              type="date"
+              value={reportEndDate}
+              onChange={(e) => setReportEndDate(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+            />
+          </div>
+
+          {/* Member Filter */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              Filter by Colleague
+            </label>
+            <select
+              value={reportMemberFilter}
+              onChange={(e) => setReportMemberFilter(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+            >
+              <option value="all">All Team Members ({activeMembers.length})</option>
+              {activeMembers.map((m) => (
+                <option key={m.email} value={m.email}>
+                  {m.full_name || m.email}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Report Category */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              Record Category
+            </label>
+            <select
+              value={reportTypeFilter}
+              onChange={(e) => setReportTypeFilter(e.target.value as any)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 shadow-2xs focus:border-brand focus:outline-none"
+            >
+              <option value="all">Unified (Overtime &amp; Leaves)</option>
+              <option value="overtime_paid">Paid Overtime Claims Only</option>
+              <option value="overtime_toil">TOIL Claims Only</option>
+              <option value="leaves">Approved Leaves Only</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Live Filter Summary & Download Action */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-xl bg-emerald-50/60 p-4 border border-emerald-200">
+          <div className="flex flex-wrap items-center gap-4 text-xs">
+            <div>
+              <span className="text-gray-500">Cycle Range:</span>{" "}
+              <strong className="text-gray-900 font-mono">
+                {reportStartDate} &rarr; {reportEndDate}
+              </strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Overtime Claims:</span>{" "}
+              <strong className="text-blue-900 font-bold">
+                {matchedPayrollRecords.overtime.length} ({matchedPayrollRecords.totalOtHours.toFixed(1)}h total)
+              </strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Paid OT:</span>{" "}
+              <strong className="text-emerald-900 font-bold">
+                {matchedPayrollRecords.totalPaidOtHours.toFixed(1)}h
+              </strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Leave Days:</span>{" "}
+              <strong className="text-purple-900 font-bold">
+                {matchedPayrollRecords.totalLeaveDays} working days
+              </strong>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={generateFilteredPayrollCSV}
+            disabled={matchedPayrollRecords.overtime.length === 0 && matchedPayrollRecords.leaves.length === 0}
+            className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" />
+            <span>
+              Download Payroll CSV ({matchedPayrollRecords.overtime.length + matchedPayrollRecords.leaves.length} records)
+            </span>
+          </button>
+        </div>
+      </section>
+        </div>
+      )}
     </div>
   );
 }
