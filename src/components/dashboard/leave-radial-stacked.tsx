@@ -12,6 +12,17 @@ import {
   ArrowTrendingUpIcon,
 } from "@/components/ui/icons";
 
+function formatLeaveDate(dateStr: string) {
+  try {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    if (!y || !m || !d) return dateStr;
+    const date = new Date(y, m - 1, d);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return dateStr;
+  }
+}
+
 export type RadialStackedCardProps = {
   leaveType: LeaveType;
   entitled: number;
@@ -356,58 +367,40 @@ export function LeaveRadialStackedCard({
         </div>
       </div>
 
-      {/* Applied Leave Journey Countdown: "From When Leave Was Applied to When It Is Supposed to End" */}
-      {appliedLeaveDetails ? (
-        <div className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-950">
-          <div className="flex items-center justify-between font-bold">
-            <span className="flex items-center gap-1.5 text-emerald-900">
-              <CalendarDaysIcon className="h-4 w-4 text-emerald-700 shrink-0" />
-              <span>
-                {appliedLeaveDetails.isOngoing ? "Active Leave In Progress" : "Scheduled Applied Leave"}
-              </span>
+      {/* Applied Leave Status Summary */}
+      {appliedLeaveDetails && (
+        <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-2.5 text-xs text-emerald-950">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 font-medium text-emerald-900">
+              <CalendarDaysIcon className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>{appliedLeaveDetails.isOngoing ? "Active Leave" : "Upcoming Leave"}</span>
             </span>
-            <span className="tabular-nums text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md font-semibold">
-              {appliedLeaveDetails.totalDays} working days applied
+            <span className="tabular-nums font-semibold text-emerald-800 bg-white border border-emerald-200/60 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
+              {appliedLeaveDetails.totalDays} working {appliedLeaveDetails.totalDays === 1 ? "day" : "days"}
             </span>
           </div>
 
-          {/* Applied Start Date -> Supposed to End Date */}
-          <div className="mt-2 flex items-center justify-between text-[11px] text-emerald-800 font-medium">
-            <span>Applied: <strong className="tabular-nums text-emerald-950">{appliedLeaveDetails.startDate}</strong></span>
-            <span>Supposed to End: <strong className="tabular-nums text-emerald-950">{appliedLeaveDetails.endDate}</strong></span>
-          </div>
-
-          {/* Applied Leave Stacked Countdown Bar */}
-          <div className="mt-2 flex h-2 w-full overflow-hidden rounded-full bg-emerald-200/80">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${appliedLeaveDetails.leaveProgressPercent}%` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="h-full bg-slate-500 transition-all"
-              title={`${appliedLeaveDetails.daysOnLeave}d on leave`}
-            />
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${appliedLeaveDetails.leaveRemainingPercent}%` }}
-              transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
-              className="h-full bg-teal-600 transition-all"
-              title={`${appliedLeaveDetails.daysRemainingInLeave}d remaining`}
-            />
-          </div>
-
-          {/* Days on Leave vs Days Remaining */}
-          <div className="mt-1.5 flex items-center justify-between text-[11px]">
-            <span className="text-emerald-800">
-              On leave: <strong className="tabular-nums font-bold text-emerald-950">{appliedLeaveDetails.daysOnLeave}d elapsed</strong>
+          <div className="mt-1.5 flex items-center justify-between text-[11px] text-emerald-800">
+            <span className="tabular-nums font-medium">
+              {formatLeaveDate(appliedLeaveDetails.startDate)} &ndash; {formatLeaveDate(appliedLeaveDetails.endDate)}
             </span>
-            <span className="text-emerald-900">
-              Remaining: <strong className="tabular-nums font-bold text-emerald-950">{appliedLeaveDetails.daysRemainingInLeave}d until end</strong>
+            <span className="font-semibold text-emerald-700">
+              {appliedLeaveDetails.isOngoing
+                ? `${appliedLeaveDetails.daysRemainingInLeave}d remaining`
+                : "Scheduled"}
             </span>
           </div>
-        </div>
-      ) : (
-        <div className="mb-3 rounded-xl border border-dashed border-gray-200 bg-gray-50/50 p-2.5 text-center text-[11px] text-gray-500">
-          <span>No leave active currently • Full annual allowance intact</span>
+
+          {appliedLeaveDetails.isOngoing && (
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-emerald-200/60">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${appliedLeaveDetails.leaveProgressPercent}%` }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="h-full bg-emerald-600 rounded-full"
+              />
+            </div>
+          )}
         </div>
       )}
 
