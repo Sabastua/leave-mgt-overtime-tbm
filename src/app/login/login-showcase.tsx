@@ -1,12 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  CalendarDaysIcon,
-  ClockIcon,
-  UsersIcon,
-  ArrowTrendingUpIcon,
-} from "@/components/ui/icons";
 
 export function LoginShowcase() {
   const [greeting, setGreeting] = useState("Welcome");
@@ -66,14 +60,10 @@ export function LoginShowcase() {
         </div>
       </div>
 
-      {/* Center Content: Creative Storytelling & Live Feature Cards */}
+      {/* Center Content: Creative Storytelling & Feature Cards */}
       <div className="relative z-10 my-auto py-8">
         {/* Dynamic Time Greeting Badge */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-950/50 px-3 py-1 text-xs text-emerald-300 backdrop-blur-md mb-4 shadow-inner">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-          </span>
+        <div className="inline-flex items-center rounded-full border border-emerald-400/25 bg-emerald-950/50 px-3.5 py-1 text-xs text-emerald-300 backdrop-blur-md mb-4 shadow-inner">
           <span className="font-semibold">{greeting}, Team</span>
         </div>
 
@@ -84,68 +74,48 @@ export function LoginShowcase() {
           A unified operations suite engineered for Safaricom teams. Track leave allowances in real-time, submit verified shifts, and access automated approvals.
         </p>
 
-        {/* Floating Creative Feature Cards */}
+        {/* Feature Cards */}
         <div className="mt-8 grid grid-cols-1 xl:grid-cols-2 gap-3 max-w-xl">
           {/* Card 1: Leave Radar */}
-          <div className="group rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
-            <div className="flex items-center justify-between">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
-                <CalendarDaysIcon className="h-4 w-4" />
-              </span>
-              <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                Live Radar
-              </span>
-            </div>
-            <h2 className="mt-2 text-xs font-bold text-white">Leave Allowance Radar</h2>
-            <p className="mt-0.5 text-[11px] text-emerald-200/60 leading-normal">
+          <div className="group rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
+            <span className="inline-block text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              Live Radar
+            </span>
+            <h2 className="mt-2.5 text-xs font-bold text-white">Leave Allowance Radar</h2>
+            <p className="mt-1 text-[11px] text-emerald-200/60 leading-normal">
               Stacked visual balance tracking, carried-forward sync, and automated duration calculations.
             </p>
           </div>
 
           {/* Card 2: Overtime Ledger */}
-          <div className="group rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
-            <div className="flex items-center justify-between">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
-                <ClockIcon className="h-4 w-4" />
-              </span>
-              <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                Tier-1 &amp; Tier-2
-              </span>
-            </div>
-            <h2 className="mt-2 text-xs font-bold text-white">Overtime Ledger</h2>
-            <p className="mt-0.5 text-[11px] text-emerald-200/60 leading-normal">
+          <div className="group rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
+            <span className="inline-block text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              Tier-1 &amp; Tier-2
+            </span>
+            <h2 className="mt-2.5 text-xs font-bold text-white">Overtime Ledger</h2>
+            <p className="mt-1 text-[11px] text-emerald-200/60 leading-normal">
               Rate calculations for normal shifts, night hours, weekend cover, and holiday standby.
             </p>
           </div>
 
           {/* Card 3: Team Roster */}
-          <div className="group rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
-            <div className="flex items-center justify-between">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
-                <UsersIcon className="h-4 w-4" />
-              </span>
-              <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                Zero Conflicts
-              </span>
-            </div>
-            <h2 className="mt-2 text-xs font-bold text-white">Team Calendar &amp; Roster</h2>
-            <p className="mt-0.5 text-[11px] text-emerald-200/60 leading-normal">
+          <div className="group rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
+            <span className="inline-block text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              Zero Conflicts
+            </span>
+            <h2 className="mt-2.5 text-xs font-bold text-white">Team Calendar &amp; Roster</h2>
+            <p className="mt-1 text-[11px] text-emerald-200/60 leading-normal">
               Unified team view with clash detection and manager shift scheduling.
             </p>
           </div>
 
           {/* Card 4: Executive Insights */}
-          <div className="group rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
-            <div className="flex items-center justify-between">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
-                <ArrowTrendingUpIcon className="h-4 w-4" />
-              </span>
-              <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                Payroll Ready
-              </span>
-            </div>
-            <h2 className="mt-2 text-xs font-bold text-white">Payroll &amp; Admin Sync</h2>
-            <p className="mt-0.5 text-[11px] text-emerald-200/60 leading-normal">
+          <div className="group rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
+            <span className="inline-block text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              Payroll Ready
+            </span>
+            <h2 className="mt-2.5 text-xs font-bold text-white">Payroll &amp; Admin Sync</h2>
+            <p className="mt-1 text-[11px] text-emerald-200/60 leading-normal">
               One-click batch reconciliation and exportable audit trails for HR finance.
             </p>
           </div>

@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useEffect } from "react";
 import { loginAction, type LoginState } from "./actions";
-import { EyeIcon, EyeSlashIcon, ShieldCheckIcon, CheckCircleIcon } from "@/components/ui/icons";
+import { EyeIcon, EyeSlashIcon } from "@/components/ui/icons";
 
 const initialState: LoginState = { email: "" };
 const STORAGE_KEY = "safaricom_remembered_email";
@@ -89,9 +89,8 @@ export function LoginForm({ initialError }: { initialError?: string }) {
             Safaricom Email
           </label>
           {emailValue.toLowerCase().endsWith("@safaricom.co.ke") && (
-            <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
-              <CheckCircleIcon className="h-3 w-3" />
-              <span>Safaricom Corporate</span>
+            <span className="text-[11px] font-semibold text-emerald-600">
+              Safaricom Corporate
             </span>
           )}
         </div>
@@ -209,11 +208,8 @@ export function LoginForm({ initialError }: { initialError?: string }) {
       </button>
 
       {/* Security Footer */}
-      <div className="mt-4 rounded-xl bg-gray-50/80 p-2.5 border border-gray-100 flex items-center gap-2 text-[11px] text-gray-500">
-        <ShieldCheckIcon className="h-4 w-4 text-brand shrink-0" />
-        <span>
-          Leave &amp; Overtime Management • Authorized Safaricom Personnel Only
-        </span>
+      <div className="mt-4 rounded-xl bg-gray-50/80 p-2.5 border border-gray-100 text-center text-[11px] text-gray-500">
+        Leave &amp; Overtime Management • Authorized Safaricom Personnel Only
       </div>
     </form>
   );
