@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { LeaveType, LeaveRequest, LeaveBalanceSummary } from "@/lib/leave/types";
 import type { OvertimeRecord, OvertimeStats } from "@/lib/overtime/types";
 import type { AllowedUser } from "@/lib/auth/allowed-users";
@@ -31,6 +31,8 @@ import {
   ShieldCheckIcon,
   BuildingOfficeIcon,
   KeyIcon,
+  BellIcon,
+  TrashIcon,
 } from "@/components/ui/icons";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -79,7 +81,6 @@ export function DashboardShell({
   >("leave");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [dismissedNoticeIds, setDismissedNoticeIds] = useState<string[]>([]);
 
   const [selectedReceiptRecord, setSelectedReceiptRecord] = useState<OvertimeRecord | null>(null);
   const [leaveStatusFilter, setLeaveStatusFilter] = useState<string>("all");
@@ -128,40 +129,77 @@ export function DashboardShell({
   });
   const pendingOvertimeApprovals = allOvertimeRecords.filter((r) => r.status === "pending");
 
-  // Active recent manager decisions for current staff member
-  const recentDecisions = useMemo(() => {
-    const recentLeaves = myLeaveRequests
+  // User Notification Center State
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  const [trashedNoticeIds, setTrashedNoticeIds] = useState<string[]>([]);
+
+  // Load trashed notices from localStorage on client mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`leave_trashed_notices_${currentUserEmail}`);
+      if (stored) {
+        setTrashedNoticeIds(JSON.parse(stored));
+      }
+    } catch {
+      // Fallback silently if localStorage is restricted
+    }
+  }, [currentUserEmail]);
+
+  function trashNotice(id: string) {
+    setTrashedNoticeIds((prev) => {
+      const updated = Array.from(new Set([...prev, id]));
+      try {
+        localStorage.setItem(`leave_trashed_notices_${currentUserEmail}`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  }
+
+  function trashAllNotices() {
+    const allIds = allStaffNotices.map((n) => n.id);
+    setTrashedNoticeIds((prev) => {
+      const updated = Array.from(new Set([...prev, ...allIds]));
+      try {
+        localStorage.setItem(`leave_trashed_notices_${currentUserEmail}`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  }
+
+  // Active notifications sent to the user
+  const allStaffNotices = useMemo(() => {
+    const leaveNotices = myLeaveRequests
       .filter((r) => (r.status === "approved" || r.status === "rejected") && r.reviewed_at)
       .map((r) => ({
         id: `leave-${r.id}`,
-        type: "Leave",
+        type: "Leave" as const,
+        status: r.status as "approved" | "rejected",
         title: `${leaveTypeMap.get(r.leave_type)?.name || r.leave_type} (${r.start_date} to ${r.end_date})`,
-        meta: `${r.working_days} working day(s)`,
-        status: r.status,
+        detail: `${r.working_days} working day(s)`,
         reviewedBy: r.reviewed_by || "F. Mbuthia (Manager)",
         reviewedAt: r.reviewed_at || "",
         note: r.reviewer_note || (r.status === "approved" ? "Approved by manager." : "Declined by manager."),
       }));
 
-    const recentOvertime = myOvertimeRecords
+    const overtimeNotices = myOvertimeRecords
       .filter((r) => (r.status === "approved" || r.status === "rejected") && r.reviewed_at)
       .map((r) => ({
         id: `ot-${r.id}`,
-        type: "Overtime",
-        title: `Overtime worked on ${r.overtime_date} (${r.task_summary})`,
-        meta: `${r.hours} hours (${r.compensatory_choice.toUpperCase()})`,
-        status: r.status,
+        type: "Overtime" as const,
+        status: r.status as "approved" | "rejected",
+        title: `Overtime on ${r.overtime_date} (${r.task_summary})`,
+        detail: `${r.hours} hours • ${r.compensatory_choice.toUpperCase()}`,
         reviewedBy: r.reviewed_by || "F. Mbuthia (Manager)",
         reviewedAt: r.reviewed_at || "",
         note: r.reviewer_note || (r.status === "approved" ? "Approved by manager." : "Declined by manager."),
       }));
 
-    return [...recentLeaves, ...recentOvertime]
-      .filter((n) => !dismissedNoticeIds.includes(n.id))
+    return [...leaveNotices, ...overtimeNotices]
+      .filter((n) => !trashedNoticeIds.includes(n.id))
       .sort((a, b) => b.reviewedAt.localeCompare(a.reviewedAt));
-  }, [myLeaveRequests, myOvertimeRecords, leaveTypeMap, dismissedNoticeIds]);
+  }, [myLeaveRequests, myOvertimeRecords, leaveTypeMap, trashedNoticeIds]);
 
-  const activeNotice = recentDecisions[0] || null;
+  const unreadCount = allStaffNotices.length;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -181,19 +219,45 @@ export function DashboardShell({
           </div>
 
           <div className="flex items-center gap-2.5">
+            {/* Notification Bell Button with Animated Badge */}
+            <button
+              type="button"
+              onClick={() => setIsNotificationCenterOpen(true)}
+              className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-gray-50/80 text-gray-700 transition hover:bg-gray-100 hover:border-gray-300 active:scale-95 cursor-pointer"
+              title={unreadCount > 0 ? `${unreadCount} notification${unreadCount > 1 ? "s" : ""} waiting` : "Notifications"}
+            >
+              <BellIcon className={`h-4.5 w-4.5 ${unreadCount > 0 ? "text-brand" : "text-gray-600"}`} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[10px] font-bold text-white shadow-xs animate-pulse">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Profile Button with Animated Notification Dot */}
             <button
               type="button"
               onClick={() => setIsProfileModalOpen(true)}
-              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-2.5 py-1.5 transition hover:bg-gray-100 hover:border-gray-300 cursor-pointer"
+              className="relative flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-2.5 py-1.5 transition hover:bg-gray-100 hover:border-gray-300 cursor-pointer"
               title="View your profile, entitlements & approver details"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand font-bold text-xs text-white">
+              <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-brand font-bold text-xs text-white">
                 {(currentMember.full_name || currentUserEmail)[0].toUpperCase()}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white shadow-xs animate-bounce">
+                    {unreadCount}
+                  </span>
+                )}
               </div>
               <div className="text-left hidden sm:block">
-                <p className="text-xs font-bold text-gray-900 leading-tight">
-                  {currentMember.full_name || currentUserEmail}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-bold text-gray-900 leading-tight">
+                    {currentMember.full_name || currentUserEmail}
+                  </p>
+                  {unreadCount > 0 && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping" />
+                  )}
+                </div>
                 <p className="text-[10px] text-gray-500 leading-tight">{currentUserEmail}</p>
               </div>
             </button>
@@ -308,65 +372,6 @@ export function DashboardShell({
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-8">
-        {/* Active Staff Decision & Approval Notice */}
-        {activeNotice && (
-          <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl p-5 text-xs border shadow-xs animate-in fade-in ${
-            activeNotice.status === "approved"
-              ? "bg-emerald-50/90 border-emerald-200/80 text-emerald-950"
-              : "bg-red-50/90 border-red-200/80 text-red-950"
-          }`}>
-            <div className="flex items-start gap-3.5">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-2xl shrink-0 text-white shadow-xs ${
-                activeNotice.status === "approved" ? "bg-emerald-600" : "bg-red-600"
-              }`}>
-                {activeNotice.status === "approved" ? (
-                  <CheckCircleIcon className="h-6 w-6" />
-                ) : (
-                  <XCircleIcon className="h-6 w-6" />
-                )}
-              </div>
-              <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-bold text-sm tracking-tight">
-                    {activeNotice.status === "approved" ? "Manager Approval Notification" : "Manager Decision Notice"}
-                  </span>
-                  <span className="rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-700 ring-1 ring-black/5">
-                    {activeNotice.type}
-                  </span>
-                  <span className="text-[11px] text-gray-500 font-medium">
-                    Reviewed on {activeNotice.reviewedAt.slice(0, 10)} by {activeNotice.reviewedBy}
-                  </span>
-                </div>
-                <p className="font-bold text-gray-900 text-xs">
-                  {activeNotice.title} &bull; <span className="text-gray-600">{activeNotice.meta}</span>
-                </p>
-                <div className={`mt-1.5 rounded-xl p-3 text-xs border ${
-                  activeNotice.status === "approved"
-                    ? "bg-white border-emerald-100 text-emerald-900 shadow-2xs"
-                    : "bg-white border-red-100 text-red-900 shadow-2xs"
-                }`}>
-                  <span className="font-bold block text-[11px] uppercase tracking-wider opacity-75 mb-0.5">
-                    Approval Message to Staff:
-                  </span>
-                  <p className="font-medium text-gray-900 leading-relaxed">
-                    {activeNotice.note}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 sm:self-center shrink-0">
-              <button
-                type="button"
-                onClick={() => setDismissedNoticeIds((prev) => [...prev, activeNotice.id])}
-                className="rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs font-bold text-gray-700 shadow-2xs hover:bg-gray-50 active:scale-95 transition cursor-pointer"
-              >
-                Acknowledge
-              </button>
-            </div>
-          </div>
-        )}
-
         {!schemaReady && (
           <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             <p className="font-semibold">Notice: Database Setup</p>
@@ -975,6 +980,139 @@ export function DashboardShell({
           />
         )}
 
+        {/* Notification Center Modal */}
+        {isNotificationCenterOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-2xs animate-in fade-in">
+            <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-black/5 flex flex-col max-h-[85vh]">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand-dark">
+                    <BellIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-gray-900">Notifications</h3>
+                      {allStaffNotices.length > 0 && (
+                        <span className="rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5">
+                          {allStaffNotices.length} active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-500">
+                      Manager decisions, authorization notes, and approval messages
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {allStaffNotices.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={trashAllNotices}
+                      className="flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                      title="Clear all notifications"
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" />
+                      <span>Trash All</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsNotificationCenterOpen(false)}
+                    className="rounded-xl p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                  >
+                    <XCircleIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content List */}
+              <div className="mt-4 overflow-y-auto space-y-3 flex-1 pr-1">
+                {allStaffNotices.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-gray-500 space-y-2">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-gray-400 border border-gray-100">
+                      <CheckCircleIcon className="h-6 w-6 text-emerald-500" />
+                    </div>
+                    <p className="font-bold text-gray-800 text-sm">All caught up</p>
+                    <p className="text-gray-400 max-w-xs mx-auto">
+                      No active decision messages. You have cleared all manager notifications.
+                    </p>
+                  </div>
+                ) : (
+                  allStaffNotices.map((n) => (
+                    <div
+                      key={n.id}
+                      className={`rounded-2xl p-4 border transition-all ${
+                        n.status === "approved"
+                          ? "bg-emerald-50/60 border-emerald-200/80 text-emerald-950"
+                          : "bg-rose-50/60 border-rose-200/80 text-rose-950"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                            n.status === "approved"
+                              ? "bg-emerald-600 text-white"
+                              : "bg-rose-600 text-white"
+                          }`}>
+                            {n.status === "approved" ? "Approved" : "Declined"}
+                          </span>
+                          <span className="rounded-md bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-gray-700 border border-gray-200">
+                            {n.type}
+                          </span>
+                          <span className="text-[10px] text-gray-500">
+                            {n.reviewedAt ? n.reviewedAt.slice(0, 10) : ""}
+                          </span>
+                        </div>
+
+                        {/* Trash Button */}
+                        <button
+                          type="button"
+                          onClick={() => trashNotice(n.id)}
+                          className="rounded-lg p-1.5 text-gray-400 hover:text-rose-600 hover:bg-white/80 transition cursor-pointer"
+                          title="Trash this notification"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <p className="mt-2 text-xs font-bold text-gray-900">
+                        {n.title}
+                      </p>
+                      <p className="text-[11px] text-gray-500">
+                        {n.detail} &bull; Reviewed by {n.reviewedBy}
+                      </p>
+
+                      {/* Manager message body */}
+                      <div className="mt-2.5 rounded-xl bg-white p-3 border border-black/5 text-xs">
+                        <span className="block text-[10px] uppercase font-bold text-gray-400 mb-1">
+                          Manager Message:
+                        </span>
+                        <p className="text-gray-800 font-medium leading-relaxed">
+                          {n.note}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+                <span>Permanent records remain in your request tables</span>
+                <button
+                  type="button"
+                  onClick={() => setIsNotificationCenterOpen(false)}
+                  className="rounded-xl border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Self-Service Profile Modal */}
         {isProfileModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-2xs animate-in fade-in">
@@ -1060,17 +1198,30 @@ export function DashboardShell({
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileModalOpen(false);
-                      setIsPasswordModalOpen(true);
-                    }}
-                    className="flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-                  >
-                    <KeyIcon className="h-4 w-4 text-gray-500" />
-                    <span>Change Password</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileModalOpen(false);
+                        setIsNotificationCenterOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                    >
+                      <BellIcon className="h-4 w-4 text-gray-500" />
+                      <span>Notifications {unreadCount > 0 ? `(${unreadCount})` : ""}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileModalOpen(false);
+                        setIsPasswordModalOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                    >
+                      <KeyIcon className="h-4 w-4 text-gray-500" />
+                      <span>Change Password</span>
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setIsProfileModalOpen(false)}
