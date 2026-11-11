@@ -67,7 +67,7 @@ export default function LoginPage({ searchParams }: { searchParams: SearchParams
 
           {/* Bottom Help Text */}
           <div className="mt-6 text-center text-xs text-gray-400">
-            <span>Safaricom PLC Technology &amp; Operations • Need assistance? Contact your department admin</span>
+            <span>Safaricom PLC • Need assistance? Contact your department admin</span>
           </div>
         </div>
       </main>

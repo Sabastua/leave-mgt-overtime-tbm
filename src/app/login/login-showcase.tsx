@@ -67,9 +67,6 @@ export function LoginShowcase() {
               Internal Portal
             </span>
           </div>
-          <p className="text-xs text-emerald-200/70 font-medium">
-            Technology, Network &amp; Operations
-          </p>
         </div>
       </div>
 
