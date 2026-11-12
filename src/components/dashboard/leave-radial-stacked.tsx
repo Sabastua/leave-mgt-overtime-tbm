@@ -7,9 +7,6 @@ import { calculateWorkingDays } from "@/lib/leave/types";
 import {
   CalendarDaysIcon,
   ClockIcon,
-  CalendarIcon,
-  CheckCircleIcon,
-  ArrowTrendingUpIcon,
 } from "@/components/ui/icons";
 
 function formatLeaveDate(dateStr: string) {
@@ -116,18 +113,18 @@ export function LeaveRadialStackedCard({
     if (annualRemaining === 0) {
       return {
         label: "Depleted",
-        className: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
+        className: "bg-[#FFDAD6] text-[#93000A] border border-[#FFB2B9]",
       };
     }
     if (annualRemaining <= 3 || annualRemainingPercent <= 20) {
       return {
         label: `${annualRemaining}d Left`,
-        className: "bg-rose-50 text-rose-700 ring-1 ring-rose-600/20",
+        className: "bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]",
       };
     }
     return {
       label: `${annualEntitled}d / yr`,
-      className: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600/20",
+      className: "bg-[#C4ECD0] text-[#003317] border border-[#A8D0B5]",
     };
   }, [annualRemaining, annualRemainingPercent, annualEntitled]);
 
@@ -159,7 +156,7 @@ export function LeaveRadialStackedCard({
     : 0;
 
   return (
-    <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+    <div className="group relative flex flex-col justify-between overflow-hidden rounded-lg border border-[#E5E7EB] bg-white p-5 transition-all duration-200 hover:shadow-[0_4px_12px_rgba(10,47,29,0.08)] hover:border-[#BCCABC]">
       {/* Card Header: Leave Type, Annual Allowance & Status */}
       <div>
         <div className="flex items-start justify-between gap-2">
@@ -172,7 +169,7 @@ export function LeaveRadialStackedCard({
                 Annual Entitlement: <strong className="text-gray-900">{annualEntitled} days</strong>
               </span>
               {annualCarried > 0 && (
-                <span className="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                <span className="inline-flex items-center rounded-md bg-[#C4ECD0] px-1.5 py-0.5 text-[10px] font-medium text-[#003317] border border-[#A8D0B5]">
                   +{annualCarried}d carried over
                 </span>
               )}
@@ -369,22 +366,22 @@ export function LeaveRadialStackedCard({
 
       {/* Applied Leave Status Summary */}
       {appliedLeaveDetails && (
-        <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-2.5 text-xs text-emerald-950">
+        <div className="mb-3 rounded-lg border border-[#BCCABC] bg-[#F4F4F4] p-2.5 text-xs text-[#1A1C1C]">
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 font-medium text-emerald-900">
-              <CalendarDaysIcon className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span className="flex items-center gap-1.5 font-medium text-[#0A2F1D]">
+              <CalendarDaysIcon className="h-4 w-4 text-[#00A859] shrink-0" />
               <span>{appliedLeaveDetails.isOngoing ? "Active Leave" : "Upcoming Leave"}</span>
             </span>
-            <span className="tabular-nums font-semibold text-emerald-800 bg-white border border-emerald-200/60 px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
+            <span className="tabular-nums font-semibold text-[#003317] bg-white border border-[#E5E7EB] px-2 py-0.5 rounded-md text-[11px] shadow-2xs">
               {appliedLeaveDetails.totalDays} working {appliedLeaveDetails.totalDays === 1 ? "day" : "days"}
             </span>
           </div>
 
-          <div className="mt-1.5 flex items-center justify-between text-[11px] text-emerald-800">
+          <div className="mt-1.5 flex items-center justify-between text-[11px] text-[#3D4A3F]">
             <span className="tabular-nums font-medium">
               {formatLeaveDate(appliedLeaveDetails.startDate)} &ndash; {formatLeaveDate(appliedLeaveDetails.endDate)}
             </span>
-            <span className="font-semibold text-emerald-700">
+            <span className="font-semibold text-[#00A859]">
               {appliedLeaveDetails.isOngoing
                 ? `${appliedLeaveDetails.daysRemainingInLeave}d remaining`
                 : "Scheduled"}
@@ -392,12 +389,12 @@ export function LeaveRadialStackedCard({
           </div>
 
           {appliedLeaveDetails.isOngoing && (
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-emerald-200/60">
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#E2E2E2]">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${appliedLeaveDetails.leaveProgressPercent}%` }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="h-full bg-emerald-600 rounded-full"
+                className="h-full bg-[#00A859] rounded-full"
               />
             </div>
           )}
@@ -406,9 +403,9 @@ export function LeaveRadialStackedCard({
 
       {/* Pending Requests Notice */}
       {annualPending > 0 && (
-        <div className="mt-2 flex items-center justify-between rounded-xl bg-amber-50/80 px-3 py-1.5 text-[11px] text-amber-800 border border-amber-200/60">
+        <div className="mt-2 flex items-center justify-between rounded-lg bg-[#FEF3C7] px-3 py-1.5 text-[11px] text-[#92400E] border border-[#FDE68A]">
           <span className="flex items-center gap-1 font-medium">
-            <ClockIcon className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+            <ClockIcon className="h-3.5 w-3.5 shrink-0 text-[#F59E0B]" />
             <span>Pending manager review:</span>
           </span>
           <strong className="tabular-nums font-bold">{annualPending}d requested</strong>

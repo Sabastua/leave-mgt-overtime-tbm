@@ -18,29 +18,29 @@ export function LoginShowcase() {
   }, []);
 
   return (
-    <div className="relative hidden w-full lg:flex lg:w-1/2 xl:w-7/12 flex-col justify-between overflow-hidden bg-gradient-to-br from-[#061e14] via-[#09291b] to-[#04120a] p-10 xl:p-14 text-white">
+    <div className="relative hidden w-full lg:flex lg:w-1/2 xl:w-7/12 flex-col justify-between overflow-hidden bg-gradient-to-br from-[#0A2F1D] via-[#0D3823] to-[#04120A] p-10 xl:p-14 text-white">
       {/* Ambient background glowing orbs */}
       <div
-        className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-emerald-500/15 blur-3xl"
+        className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-[#00A859]/15 blur-3xl"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl"
+        className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-[#59DF89]/10 blur-3xl"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute top-1/2 right-10 h-72 w-72 rounded-full bg-teal-500/10 blur-2xl"
+        className="pointer-events-none absolute top-1/2 right-10 h-72 w-72 rounded-full bg-[#006D38]/20 blur-2xl"
         aria-hidden="true"
       />
 
       {/* Top Header: Safaricom Brand Identity */}
-      <div className="relative z-10 flex items-center gap-3.5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#00a651] to-[#007a3d] shadow-lg shadow-emerald-950/40 ring-1 ring-white/20">
+      <div className="relative z-10 flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#00A859] shadow-xs">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 32 32"
-            width="24"
-            height="24"
+            width="22"
+            height="22"
             className="text-white"
           >
             <path
@@ -63,7 +63,7 @@ export function LoginShowcase() {
       {/* Center Content: Creative Storytelling & Feature Cards */}
       <div className="relative z-10 my-auto py-8">
         {/* Dynamic Time Greeting Badge */}
-        <div className="inline-flex items-center rounded-full border border-emerald-400/25 bg-emerald-950/50 px-3.5 py-1 text-xs text-emerald-300 backdrop-blur-md mb-4 shadow-inner">
+        <div className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-[#77FCA3] backdrop-blur-md mb-4 shadow-inner">
           <span className="font-semibold">{greeting}, Team</span>
         </div>
 
@@ -77,8 +77,8 @@ export function LoginShowcase() {
         {/* Feature Cards */}
         <div className="mt-8 grid grid-cols-1 xl:grid-cols-2 gap-3 max-w-xl">
           {/* Card 1: Leave Radar */}
-          <div className="group rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
-            <span className="inline-block text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+          <div className="group rounded-lg border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-[#00A859]/30">
+            <span className="inline-block text-[10px] font-semibold text-[#77FCA3] bg-[#006D38]/50 px-2 py-0.5 rounded-md border border-[#00A859]/30">
               Live Radar
             </span>
             <h2 className="mt-2.5 text-xs font-bold text-white">Leave Allowance Radar</h2>
@@ -88,8 +88,8 @@ export function LoginShowcase() {
           </div>
 
           {/* Card 2: Overtime Ledger */}
-          <div className="group rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
-            <span className="inline-block text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+          <div className="group rounded-lg border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-[#00A859]/30">
+            <span className="inline-block text-[10px] font-semibold text-[#77FCA3] bg-[#006D38]/50 px-2 py-0.5 rounded-md border border-[#00A859]/30">
               Tier-1 &amp; Tier-2
             </span>
             <h2 className="mt-2.5 text-xs font-bold text-white">Overtime Ledger</h2>
@@ -99,8 +99,8 @@ export function LoginShowcase() {
           </div>
 
           {/* Card 3: Team Roster */}
-          <div className="group rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
-            <span className="inline-block text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+          <div className="group rounded-lg border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-[#00A859]/30">
+            <span className="inline-block text-[10px] font-semibold text-[#77FCA3] bg-[#006D38]/50 px-2 py-0.5 rounded-md border border-[#00A859]/30">
               Zero Conflicts
             </span>
             <h2 className="mt-2.5 text-xs font-bold text-white">Team Calendar &amp; Roster</h2>
@@ -110,8 +110,8 @@ export function LoginShowcase() {
           </div>
 
           {/* Card 4: Executive Insights */}
-          <div className="group rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-emerald-400/30">
-            <span className="inline-block text-[10px] font-semibold text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+          <div className="group rounded-lg border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-[#00A859]/30">
+            <span className="inline-block text-[10px] font-semibold text-[#77FCA3] bg-[#006D38]/50 px-2 py-0.5 rounded-md border border-[#00A859]/30">
               Payroll Ready
             </span>
             <h2 className="mt-2.5 text-xs font-bold text-white">Payroll &amp; Admin Sync</h2>

@@ -1,24 +1,177 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f7f5;
-  --foreground: #14211a;
-  --brand: #00a651;
-  --brand-dark: #008a43;
+  --background: #f9f9f9;
+  --foreground: #1a1c1c;
+
+  /* ==========================================================================
+     Safaricom Enterprise Design System Color Tokens
+     ========================================================================== */
+  --surface: #f9f9f9;
+  --surface-dim: #dadada;
+  --surface-bright: #f9f9f9;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f3f3f3;
+  --surface-container: #eeeeee;
+  --surface-container-high: #e8e8e8;
+  --surface-container-highest: #e2e2e2;
+  --on-surface: #1a1c1c;
+  --on-surface-variant: #3d4a3f;
+  --inverse-surface: #2f3131;
+  --inverse-on-surface: #f1f1f1;
+  --outline: #6d7b6e;
+  --outline-variant: #bccabc;
+  --surface-tint: #006d38;
+
+  --primary: #006d38;
+  --on-primary: #ffffff;
+  --primary-container: #00a859;
+  --on-primary-container: #003317;
+  --inverse-primary: #59df89;
+
+  --secondary: #426650;
+  --on-secondary: #ffffff;
+  --secondary-container: #c4ecd0;
+  --on-secondary-container: #486c56;
+
+  --tertiary: #a93249;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #ed657a;
+  --on-tertiary-container: #5d001b;
+
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+
+  --primary-fixed: #77fca3;
+  --primary-fixed-dim: #59df89;
+  --on-primary-fixed: #00210d;
+  --on-primary-fixed-variant: #005228;
+
+  --secondary-fixed: #c4ecd0;
+  --secondary-fixed-dim: #a8d0b5;
+  --on-secondary-fixed: #002111;
+  --on-secondary-fixed-variant: #2b4e3a;
+
+  --tertiary-fixed: #ffdadc;
+  --tertiary-fixed-dim: #ffb2b9;
+  --on-tertiary-fixed: #400010;
+  --on-tertiary-fixed-variant: #891833;
+
+  --on-background: #1a1c1c;
+  --surface-variant: #e2e2e2;
+  --safaricom-green: #00a859;
+  --deep-forest: #0a2f1d;
+  --surface-gray: #f4f4f4;
+
+  --status-active: #2cb34a;
+  --status-pending: #f59e0b;
+  --status-rejected: #ef4444;
+
+  /* Aliases for established component classes */
+  --brand: #00a859;
+  --brand-dark: #006d38;
 }
 
-@theme inline {
+@theme {
+  --color-surface: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-on-surface: var(--inverse-on-surface);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+  --color-surface-tint: var(--surface-tint);
+
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-inverse-primary: var(--inverse-primary);
+
+  --color-secondary: var(--secondary);
+  --color-on-secondary: var(--on-secondary);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary-container: var(--on-secondary-container);
+
+  --color-tertiary: var(--tertiary);
+  --color-on-tertiary: var(--on-tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-on-tertiary-container: var(--on-tertiary-container);
+
+  --color-error: var(--error);
+  --color-on-error: var(--on-error);
+  --color-error-container: var(--error-container);
+  --color-on-error-container: var(--on-error-container);
+
+  --color-primary-fixed: var(--primary-fixed);
+  --color-primary-fixed-dim: var(--primary-fixed-dim);
+  --color-on-primary-fixed: var(--on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--on-primary-fixed-variant);
+
+  --color-secondary-fixed: var(--secondary-fixed);
+  --color-secondary-fixed-dim: var(--secondary-fixed-dim);
+  --color-on-secondary-fixed: var(--on-secondary-fixed);
+  --color-on-secondary-fixed-variant: var(--on-secondary-fixed-variant);
+
+  --color-tertiary-fixed: var(--tertiary-fixed);
+  --color-tertiary-fixed-dim: var(--tertiary-fixed-dim);
+  --color-on-tertiary-fixed: var(--on-tertiary-fixed);
+  --color-on-tertiary-fixed-variant: var(--on-tertiary-fixed-variant);
+
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-on-background: var(--on-background);
+  --color-surface-variant: var(--surface-variant);
+  --color-safaricom-green: var(--safaricom-green);
+  --color-deep-forest: var(--deep-forest);
+  --color-surface-gray: var(--surface-gray);
+
+  --color-status-active: var(--status-active);
+  --color-status-pending: var(--status-pending);
+  --color-status-rejected: var(--status-rejected);
+
   --color-brand: var(--brand);
   --color-brand-dark: var(--brand-dark);
-  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Border Radii: Soft Shape Language */
+  --radius-sm: 0.125rem;
+  --radius-DEFAULT: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 0.75rem;
+  --radius-full: 9999px;
+
+  /* Spacing Scale */
+  --spacing-gutter: 1.5rem;
+  --spacing-margin: 2rem;
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2.5rem;
+
+  /* Elevation Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(10, 47, 29, 0.08);
+  --shadow-lg: 0 8px 24px rgba(10, 47, 29, 0.10);
 }
 
 /* ==========================================================================
-   Global Uniform Typography Engine
-   Enforces a single, unified high-grade font across all HTML elements
+   Global Uniform Typography Engine (Inter)
    ========================================================================== */
 *,
 *::before,
@@ -34,7 +187,7 @@ label,
 table,
 th,
 td {
-  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-family: var(--font-sans), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -47,16 +200,13 @@ pre {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--surface);
+  color: var(--on-surface);
 }
 
 /* ==========================================================================
-   iPhone / iOS Theme for Form Inputs
-   Applied to inputs, selects, and textareas
+   Enterprise Soft Input & Form Field System (4px - 8px radius)
    ========================================================================== */
-
-/* Base iPhone input field styling */
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -67,18 +217,19 @@ input[type="search"],
 select,
 textarea {
   font-family: inherit !important;
-  background-color: #f2f2f7 !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  border-radius: 1rem !important; /* 16px iOS continuous squircle */
-  color: #1c1c1e !important;
-  font-size: 0.9375rem !important; /* 15px standard iOS text */
+  background-color: #f4f4f4 !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.5rem !important; /* 8px subtle soft border-radius */
+  color: #1a1c1c !important;
+  font-size: 0.875rem !important; /* 14px body-md */
+  line-height: 1.25rem !important;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02) !important;
-  transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transition: background-color 0.15s ease,
+              border-color 0.15s ease,
+              box-shadow 0.15s ease !important;
 }
 
-/* Hover: subtle iOS cell darkening */
+/* Hover: subtle darkening */
 input[type="text"]:hover:not(:focus):not(:disabled),
 input[type="email"]:hover:not(:focus):not(:disabled),
 input[type="password"]:hover:not(:focus):not(:disabled),
@@ -88,11 +239,11 @@ input[type="number"]:hover:not(:focus):not(:disabled),
 input[type="search"]:hover:not(:focus):not(:disabled),
 select:hover:not(:focus):not(:disabled),
 textarea:hover:not(:focus):not(:disabled) {
-  background-color: #ebebf0 !important;
-  border-color: rgba(0, 0, 0, 0.14) !important;
+  background-color: #eeeeee !important;
+  border-color: #bccabc !important;
 }
 
-/* Focus: pure white elevation with iOS expansion ring */
+/* Focus: pure white elevation with primary green ring */
 input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="password"]:focus,
@@ -103,31 +254,31 @@ input[type="search"]:focus,
 select:focus,
 textarea:focus {
   background-color: #ffffff !important;
-  border-color: #00a651 !important;
+  border-color: #00a859 !important;
   outline: none !important;
-  box-shadow: 0 0 0 4px rgba(0, 166, 81, 0.16), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 0 0 3px rgba(0, 168, 89, 0.15), 0 1px 2px rgba(10, 47, 29, 0.05) !important;
 }
 
-/* iOS Placeholder */
+/* Placeholder */
 input::placeholder,
 textarea::placeholder {
-  color: #8e8e93 !important; /* Apple iOS System Gray */
+  color: #6d7b6e !important;
   font-weight: 400 !important;
 }
 
-/* iOS Select Chevron */
+/* Select Dropdown Chevron */
 select {
   appearance: none !important;
   -webkit-appearance: none !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='%238E8E93'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9' /%3E%3C/svg%3E") !important;
-  background-position: right 0.875rem center !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='%236D7B6E'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9' /%3E%3C/svg%3E") !important;
+  background-position: right 0.75rem center !important;
   background-repeat: no-repeat !important;
   background-size: 1.125rem 1.125rem !important;
-  padding-right: 2.5rem !important;
+  padding-right: 2.25rem !important;
   cursor: pointer;
 }
 
-/* iOS Date & Time picker adjustments */
+/* Date & Time picker adjustments */
 input[type="date"],
 input[type="time"] {
   position: relative;
@@ -139,8 +290,8 @@ input[type="time"] {
 input:disabled,
 select:disabled,
 textarea:disabled {
-  background-color: #e5e5ea !important;
-  color: #8e8e93 !important;
+  background-color: #e2e2e2 !important;
+  color: #6d7b6e !important;
   cursor: not-allowed !important;
   opacity: 0.65 !important;
 }
@@ -150,8 +301,22 @@ input[type="checkbox"],
 input[type="radio"] {
   background-color: initial !important;
   border: initial !important;
-  border-radius: 0.375rem !important;
-  accent-color: #00a651;
+  border-radius: 0.25rem !important;
+  accent-color: #00a859;
   box-shadow: none !important;
   cursor: pointer;
+}
+
+/* ==========================================================================
+   Elevation & Surface Helpers
+   ========================================================================== */
+.card-surface {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card-surface:hover {
+  box-shadow: 0 4px 12px rgba(10, 47, 29, 0.08);
 }

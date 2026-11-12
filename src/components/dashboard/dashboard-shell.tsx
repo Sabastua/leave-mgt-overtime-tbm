@@ -36,10 +36,10 @@ import {
 } from "@/components/ui/icons";
 
 const STATUS_BADGE: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-800 ring-1 ring-amber-600/20",
-  approved: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600/20",
-  rejected: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
-  cancelled: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/20",
+  pending: "bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]",
+  approved: "bg-[#C4ECD0] text-[#003317] border border-[#A8D0B5]",
+  rejected: "bg-[#FFDAD6] text-[#93000A] border border-[#FFB2B9]",
+  cancelled: "bg-[#E2E2E2] text-[#3D4A3F] border border-[#BCCABC]",
 };
 
 const COLOR_ACCENT: Record<string, { bar: string; badge: string }> = {
@@ -194,9 +194,10 @@ export function DashboardShell({
         note: r.reviewer_note || (r.status === "approved" ? "Approved by manager." : "Declined by manager."),
       }));
 
-    return [...leaveNotices, ...overtimeNotices]
-      .filter((n) => !trashedNoticeIds.includes(n.id))
-      .sort((a, b) => b.reviewedAt.localeCompare(a.reviewedAt));
+    const combined = [...leaveNotices, ...overtimeNotices].filter(
+      (n) => !trashedNoticeIds.includes(n.id)
+    );
+    return combined.slice().sort((a, b) => b.reviewedAt.localeCompare(a.reviewedAt));
   }, [myLeaveRequests, myOvertimeRecords, leaveTypeMap, trashedNoticeIds]);
 
   const unreadCount = allStaffNotices.length;
@@ -204,31 +205,41 @@ export function DashboardShell({
   return (
     <div className="flex flex-1 flex-col">
       {/* Top Header */}
-      <header className="border-b border-black/5 bg-white">
+      <header className="border-b border-[#E5E7EB] bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand font-bold text-white shadow-xs">
-              L
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#00A859] font-bold text-white shadow-xs">
+              <svg
+                viewBox="0 0 32 32"
+                className="h-5 w-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 11 C21 8.8 19 7 16 7 C12.7 7 10.5 8.8 10.5 11.5 C10.5 14.2 12.8 15.2 16 16 C19.2 16.8 21.5 17.8 21.5 20.5 C21.5 23.2 19.3 25 16 25 C12.5 25 10.5 23 10.5 20.8" />
+              </svg>
             </div>
             <div>
-              <span className="font-bold text-gray-900">Leave &amp; Overtime Management</span>
-              <span className="ml-2 rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-semibold text-brand-dark">
+              <span className="font-bold text-[#1A1C1C]">Leave &amp; Overtime Management</span>
+              <span className="ml-2 rounded-md bg-[#C4ECD0] px-2 py-0.5 text-xs font-medium text-[#003317]">
                 {currentMember.role === "approver" ? "Approver / Manager" : "Team Member"}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             {/* Notification Bell Button with Animated Badge */}
             <button
               type="button"
               onClick={() => setIsNotificationCenterOpen(true)}
-              className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-gray-50/80 text-gray-700 transition hover:bg-gray-100 hover:border-gray-300 active:scale-95 cursor-pointer"
+              className="relative flex h-8.5 w-8.5 items-center justify-center rounded-lg border border-[#E5E7EB] bg-[#F4F4F4] text-[#3D4A3F] transition hover:bg-[#E8E8E8] hover:border-[#BCCABC] active:scale-95 cursor-pointer"
               title={unreadCount > 0 ? `${unreadCount} notification${unreadCount > 1 ? "s" : ""} waiting` : "Notifications"}
             >
-              <BellIcon className={`h-4.5 w-4.5 ${unreadCount > 0 ? "text-brand" : "text-gray-600"}`} />
+              <BellIcon className={`h-4.5 w-4.5 ${unreadCount > 0 ? "text-[#00A859]" : "text-[#3D4A3F]"}`} />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-white text-[10px] font-bold text-gray-900 ring-1 ring-black/10 shadow-xs animate-pulse">
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-white text-[10px] font-bold text-[#1A1C1C] ring-1 ring-black/10 shadow-xs animate-pulse">
                   {unreadCount}
                 </span>
               )}
@@ -238,34 +249,34 @@ export function DashboardShell({
             <button
               type="button"
               onClick={() => setIsProfileModalOpen(true)}
-              className="relative flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-2.5 py-1.5 transition hover:bg-gray-100 hover:border-gray-300 cursor-pointer"
+              className="relative flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F4F4F4] px-2.5 py-1.5 transition hover:bg-[#E8E8E8] hover:border-[#BCCABC] cursor-pointer"
               title="View your profile, entitlements & approver details"
             >
-              <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-brand font-bold text-xs text-white">
+              <div className="relative flex h-6.5 w-6.5 items-center justify-center rounded-md bg-[#00A859] font-bold text-xs text-white">
                 {(currentMember.full_name || currentUserEmail)[0].toUpperCase()}
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 px-0.5 items-center justify-center rounded-full bg-white text-[9px] font-bold text-gray-900 ring-1 ring-black/10 shadow-xs animate-bounce">
+                  <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 px-0.5 items-center justify-center rounded-full bg-white text-[9px] font-bold text-[#1A1C1C] ring-1 ring-black/10 shadow-xs animate-bounce">
                     {unreadCount}
                   </span>
                 )}
               </div>
               <div className="text-left hidden sm:block">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-xs font-bold text-gray-900 leading-tight">
+                  <p className="text-xs font-semibold text-[#1A1C1C] leading-tight">
                     {currentMember.full_name || currentUserEmail}
                   </p>
                   {unreadCount > 0 && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-white ring-1 ring-gray-400 animate-ping" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-white ring-1 ring-[#6D7B6E] animate-ping" />
                   )}
                 </div>
-                <p className="text-[10px] text-gray-500 leading-tight">{currentUserEmail}</p>
+                <p className="text-[10px] text-[#3D4A3F] leading-tight">{currentUserEmail}</p>
               </div>
             </button>
 
             <button
               type="button"
               onClick={() => setIsPasswordModalOpen(true)}
-              className="rounded-xl border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 cursor-pointer"
+              className="rounded-lg border border-[#E5E7EB] px-2.5 py-1.5 text-xs font-medium text-[#3D4A3F] transition hover:bg-[#E8E8E8] cursor-pointer"
               title="Change your password"
             >
               Password
@@ -273,7 +284,7 @@ export function DashboardShell({
             <form action={signOut}>
               <button
                 type="submit"
-                className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 cursor-pointer"
+                className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-xs font-medium text-[#3D4A3F] transition hover:bg-[#E8E8E8] cursor-pointer"
               >
                 Sign out
               </button>
@@ -289,14 +300,14 @@ export function DashboardShell({
               onClick={() => setActiveTab("leave")}
               className={`flex items-center gap-2 border-b-2 py-3 px-1 transition ${
                 activeTab === "leave"
-                  ? "border-brand text-brand font-semibold"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                  ? "border-[#00A859] text-[#00A859] font-semibold"
+                  : "border-transparent text-[#3D4A3F] hover:border-[#BCCABC] hover:text-[#1A1C1C]"
               }`}
             >
               <CalendarIcon className="h-4 w-4" />
               <span>Leave Requests</span>
               {pendingLeaveApprovals.length > 0 && isApprover && (
-                <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+                <span className="ml-1 rounded-md bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] px-2 py-0.5 text-[11px] font-bold">
                   {pendingLeaveApprovals.length}
                 </span>
               )}
@@ -307,14 +318,14 @@ export function DashboardShell({
               onClick={() => setActiveTab("overtime")}
               className={`flex items-center gap-2 border-b-2 py-3 px-1 transition ${
                 activeTab === "overtime"
-                  ? "border-brand text-brand font-semibold"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                  ? "border-[#00A859] text-[#00A859] font-semibold"
+                  : "border-transparent text-[#3D4A3F] hover:border-[#BCCABC] hover:text-[#1A1C1C]"
               }`}
             >
               <ClockIcon className="h-4 w-4" />
               <span>Overtime Claims</span>
               {pendingOvertimeApprovals.length > 0 && isApprover && (
-                <span className="ml-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-900">
+                <span className="ml-1 rounded-md bg-[#C4ECD0] text-[#003317] border border-[#A8D0B5] px-2 py-0.5 text-[11px] font-bold">
                   {pendingOvertimeApprovals.length}
                 </span>
               )}
@@ -325,8 +336,8 @@ export function DashboardShell({
               onClick={() => setActiveTab("calendar")}
               className={`flex items-center gap-2 border-b-2 py-3 px-1 transition ${
                 activeTab === "calendar"
-                  ? "border-brand text-brand font-semibold"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                  ? "border-[#00A859] text-[#00A859] font-semibold"
+                  : "border-transparent text-[#3D4A3F] hover:border-[#BCCABC] hover:text-[#1A1C1C]"
               }`}
             >
               <CalendarIcon className="h-4 w-4" />
@@ -339,14 +350,14 @@ export function DashboardShell({
                 onClick={() => setActiveTab("admin")}
                 className={`flex items-center gap-2 border-b-2 py-3 px-1 transition ${
                   activeTab === "admin"
-                    ? "border-brand text-brand font-semibold"
-                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                    ? "border-[#00A859] text-[#00A859] font-semibold"
+                  : "border-transparent text-[#3D4A3F] hover:border-[#BCCABC] hover:text-[#1A1C1C]"
                 }`}
               >
                 <ChartBarIcon className="h-4 w-4" />
                 <span>Admin &amp; Metrics</span>
                 {(pendingLeaveApprovals.length > 0 || pendingOvertimeApprovals.length > 0) && (
-                  <span className="ml-1 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-bold text-brand-dark">
+                  <span className="ml-1 rounded-md bg-[#C4ECD0] text-[#003317] border border-[#A8D0B5] px-2 py-0.5 text-[11px] font-bold">
                     {pendingLeaveApprovals.length + pendingOvertimeApprovals.length}
                   </span>
                 )}
@@ -359,8 +370,8 @@ export function DashboardShell({
                 onClick={() => setActiveTab("team")}
                 className={`flex items-center gap-2 border-b-2 py-3 px-1 transition ${
                   activeTab === "team"
-                    ? "border-brand text-brand font-semibold"
-                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                    ? "border-[#00A859] text-[#00A859] font-semibold"
+                    : "border-transparent text-[#3D4A3F] hover:border-[#BCCABC] hover:text-[#1A1C1C]"
                 }`}
               >
                 <UsersIcon className="h-4 w-4" />
@@ -983,18 +994,18 @@ export function DashboardShell({
         {/* Notification Center Modal */}
         {isNotificationCenterOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-2xs animate-in fade-in">
-            <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-black/5 flex flex-col max-h-[85vh]">
+            <div className="w-full max-w-lg rounded-xl bg-white p-6 border border-[#E5E7EB] shadow-lg flex flex-col max-h-[85vh]">
               {/* Header */}
               <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand-dark">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#C4ECD0] text-[#003317]">
                     <BellIcon className="h-5 w-5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="text-base font-bold text-gray-900">Notifications</h3>
                       {allStaffNotices.length > 0 && (
-                        <span className="rounded-full bg-white border border-gray-200 text-gray-800 text-[10px] font-bold px-2 py-0.5 shadow-2xs">
+                        <span className="rounded-md bg-white border border-[#E5E7EB] text-[#1A1C1C] text-[10px] font-bold px-2 py-0.5 shadow-2xs">
                           {allStaffNotices.length} active
                         </span>
                       )}
@@ -1116,16 +1127,16 @@ export function DashboardShell({
         {/* Self-Service Profile Modal */}
         {isProfileModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-2xs animate-in fade-in">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-black/5">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 border border-[#E5E7EB] shadow-lg">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
-                  <UserIcon className="h-5 w-5 text-brand" />
-                  <h3 className="text-base font-bold text-gray-900">My Profile &amp; Entitlements</h3>
+                  <UserIcon className="h-5 w-5 text-[#00A859]" />
+                  <h3 className="text-base font-bold text-[#1A1C1C]">My Profile &amp; Entitlements</h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsProfileModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-600 transition cursor-pointer"
+                  className="text-[#6D7B6E] hover:text-[#1A1C1C] transition cursor-pointer"
                 >
                   <XCircleIcon className="h-5 w-5" />
                 </button>
@@ -1133,20 +1144,20 @@ export function DashboardShell({
 
               <div className="mt-4 space-y-4 text-xs">
                 {/* Identity Card */}
-                <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-4 border border-gray-100">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand text-xl font-bold text-white shadow-xs shrink-0">
+                <div className="flex items-center gap-3 rounded-lg bg-[#F4F4F4] p-4 border border-[#E5E7EB]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#00A859] text-xl font-bold text-white shadow-xs shrink-0">
                     {(currentMember.full_name || currentUserEmail)[0].toUpperCase()}
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 text-sm">
+                    <h4 className="font-bold text-[#1A1C1C] text-sm">
                       {currentMember.full_name || currentUserEmail}
                     </h4>
-                    <p className="text-gray-500 text-[11px]">{currentUserEmail}</p>
+                    <p className="text-[#3D4A3F] text-[11px]">{currentUserEmail}</p>
                     <div className="mt-1 flex items-center gap-1.5">
-                      <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand-dark">
+                      <span className="rounded-md bg-[#C4ECD0] px-2 py-0.5 text-[10px] font-medium text-[#003317] border border-[#A8D0B5]">
                         {currentMember.role === "approver" ? "Approver / Manager" : "Team Member (Staff)"}
                       </span>
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                      <span className="rounded-md bg-[#C4ECD0] px-2 py-0.5 text-[10px] font-medium text-[#003317] border border-[#A8D0B5]">
                         Active
                       </span>
                     </div>
@@ -1154,7 +1165,7 @@ export function DashboardShell({
                 </div>
 
                 {/* Department & Governance Details */}
-                <div className="rounded-xl border border-gray-100 p-3.5 space-y-2 bg-white">
+                <div className="rounded-lg border border-[#E5E7EB] p-3.5 space-y-2 bg-white">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Department:</span>
                     <span className="text-gray-900 font-semibold">Safaricom Technology Team</span>

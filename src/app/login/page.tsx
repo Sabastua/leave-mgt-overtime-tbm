@@ -12,7 +12,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default function LoginPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <div className="flex min-h-screen w-full flex-col lg:flex-row bg-[#f4f7f5]">
+    <div className="flex min-h-screen w-full flex-col lg:flex-row bg-[#F9F9F9]">
       {/* Creative Left Showcase Panel */}
       <LoginShowcase />
 
@@ -21,12 +21,12 @@ export default function LoginPage({ searchParams }: { searchParams: SearchParams
         <div className="w-full max-w-md">
           {/* Mobile-only Branding Header */}
           <div className="mb-8 text-center lg:hidden">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#00a651] to-[#007a3d] shadow-md ring-1 ring-black/5">
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-[#00A859] shadow-xs">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 32 32"
-                width="26"
-                height="26"
+                width="24"
+                height="24"
                 className="text-white"
               >
                 <path
@@ -39,26 +39,26 @@ export default function LoginPage({ searchParams }: { searchParams: SearchParams
                 />
               </svg>
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-xl font-bold tracking-tight text-[#1A1C1C]">
               Safaricom Operations
             </h1>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-[#3D4A3F]">
               Leave &amp; Overtime Management Portal
             </p>
           </div>
 
           {/* Desktop Form Card Header */}
           <div className="mb-6 hidden lg:block">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-2xl font-bold tracking-tight text-[#1A1C1C]">
               Sign in to your account
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-[#3D4A3F]">
               Access your corporate leave balance, shifts, and team roster
             </p>
           </div>
 
           {/* Card Container */}
-          <div className="rounded-3xl bg-white p-7 sm:p-9 shadow-xl shadow-gray-200/60 ring-1 ring-black/5">
+          <div className="rounded-xl bg-white p-7 sm:p-8 border border-[#E5E7EB] shadow-xs">
             {/* searchParams is request data, so read it behind a boundary. */}
             <Suspense fallback={<LoginForm />}>
               <LoginFormWithError searchParams={searchParams} />
@@ -66,7 +66,7 @@ export default function LoginPage({ searchParams }: { searchParams: SearchParams
           </div>
 
           {/* Bottom Help Text */}
-          <div className="mt-6 text-center text-xs text-gray-400">
+          <div className="mt-6 text-center text-xs text-[#6D7B6E]">
             <span>Safaricom PLC • Need assistance? Contact your department admin</span>
           </div>
         </div>
