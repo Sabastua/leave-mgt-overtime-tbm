@@ -267,15 +267,15 @@ body {
 /* ==========================================================================
    Enterprise Soft Input & Form Field System (4px - 8px radius)
    ========================================================================== */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="date"],
-input[type="time"],
-input[type="number"],
-input[type="search"],
-select,
-textarea {
+input[type="text"]:not(.ot-field),
+input[type="email"]:not(.ot-field),
+input[type="password"]:not(.ot-field),
+input[type="date"]:not(.ot-field),
+input[type="time"]:not(.ot-field),
+input[type="number"]:not(.ot-field),
+input[type="search"]:not(.ot-field),
+select:not(.ot-field),
+textarea:not(.ot-field) {
   font-family: inherit !important;
   background-color: #f4f4f4 !important;
   border: 1px solid #e5e7eb !important;
@@ -290,33 +290,45 @@ textarea {
 }
 
 /* Hover: subtle darkening */
-input[type="text"]:hover:not(:focus):not(:disabled),
-input[type="email"]:hover:not(:focus):not(:disabled),
-input[type="password"]:hover:not(:focus):not(:disabled),
-input[type="date"]:hover:not(:focus):not(:disabled),
-input[type="time"]:hover:not(:focus):not(:disabled),
-input[type="number"]:hover:not(:focus):not(:disabled),
-input[type="search"]:hover:not(:focus):not(:disabled),
-select:hover:not(:focus):not(:disabled),
-textarea:hover:not(:focus):not(:disabled) {
+input[type="text"]:not(.ot-field):hover:not(:focus):not(:disabled),
+input[type="email"]:not(.ot-field):hover:not(:focus):not(:disabled),
+input[type="password"]:not(.ot-field):hover:not(:focus):not(:disabled),
+input[type="date"]:not(.ot-field):hover:not(:focus):not(:disabled),
+input[type="time"]:not(.ot-field):hover:not(:focus):not(:disabled),
+input[type="number"]:not(.ot-field):hover:not(:focus):not(:disabled),
+input[type="search"]:not(.ot-field):hover:not(:focus):not(:disabled),
+select:not(.ot-field):hover:not(:focus):not(:disabled),
+textarea:not(.ot-field):hover:not(:focus):not(:disabled) {
   background-color: #eeeeee !important;
   border-color: #bccabc !important;
 }
 
 /* Focus: pure white elevation with primary green ring */
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus,
-input[type="date"]:focus,
-input[type="time"]:focus,
-input[type="number"]:focus,
-input[type="search"]:focus,
-select:focus,
-textarea:focus {
+input[type="text"]:not(.ot-field):focus,
+input[type="email"]:not(.ot-field):focus,
+input[type="password"]:not(.ot-field):focus,
+input[type="date"]:not(.ot-field):focus,
+input[type="time"]:not(.ot-field):focus,
+input[type="number"]:not(.ot-field):focus,
+input[type="search"]:not(.ot-field):focus,
+select:not(.ot-field):focus,
+textarea:not(.ot-field):focus {
   background-color: #ffffff !important;
   border-color: #00a859 !important;
   outline: none !important;
   box-shadow: 0 0 0 3px rgba(0, 168, 89, 0.15), 0 1px 2px rgba(10, 47, 29, 0.05) !important;
+}
+
+/* Native Modal Dialog Scroll Containment & Backdrop */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
 }
 
 /* Placeholder */

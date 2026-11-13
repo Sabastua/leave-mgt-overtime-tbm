@@ -2,7 +2,14 @@
 
 import { useState, useMemo, useEffect } from "react";
 import type { LeaveType, LeaveRequest, LeaveBalanceSummary } from "@/lib/leave/types";
-import type { OvertimeRecord, OvertimeStats } from "@/lib/overtime/types";
+import {
+  DEMO_OVERTIME_RECORDS,
+  computeOvertimeStats,
+  formatKes,
+  parseOvertimeRecordMeta,
+  type OvertimeRecord,
+  type OvertimeStats,
+} from "@/lib/overtime/types";
 import type { AllowedUser } from "@/lib/auth/allowed-users";
 import { LeaveRequestForm } from "@/components/leave/leave-request-form";
 import { OvertimeRequestForm } from "@/components/overtime/overtime-request-form";
@@ -90,10 +97,9 @@ export function DashboardShell({
   const [selectedReceiptRecord, setSelectedReceiptRecord] = useState<OvertimeRecord | null>(null);
   const [leaveStatusFilter, setLeaveStatusFilter] = useState<string>("all");
   const [overtimeStatusFilter, setOvertimeStatusFilter] = useState<string>("all");
+  const [overtimePage, setOvertimePage] = useState<number>(1);
   const [expandedLeaveId, setExpandedLeaveId] = useState<string | null>(null);
   const [leaveSearchQuery, setLeaveSearchQuery] = useState("");
-  const [expandedOvertimeId, setExpandedOvertimeId] = useState<string | null>(null);
-  const [overtimeSearchQuery, setOvertimeSearchQuery] = useState("");
   const [prefillOvertimeClaim, setPrefillOvertimeClaim] = useState<OvertimeRecord | null>(null);
   const [selectedLeaveCategory, setSelectedLeaveCategory] = useState<string | null>(null);
 
@@ -153,18 +159,37 @@ export function DashboardShell({
     () => allOvertimeRecords.filter((r) => r.user_email.toLowerCase() === currentUserEmail),
     [allOvertimeRecords, currentUserEmail]
   );
-  const filteredOvertimeRecords = myOvertimeRecords.filter((r) => {
-    if (overtimeStatusFilter !== "all" && r.status !== overtimeStatusFilter) return false;
-    if (overtimeSearchQuery.trim()) {
-      const q = overtimeSearchQuery.toLowerCase();
-      const matchesDate = r.overtime_date.includes(q);
-      const matchesTask = r.task_summary.toLowerCase().includes(q);
-      const matchesTicket = (r.ticket_ref || "").toLowerCase().includes(q);
-      const matchesPref = r.compensatory_choice.toLowerCase().includes(q);
-      return matchesDate || matchesTask || matchesTicket || matchesPref;
-    }
-    return true;
-  });
+
+  // Use real records when available; fall back to showcase ledger entries so the ledger and vouchers work out-of-the-box
+  const usingDemoOvertime = myOvertimeRecords.length === 0;
+  const effectiveOvertimeRecords = useMemo(
+    () => (usingDemoOvertime ? DEMO_OVERTIME_RECORDS : myOvertimeRecords),
+    [usingDemoOvertime, myOvertimeRecords]
+  );
+  const effectiveOvertimeStats = useMemo(
+    () => (usingDemoOvertime ? computeOvertimeStats(DEMO_OVERTIME_RECORDS) : myOvertimeStats),
+    [usingDemoOvertime, myOvertimeStats]
+  );
+
+  const filteredOvertimeRecords = useMemo(
+    () =>
+      effectiveOvertimeRecords.filter((r) => {
+        if (overtimeStatusFilter !== "all" && r.status !== overtimeStatusFilter) return false;
+        return true;
+      }),
+    [effectiveOvertimeRecords, overtimeStatusFilter]
+  );
+
+  const OVERTIME_PAGE_SIZE = 4;
+  const totalOvertimePages = Math.max(
+    1,
+    Math.ceil(filteredOvertimeRecords.length / OVERTIME_PAGE_SIZE)
+  );
+  const safeOvertimePage = Math.min(overtimePage, totalOvertimePages);
+  const paginatedOvertimeRecords = filteredOvertimeRecords.slice(
+    (safeOvertimePage - 1) * OVERTIME_PAGE_SIZE,
+    safeOvertimePage * OVERTIME_PAGE_SIZE
+  );
   const pendingOvertimeApprovals = allOvertimeRecords.filter((r) => r.status === "pending");
 
   // User Notification Center State
@@ -819,297 +844,413 @@ export function DashboardShell({
 
         {/* TAB 2: OVERTIME CLAIMS */}
         {activeTab === "overtime" && (
-          <div className="space-y-8">
-            {/* My Overtime Summary with Progress Bars */}
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Approved Hours ({currentYear})
-                </span>
-                <p className="mt-2 text-3xl font-bold text-gray-900">
-                  {myOvertimeStats.totalHoursApproved.toFixed(1)} <span className="text-sm font-normal text-gray-500">hrs</span>
-                </p>
-                <div className="mt-3">
-                  <div className="flex justify-between text-[11px] text-gray-600 mb-1">
-                    <span className="font-semibold text-blue-700">{myOvertimeStats.paidHoursApproved.toFixed(1)}h Paid</span>
-                    <span className="font-semibold text-purple-700">{myOvertimeStats.toilHoursApproved.toFixed(1)}h TOIL</span>
+          <div className="flex flex-col w-full gap-8">
+            {/* Top Summary Metric Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+              {/* Card 1: Approved Overtime */}
+              <div className="flex flex-col bg-surface-container-low rounded-xl p-6 shadow-sm border border-surface-container-high/60 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">
+                    Approved Overtime
+                  </span>
+                  <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center text-primary">
+                    {/* Schedule Icon */}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                    </svg>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 flex">
-                    <div
-                      className="bg-blue-500"
-                      style={{
-                        width: `${
-                          myOvertimeStats.totalHoursApproved > 0
-                            ? (myOvertimeStats.paidHoursApproved / myOvertimeStats.totalHoursApproved) * 100
-                            : 50
-                        }%`,
-                      }}
-                    />
-                    <div
-                      className="bg-purple-500"
-                      style={{
-                        width: `${
-                          myOvertimeStats.totalHoursApproved > 0
-                            ? (myOvertimeStats.toilHoursApproved / myOvertimeStats.totalHoursApproved) * 100
-                            : 50
-                        }%`,
-                      }}
-                    />
-                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-headline-lg text-on-surface tabular-nums">
+                    {(usingDemoOvertime ? 64.5 : effectiveOvertimeStats.totalHoursApproved).toFixed(1)}
+                  </span>
+                  <span className="text-body-lg text-on-surface-variant font-medium">
+                    hrs
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center gap-2 text-body-sm text-primary">
+                  {/* Trending Up Icon */}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-4 h-4 shrink-0"
+                  >
+                    <path d="m16 6 2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" />
+                  </svg>
+                  <span>+12.4 hrs vs last month</span>
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Pending Claim Hours
-                </span>
-                <p className="mt-2 text-3xl font-bold text-amber-700">
-                  {myOvertimeStats.totalHoursPending.toFixed(1)} <span className="text-sm font-normal text-gray-500">hrs</span>
-                </p>
-                <p className="mt-2 text-xs text-gray-500">Awaiting approver review</p>
-              </div>
-
-              <div className="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-black/5 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  TOIL Accumulated
-                </span>
-                <p className="mt-2 text-3xl font-bold text-purple-700">
-                  {(myOvertimeStats.toilHoursApproved / 8).toFixed(1)}{" "}
-                  <span className="text-sm font-normal text-gray-500">days equivalent</span>
-                </p>
-                <p className="mt-2 text-xs text-gray-500">Calculated as 8 working hours = 1 day</p>
-              </div>
-            </section>
-
-            {/* Overtime Request Form with Smart Calculator & Shift Templates */}
-            <OvertimeRequestForm
-              currentUserEmail={currentUserEmail}
-              currentUserName={currentMember.full_name || currentUserEmail}
-              prefillClaim={prefillOvertimeClaim}
-              onClearPrefill={() => setPrefillOvertimeClaim(null)}
-            />
-
-            {/* My Overtime Claims History Table */}
-            <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">My Overtime Claims</h2>
-                  <p className="text-xs text-gray-500">Track approved hours, printable vouchers, and manager authorizations.</p>
+              {/* Card 2: Pending Approvals */}
+              <div className="flex flex-col bg-surface-container-low rounded-xl p-6 shadow-sm border border-surface-container-high/60 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#009dd3]/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">
+                    Pending Approvals
+                  </span>
+                  <div className="w-10 h-10 rounded-xl bg-[#009dd3]/10 flex items-center justify-center text-[#00668a]">
+                    {/* Hourglass Top Icon */}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path d="m6 2 .01 6L10 12l-3.99 4.01L6 22h12v-6l-4-4 4-3.99V2H6zm10 14.5V20H8v-3.5l4-4 4 4z" />
+                    </svg>
+                  </div>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search claims or ticket ref…"
-                      value={overtimeSearchQuery}
-                      onChange={(e) => setOvertimeSearchQuery(e.target.value)}
-                      className="rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-3 text-xs text-gray-900 shadow-2xs transition focus:border-brand focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    {(["all", "pending", "approved", "rejected"] as const).map((status) => (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => setOvertimeStatusFilter(status)}
-                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize transition ${
-                          overtimeStatusFilter === status
-                            ? "bg-brand text-white shadow-2xs"
-                            : "border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
-                        }`}
-                      >
-                        {status}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-headline-lg text-on-surface tabular-nums">
+                    {effectiveOvertimeStats.totalHoursPending.toFixed(1)}
+                  </span>
+                  <span className="text-body-lg text-on-surface-variant font-medium">
+                    hrs
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center gap-2 text-body-sm text-on-surface-variant">
+                  {/* Pending Icon */}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-4 h-4 shrink-0"
+                  >
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-5-9c.83 0 1.5.67 1.5 1.5S7.83 14 7 14s-1.5-.67-1.5-1.5S6.17 11 7 11zm5 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5zm5 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z" />
+                  </svg>
+                  <span>Awaiting line manager sign-off</span>
                 </div>
               </div>
 
-              {filteredOvertimeRecords.length === 0 ? (
-                <p className="py-6 text-center text-sm text-gray-500">
-                  {overtimeStatusFilter === "all" && !overtimeSearchQuery
-                    ? "You have not logged any overtime claims yet."
-                    : "No overtime claims match your search or status filter."}
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+              {/* Card 3: Total Disbursed */}
+              <div className="flex flex-col bg-surface-container-low rounded-xl p-6 shadow-sm border border-surface-container-high/60 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">
+                    Total Disbursed
+                  </span>
+                  <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center text-primary">
+                    {/* Payments Icon */}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path d="M19 14V6c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-9-1c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-6v11c0 1.1-.9 2-2 2H4v-2h17V7h2z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-body-lg text-on-surface-variant font-medium">
+                    KES
+                  </span>
+                  <span className="font-headline-lg text-on-surface tabular-nums">
+                    {formatKes(
+                      usingDemoOvertime ? 128450 : effectiveOvertimeStats.totalDisbursedKes
+                    )}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center gap-2 text-body-sm text-primary">
+                  {/* Check Circle Icon */}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-4 h-4 shrink-0"
+                  >
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                  </svg>
+                  <span>Processed for August Payroll</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
+              {/* Left Column: Quick Overtime Log Calculator */}
+              <div className="lg:col-span-4">
+                <OvertimeRequestForm
+                  currentUserEmail={currentUserEmail}
+                  currentUserName={currentMember.full_name || currentUserEmail}
+                  prefillClaim={prefillOvertimeClaim}
+                  onClearPrefill={() => setPrefillOvertimeClaim(null)}
+                  onOpenVoucher={(rec) => setSelectedReceiptRecord(rec)}
+                />
+              </div>
+
+              {/* Right Column: Clean, spacious Overtime Claims Ledger table */}
+              <div className="lg:col-span-8 flex flex-col bg-surface-container-low rounded-xl p-6 lg:p-7 shadow-sm border border-surface-container-high/60">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="font-headline-md text-on-surface">
+                      Overtime Claims Ledger
+                    </h2>
+                    <p className="text-body-md text-on-surface-variant">
+                      Track disbursement statuses and download disbursement vouchers
+                    </p>
+                  </div>
+
+                  {/* Filter Tabs */}
+                  <div className="flex items-center bg-surface-container p-1 rounded-xl gap-1 self-start sm:self-auto">
+                    {(
+                      [
+                        { id: "all", label: "All Claims" },
+                        { id: "approved", label: "Approved" },
+                        { id: "pending", label: "Pending" },
+                      ] as const
+                    ).map((tab) => {
+                      const isActive = overtimeStatusFilter === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => {
+                            setOvertimeStatusFilter(tab.id);
+                            setOvertimePage(1);
+                          }}
+                          className={`px-4 py-2 rounded-lg font-medium text-body-sm transition-all cursor-pointer ${
+                            isActive
+                              ? "bg-surface text-on-surface shadow-sm"
+                              : "text-on-surface-variant hover:text-on-surface"
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Table Container with generous padding inside rows */}
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
-                        <th className="py-2.5 pr-2 w-6"></th>
-                        <th className="py-2.5 pr-4">Date Worked</th>
-                        <th className="px-3 py-2.5">Hours</th>
-                        <th className="px-3 py-2.5">Preference</th>
-                        <th className="px-3 py-2.5">Task &amp; Reference</th>
-                        <th className="px-3 py-2.5">Status</th>
-                        <th className="px-3 py-2.5 text-right">Actions</th>
+                      <tr className="border-b border-surface-container text-label-md text-on-surface-variant uppercase tracking-wider">
+                        <th className="py-4 px-4 font-semibold">Ref &amp; Date</th>
+                        <th className="py-4 px-4 font-semibold">Project / Task</th>
+                        <th className="py-4 px-4 font-semibold">Hours &amp; Rate</th>
+                        <th className="py-4 px-4 font-semibold">Status</th>
+                        <th className="py-4 px-4 font-semibold text-right">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {filteredOvertimeRecords.map((record) => {
-                        const isExpanded = expandedOvertimeId === record.id;
+                    <tbody className="divide-y divide-surface-container/50 text-body-md text-on-surface">
+                      {paginatedOvertimeRecords.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={5}
+                            className="py-10 px-4 text-center text-body-md text-on-surface-variant"
+                          >
+                            No overtime claims match this filter.
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedOvertimeRecords.map((record) => {
+                          const meta = parseOvertimeRecordMeta(record);
+                          const isApproved = record.status === "approved";
+                          const isPending = record.status === "pending";
+                          const isRejected = record.status === "rejected";
 
-                        return (
-                          <tr key={record.id} className="group">
-                            <td colSpan={7} className="p-0">
-                              <div className="hover:bg-gray-50/60 transition flex flex-col">
-                                <div className="flex items-center w-full px-2 py-3">
-                                  <div className="w-6 shrink-0">
+                          return (
+                            <tr
+                              key={record.id}
+                              className="hover:bg-surface-container/40 transition-colors"
+                            >
+                              <td className="py-5 px-4">
+                                <div className="font-medium text-on-surface">
+                                  {meta.refCode}
+                                </div>
+                                <div className="text-body-sm text-on-surface-variant">
+                                  {meta.formattedDate}
+                                </div>
+                              </td>
+
+                              <td className="py-5 px-4">
+                                <div className="font-medium">
+                                  {meta.projectTitle}
+                                </div>
+                                <div className="text-body-sm text-on-surface-variant">
+                                  {meta.taskCategory}
+                                </div>
+                              </td>
+
+                              <td className="py-5 px-4 tabular-nums">
+                                <div className="font-medium">
+                                  {Number(record.hours).toFixed(1)} hrs (
+                                  {meta.multiplier.toFixed(1)}x)
+                                </div>
+                                <div
+                                  className={`text-body-sm font-medium ${
+                                    isApproved
+                                      ? "text-primary"
+                                      : "text-on-surface-variant"
+                                  }`}
+                                >
+                                  KES {formatKes(meta.payoutKes)}
+                                </div>
+                              </td>
+
+                              <td className="py-5 px-4">
+                                {isApproved ? (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-container/10 text-primary text-label-sm font-medium">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                    Disbursed
+                                  </span>
+                                ) : isPending ? (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#009dd3]/10 text-[#00668a] text-label-sm font-medium">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00668a]" />
+                                    Pending Approval
+                                  </span>
+                                ) : isRejected ? (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-error-container text-on-error-container text-label-sm font-medium">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-error" />
+                                    Declined
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant text-label-sm font-medium">
+                                    Cancelled
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="py-5 px-4 text-right">
+                                {isApproved ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedReceiptRecord(record)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-body-sm font-medium transition-all cursor-pointer"
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 24 24"
+                                      fill="currentColor"
+                                      className="w-4 h-4"
+                                    >
+                                      <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                                    </svg>
+                                    <span>Voucher</span>
+                                  </button>
+                                ) : isPending ? (
+                                  <div className="inline-flex items-center justify-end gap-2">
                                     <button
                                       type="button"
-                                      onClick={() => setExpandedOvertimeId(isExpanded ? null : record.id)}
-                                      className="rounded p-1 text-gray-400 hover:text-gray-700 transition"
-                                      title={isExpanded ? "Collapse shift details" : "Expand shift details"}
+                                      disabled
+                                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container text-on-surface text-body-sm font-medium transition-all opacity-50 cursor-not-allowed"
                                     >
-                                      {isExpanded ? (
-                                        <ChevronUpIcon className="h-3.5 w-3.5" />
-                                      ) : (
-                                        <ChevronDownIcon className="h-3.5 w-3.5" />
-                                      )}
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        className="w-4 h-4"
+                                      >
+                                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                      </svg>
+                                      <span>Pending</span>
                                     </button>
-                                  </div>
-
-                                  <div className="w-28 pr-4 tabular-nums font-medium text-gray-900">
-                                    {record.overtime_date}
-                                  </div>
-
-                                  <div className="w-20 px-3 font-semibold tabular-nums text-gray-900">
-                                    {record.hours}h
-                                  </div>
-
-                                  <div className="w-28 px-3">
-                                    <span
-                                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                        record.compensatory_choice === "paid"
-                                          ? "bg-blue-50 text-blue-800"
-                                          : "bg-purple-50 text-purple-800"
-                                      }`}
-                                    >
-                                      {record.compensatory_choice === "paid" ? "PAID" : "TOIL"}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex-1 px-3 truncate">
-                                    <span className="font-medium text-gray-900">
-                                      {record.task_summary.split("\n")[0]}
-                                    </span>
-                                    {record.ticket_ref && (
-                                      <span className="ml-2 tabular-nums text-[11px] text-gray-400">
-                                        Ref: {record.ticket_ref}
-                                      </span>
-                                    )}
-                                    {record.reviewer_note && (record.status === "approved" || record.status === "rejected") && (
-                                      <p className={`mt-0.5 text-[11px] leading-tight truncate ${
-                                        record.status === "approved" ? "text-emerald-700 font-medium" : "text-red-600 font-medium"
-                                      }`} title={record.reviewer_note}>
-                                        <span className="font-bold">Note: </span>
-                                        {record.reviewer_note}
-                                      </p>
+                                    {!record.id.startsWith("demo-") && (
+                                      <form action={cancelOvertimeRequest} className="inline">
+                                        <input
+                                          type="hidden"
+                                          name="record_id"
+                                          value={record.id}
+                                        />
+                                        <button
+                                          type="submit"
+                                          title="Cancel pending claim"
+                                          className="px-2 py-1 text-label-sm text-error hover:underline font-medium cursor-pointer"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </form>
                                     )}
                                   </div>
-
-                                  <div className="w-28 px-3">
-                                    <span
-                                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                                        STATUS_BADGE[record.status] ?? "bg-gray-100 text-gray-700"
-                                      }`}
-                                    >
-                                      {record.status.toUpperCase()}
-                                    </span>
-                                  </div>
-
-                                  <div className="w-36 px-3 text-right">
-                                    <div className="inline-flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setPrefillOvertimeClaim(record);
-                                          document.getElementById("overtime-claim-form-section")?.scrollIntoView({ behavior: "smooth" });
-                                        }}
-                                        className="text-xs text-blue-600 hover:text-blue-800 font-semibold transition active:scale-95"
-                                        title="Repeat claim using this template"
-                                      >
-                                        Repeat
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setSelectedReceiptRecord(record)}
-                                        className="text-xs text-brand hover:text-brand-dark font-semibold transition active:scale-95"
-                                      >
-                                        Receipt
-                                      </button>
-                                      {record.status === "pending" && (
-                                        <form action={cancelOvertimeRequest} className="inline">
-                                          <input type="hidden" name="record_id" value={record.id} />
-                                          <button
-                                            type="submit"
-                                            className="text-xs text-red-600 hover:text-red-800 font-semibold active:scale-95 transition"
-                                          >
-                                            Cancel
-                                          </button>
-                                        </form>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Expanded Shift Detail View */}
-                                {isExpanded && (
-                                  <div className="bg-gray-50/80 px-8 py-3.5 border-t border-gray-100 text-xs animate-in fade-in">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                      <div>
-                                        <span className="text-[10px] uppercase font-bold text-gray-400 block mb-0.5">
-                                          Detailed Shift &amp; Task Notes:
-                                        </span>
-                                        <div className="text-gray-800 bg-white p-2.5 rounded-lg border border-gray-200 whitespace-pre-wrap text-[11px]">
-                                          {record.task_summary}
-                                        </div>
-                                      </div>
-
-                                      <div>
-                                        <span className="text-[10px] uppercase font-bold text-gray-400 block mb-0.5">
-                                          Manager Review &amp; Payroll Authorization:
-                                        </span>
-                                        <div className="bg-white p-2.5 rounded-lg border border-gray-200 space-y-1">
-                                          <div className="flex items-center justify-between text-[11px]">
-                                            <span className="text-gray-500">Reviewer:</span>
-                                            <span className="font-semibold text-gray-900">
-                                              {record.reviewed_by || "Pending Review (F. Mbuthia)"}
-                                            </span>
-                                          </div>
-                                          {record.reviewed_at && (
-                                            <div className="flex items-center justify-between text-[11px]">
-                                              <span className="text-gray-500">Authorization Date:</span>
-                                              <span className="tabular-nums text-gray-700">{record.reviewed_at.slice(0, 10)}</span>
-                                            </div>
-                                          )}
-                                          {record.reviewer_note && (
-                                            <div className="pt-1 border-t border-gray-100 text-gray-700">
-                                              <span className="font-semibold text-gray-800">Remarks: </span>
-                                              <span>{record.reviewer_note}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="mt-2 text-[10px] text-gray-400 text-right">
-                                      Claim ID: SAF-OT-{record.id.slice(0, 8).toUpperCase()} • Submitted: {record.created_at ? record.created_at.slice(0, 19).replace("T", " ") : "—"}
-                                    </div>
-                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedReceiptRecord(record)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-body-sm font-medium transition-all cursor-pointer"
+                                  >
+                                    <span>Details</span>
+                                  </button>
                                 )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
-              )}
-            </section>
+
+                {/* Pagination / Footer info */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 mt-4 border-t border-surface-container text-body-sm text-on-surface-variant">
+                  <span>
+                    Showing {paginatedOvertimeRecords.length} of{" "}
+                    {usingDemoOvertime && overtimeStatusFilter === "all"
+                      ? 28
+                      : filteredOvertimeRecords.length}{" "}
+                    total payout entries
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOvertimePage((p) => Math.max(1, p - 1))
+                      }
+                      disabled={safeOvertimePage <= 1}
+                      className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    {Array.from(
+                      { length: Math.max(3, totalOvertimePages) },
+                      (_, idx) => idx + 1
+                    ).map((pageNum) => {
+                      const isCurrent = safeOvertimePage === pageNum;
+                      return (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => {
+                            if (pageNum <= totalOvertimePages) {
+                              setOvertimePage(pageNum);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                            isCurrent
+                              ? "bg-primary text-on-primary font-medium"
+                              : "bg-surface-container hover:bg-surface-container-high text-on-surface"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOvertimePage((p) =>
+                          Math.min(totalOvertimePages, p + 1)
+                        )
+                      }
+                      disabled={safeOvertimePage >= totalOvertimePages}
+                      className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1148,13 +1289,12 @@ export function DashboardShell({
         />
 
         {/* Printable Overtime Receipt Modal */}
-        {selectedReceiptRecord && (
-          <OvertimeReceiptModal
-            record={selectedReceiptRecord}
-            employeeName={currentMember.full_name || currentUserEmail}
-            onClose={() => setSelectedReceiptRecord(null)}
-          />
-        )}
+        <OvertimeReceiptModal
+          record={selectedReceiptRecord}
+          allRecords={effectiveOvertimeRecords}
+          employeeName={currentMember.full_name || currentUserEmail}
+          onClose={() => setSelectedReceiptRecord(null)}
+        />
 
         {/* Notification Center Modal */}
         {isNotificationCenterOpen && (

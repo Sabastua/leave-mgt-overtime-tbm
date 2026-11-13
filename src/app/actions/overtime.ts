@@ -31,8 +31,18 @@ export async function submitOvertimeRequest(
 
   const overtimeDate = String(formData.get("overtime_date") ?? "").trim();
   const hours = parseFloat(String(formData.get("hours") ?? "0"));
-  const taskSummary = String(formData.get("task_summary") ?? "").trim();
-  const ticketRef = String(formData.get("ticket_ref") ?? "").trim() || null;
+  const rawTaskSummary = String(formData.get("task_summary") ?? "").trim();
+  const rawTicketRef = String(formData.get("ticket_ref") ?? "").trim();
+  const multiplierRaw = String(formData.get("multiplier") ?? "1.5").trim();
+  const multiplier =
+    multiplierRaw === "2.5" ? "2.5" : multiplierRaw === "2.0" ? "2.0" : "1.5";
+  const categorySubtitle =
+    multiplier === "2.5"
+      ? "Emergency Deployment"
+      : multiplier === "2.0"
+      ? "Weekend Maintenance"
+      : "Night Shift Support";
+
   const compensatoryChoice = String(
     formData.get("compensatory_choice") ?? "paid"
   ) as OvertimeCompensatoryChoice;
@@ -43,9 +53,17 @@ export async function submitOvertimeRequest(
   if (isNaN(hours) || hours <= 0 || hours > 24) {
     return { error: "Please specify valid overtime hours (between 0.5 and 24)." };
   }
-  if (!taskSummary) {
-    return { error: "Please describe the task or activity completed during overtime." };
+  if (!rawTaskSummary) {
+    return { error: "Please enter a project or task reference." };
   }
+
+  const year = overtimeDate.slice(0, 4) || String(new Date().getFullYear());
+  const randomDigits = Math.floor(100 + Math.random() * 900);
+  const ticketRef = rawTicketRef || `OT-${year}-${randomDigits}`;
+
+  const taskSummary = rawTaskSummary.includes("\n")
+    ? rawTaskSummary
+    : `${rawTaskSummary}\n${categorySubtitle} (${multiplier}x)`;
 
   const { error } = await supabase.from("overtime_records").insert({
     user_id: user.id,
