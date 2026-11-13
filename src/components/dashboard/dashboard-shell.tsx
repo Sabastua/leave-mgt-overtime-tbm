@@ -1072,6 +1072,11 @@ export function DashboardShell({
                                 <div className="text-body-sm text-on-surface-variant">
                                   {meta.formattedDate}
                                 </div>
+                                {meta.timeRange && (
+                                  <div className="text-[11px] font-medium text-primary mt-0.5 tabular-nums">
+                                    {meta.timeRange}
+                                  </div>
+                                )}
                               </td>
 
                               <td className="py-5 px-4">
@@ -1088,11 +1093,14 @@ export function DashboardShell({
                                   {Number(record.hours).toFixed(1)} hrs (
                                   {meta.multiplier.toFixed(1)}x)
                                 </div>
+                                <div className="text-[11px] text-on-surface-variant">
+                                  {meta.rateBasisLabel}
+                                </div>
                                 <div
-                                  className={`text-body-sm font-medium ${
+                                  className={`text-body-sm font-semibold mt-0.5 ${
                                     isApproved
                                       ? "text-primary"
-                                      : "text-on-surface-variant"
+                                      : "text-on-surface"
                                   }`}
                                 >
                                   KES {formatKes(meta.payoutKes)}
@@ -1123,28 +1131,25 @@ export function DashboardShell({
                               </td>
 
                               <td className="py-5 px-4 text-right">
-                                {isApproved ? (
+                                <div className="inline-flex items-center justify-end gap-1.5">
                                   <button
                                     type="button"
-                                    onClick={() => setSelectedReceiptRecord(record)}
-                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-body-sm font-medium transition-all cursor-pointer"
+                                    onClick={() => {
+                                      setPrefillOvertimeClaim(record);
+                                      document
+                                        .getElementById("overtime-claim-form-section")
+                                        ?.scrollIntoView({ behavior: "smooth" });
+                                    }}
+                                    title="Reuse this shift's hours & rate in the Quick Log"
+                                    className="px-2.5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-label-sm font-medium transition-all cursor-pointer"
                                   >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      viewBox="0 0 24 24"
-                                      fill="currentColor"
-                                      className="w-4 h-4"
-                                    >
-                                      <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-                                    </svg>
-                                    <span>Voucher</span>
+                                    Repeat
                                   </button>
-                                ) : isPending ? (
-                                  <div className="inline-flex items-center justify-end gap-2">
+                                  {isApproved ? (
                                     <button
                                       type="button"
-                                      disabled
-                                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container text-on-surface text-body-sm font-medium transition-all opacity-50 cursor-not-allowed"
+                                      onClick={() => setSelectedReceiptRecord(record)}
+                                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-body-sm font-medium transition-all cursor-pointer"
                                     >
                                       <svg
                                         xmlns="http://www.w3.org/2000/svg"
@@ -1152,36 +1157,54 @@ export function DashboardShell({
                                         fill="currentColor"
                                         className="w-4 h-4"
                                       >
-                                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
                                       </svg>
-                                      <span>Pending</span>
+                                      <span>Voucher</span>
                                     </button>
-                                    {!record.id.startsWith("demo-") && (
-                                      <form action={cancelOvertimeRequest} className="inline">
-                                        <input
-                                          type="hidden"
-                                          name="record_id"
-                                          value={record.id}
-                                        />
-                                        <button
-                                          type="submit"
-                                          title="Cancel pending claim"
-                                          className="px-2 py-1 text-label-sm text-error hover:underline font-medium cursor-pointer"
+                                  ) : isPending ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedReceiptRecord(record)}
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-body-sm font-medium transition-all cursor-pointer"
+                                      >
+                                        <svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          viewBox="0 0 24 24"
+                                          fill="currentColor"
+                                          className="w-4 h-4 text-[#00668a]"
                                         >
-                                          Cancel
-                                        </button>
-                                      </form>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => setSelectedReceiptRecord(record)}
-                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-body-sm font-medium transition-all cursor-pointer"
-                                  >
-                                    <span>Details</span>
-                                  </button>
-                                )}
+                                          <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                                        </svg>
+                                        <span>Voucher</span>
+                                      </button>
+                                      {!record.id.startsWith("demo-") && (
+                                        <form action={cancelOvertimeRequest} className="inline">
+                                          <input
+                                            type="hidden"
+                                            name="record_id"
+                                            value={record.id}
+                                          />
+                                          <button
+                                            type="submit"
+                                            title="Cancel pending claim"
+                                            className="px-2 py-1 text-label-sm text-error hover:underline font-medium cursor-pointer"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </form>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedReceiptRecord(record)}
+                                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-body-sm font-medium transition-all cursor-pointer"
+                                    >
+                                      <span>Details</span>
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );

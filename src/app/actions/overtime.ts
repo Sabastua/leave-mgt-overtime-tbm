@@ -8,7 +8,14 @@ import {
   isApproverEmail,
   normalizeEmail,
 } from "@/lib/auth/allowed-users";
-import { type OvertimeCompensatoryChoice } from "@/lib/overtime/types";
+import {
+  BASE_HOURLY_RATE,
+  DEFAULT_DAILY_RATE,
+  STANDARD_DAY_HOURS,
+  formatKes,
+  type OvertimeCompensatoryChoice,
+  type OvertimeRateBasis,
+} from "@/lib/overtime/types";
 
 export type OvertimeActionState = {
   error?: string;
@@ -33,14 +40,47 @@ export async function submitOvertimeRequest(
   const hours = parseFloat(String(formData.get("hours") ?? "0"));
   const rawTaskSummary = String(formData.get("task_summary") ?? "").trim();
   const rawTicketRef = String(formData.get("ticket_ref") ?? "").trim();
+  const timeRange = String(formData.get("time_range") ?? "").trim();
+  const rateBasisRaw = String(formData.get("rate_basis") ?? "hourly").trim();
+  const rateBasis: OvertimeRateBasis =
+    rateBasisRaw === "daily" || rateBasisRaw === "custom_amount"
+      ? rateBasisRaw
+      : "hourly";
+
   const multiplierRaw = String(formData.get("multiplier") ?? "1.5").trim();
   const multiplier =
-    multiplierRaw === "2.5" ? "2.5" : multiplierRaw === "2.0" ? "2.0" : "1.5";
+    multiplierRaw === "2.5"
+      ? "2.5"
+      : multiplierRaw === "2.0"
+      ? "2.0"
+      : multiplierRaw === "1.0"
+      ? "1.0"
+      : "1.5";
+  const multiplierNum = parseFloat(multiplier);
+
+  const unitRateInput = parseFloat(String(formData.get("unit_rate") ?? ""));
+  const unitRate =
+    !isNaN(unitRateInput) && unitRateInput > 0
+      ? unitRateInput
+      : rateBasis === "daily"
+      ? DEFAULT_DAILY_RATE
+      : BASE_HOURLY_RATE;
+
+  const payoutInput = parseFloat(String(formData.get("payout_kes") ?? ""));
+  const computedPayout =
+    !isNaN(payoutInput) && payoutInput >= 0
+      ? Math.round(payoutInput * 100) / 100
+      : rateBasis === "daily"
+      ? Math.round((hours / STANDARD_DAY_HOURS) * unitRate * multiplierNum * 100) / 100
+      : Math.round(hours * unitRate * multiplierNum * 100) / 100;
+
   const categorySubtitle =
     multiplier === "2.5"
       ? "Emergency Deployment"
       : multiplier === "2.0"
       ? "Weekend Maintenance"
+      : multiplier === "1.0"
+      ? "Flat Day/Shift Allowance"
       : "Night Shift Support";
 
   const compensatoryChoice = String(
@@ -59,11 +99,18 @@ export async function submitOvertimeRequest(
 
   const year = overtimeDate.slice(0, 4) || String(new Date().getFullYear());
   const randomDigits = Math.floor(100 + Math.random() * 900);
-  const ticketRef = rawTicketRef || `OT-${year}-${randomDigits}`;
+  const baseRef = rawTicketRef ? rawTicketRef.split("|")[0].trim() : `OT-${year}-${randomDigits}`;
+  const ticketRef = `${baseRef}|PAY:${computedPayout}|RATE:${unitRate}|BASIS:${rateBasis}${
+    timeRange ? `|TIME:${timeRange}` : ""
+  }|MULT:${multiplier}`;
+
+  const subtitleWithTime = timeRange
+    ? `${categorySubtitle} (${multiplier}x) • ${timeRange}`
+    : `${categorySubtitle} (${multiplier}x)`;
 
   const taskSummary = rawTaskSummary.includes("\n")
     ? rawTaskSummary
-    : `${rawTaskSummary}\n${categorySubtitle} (${multiplier}x)`;
+    : `${rawTaskSummary}\n${subtitleWithTime}`;
 
   const { error } = await supabase.from("overtime_records").insert({
     user_id: user.id,
@@ -87,7 +134,10 @@ export async function submitOvertimeRequest(
   }
 
   revalidatePath("/");
-  return { success: `Overtime claim of ${hours} hours submitted successfully.` };
+  const timeSuffix = timeRange ? ` (${timeRange})` : "";
+  return {
+    success: `Logged ${hours} hrs${timeSuffix} — KES ${formatKes(computedPayout, true)} submitted for approval.`,
+  };
 }
 
 export async function reviewOvertimeRequest(formData: FormData): Promise<void> {

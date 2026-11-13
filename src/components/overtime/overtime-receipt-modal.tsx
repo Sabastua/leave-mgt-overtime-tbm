@@ -232,16 +232,31 @@ export function OvertimeReceiptModal({
                       }
                     >
                       <td className="py-3 px-4 font-medium text-on-surface">
-                        {meta.refCode}
+                        <div>{meta.refCode}</div>
+                        <div className="text-[11px] font-normal text-on-surface-variant">
+                          {meta.formattedDate}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-on-surface-variant">
-                        {meta.projectTitle}
+                        <div className="font-medium text-on-surface">
+                          {meta.projectTitle}
+                        </div>
+                        {meta.timeRange && (
+                          <div className="text-[11px] text-primary tabular-nums">
+                            {meta.timeRange}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center tabular-nums">
                         {Number(itemRec.hours).toFixed(1)} hrs
                       </td>
                       <td className="py-3 px-4 text-center tabular-nums">
-                        {meta.multiplier.toFixed(1)}x
+                        <div className="font-medium text-on-surface">
+                          {meta.multiplier.toFixed(1)}x
+                        </div>
+                        <div className="text-[10px] text-on-surface-variant">
+                          {meta.rateBasisLabel}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-right font-medium tabular-nums">
                         {formatKes(meta.payoutKes, true)}
