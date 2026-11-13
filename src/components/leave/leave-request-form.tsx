@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useMemo } from "react";
+import { useActionState, useState, useMemo, useEffect } from "react";
 import { submitLeaveRequest, type ActionState } from "@/app/actions/leave";
 import {
   type LeaveBalanceSummary,
@@ -10,11 +10,10 @@ import {
 import { calculateWorkingDaysDetailed } from "@/lib/leave/holidays";
 import type { AllowedUser } from "@/lib/auth/allowed-users";
 import {
-  CalendarIcon,
+  CalendarDaysIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
-  UserIcon,
 } from "@/components/ui/icons";
 
 const initialState: ActionState = {};
@@ -25,6 +24,7 @@ type Props = {
   balances: LeaveBalanceSummary[];
   teamMembers: AllowedUser[];
   existingRequests?: LeaveRequest[];
+  externalSelectedType?: string | null;
 };
 
 export function LeaveRequestForm({
@@ -33,24 +33,55 @@ export function LeaveRequestForm({
   balances,
   teamMembers,
   existingRequests = [],
+  externalSelectedType,
 }: Props) {
   const [state, action, pending] = useActionState(submitLeaveRequest, initialState);
 
   const today = new Date().toISOString().slice(0, 10);
   const [selectedType, setSelectedType] = useState<string>(
-    leaveTypes[0]?.code ?? "annual"
+    externalSelectedType || leaveTypes[0]?.code || "annual"
   );
   const [startDate, setStartDate] = useState<string>(today);
   const [endDate, setEndDate] = useState<string>(today);
   const [selectedHandover, setSelectedHandover] = useState<string>("");
   const [reason, setReason] = useState<string>("");
+  const [emergencyReachable, setEmergencyReachable] = useState<boolean>(true);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
+
+  // Sync external selected leave type if user clicks a category card
+  useEffect(() => {
+    if (externalSelectedType) {
+      const timer = setTimeout(() => setSelectedType(externalSelectedType), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [externalSelectedType]);
+
+  // Load draft from localStorage on initial render
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const savedDraft = localStorage.getItem("safaricom_leave_draft");
+        if (savedDraft) {
+          const draft = JSON.parse(savedDraft);
+          if (draft.selectedType) setSelectedType(draft.selectedType);
+          if (draft.startDate) setStartDate(draft.startDate);
+          if (draft.endDate) setEndDate(draft.endDate);
+          if (draft.selectedHandover) setSelectedHandover(draft.selectedHandover);
+          if (draft.reason) setReason(draft.reason);
+        }
+      } catch {
+        // Ignore storage errors
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Detailed working days and holiday breakdown
   const breakdown = useMemo(() => {
     return calculateWorkingDaysDetailed(startDate, endDate);
   }, [startDate, endDate]);
 
-  const { workingDays, calendarDays, weekendDays, holidays } = breakdown;
+  const { workingDays } = breakdown;
 
   // Selected leave type balance
   const selectedBalance = balances.find((b) => b.leaveType.code === selectedType);
@@ -68,7 +99,6 @@ export function LeaveRequestForm({
     if (!selectedHandover || !startDate || !endDate) return null;
     const lowerHandover = selectedHandover.toLowerCase();
 
-    // Check if the colleague has approved leaves that overlap with [startDate, endDate]
     const overlapping = existingRequests.find((r) => {
       if (r.user_email.toLowerCase() !== lowerHandover) return false;
       if (r.status !== "approved" && r.status !== "pending") return false;
@@ -88,6 +118,11 @@ export function LeaveRequestForm({
   }, [selectedHandover, startDate, endDate, existingRequests, reliefOptions]);
 
   // Quick Date Presets Handlers
+  function applySingleDayPreset() {
+    setStartDate(today);
+    setEndDate(today);
+  }
+
   function applyPreset(daysToAdd: number, startOffset = 0) {
     const base = new Date();
     base.setDate(base.getDate() + startOffset);
@@ -104,7 +139,6 @@ export function LeaveRequestForm({
   function applyNextWeekPreset() {
     const d = new Date();
     const day = d.getDay();
-    // Days until next Monday
     const daysUntilNextMon = ((8 - day) % 7) || 7;
     const nextMon = new Date(d);
     nextMon.setDate(d.getDate() + daysUntilNextMon);
@@ -116,9 +150,22 @@ export function LeaveRequestForm({
     setEndDate(nextFri.toISOString().slice(0, 10));
   }
 
-  function applySingleDayPreset() {
-    setStartDate(today);
-    setEndDate(today);
+  function handleSaveDraft() {
+    try {
+      const draft = {
+        selectedType,
+        startDate,
+        endDate,
+        selectedHandover,
+        reason,
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem("safaricom_leave_draft", JSON.stringify(draft));
+      setDraftNotice("Draft saved successfully to local session");
+      setTimeout(() => setDraftNotice(null), 3500);
+    } catch {
+      setDraftNotice("Unable to save draft locally");
+    }
   }
 
   const selectedColleague = reliefOptions.find(
@@ -126,213 +173,152 @@ export function LeaveRequestForm({
   );
 
   return (
-    <form
-      action={action}
-      className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5 transition-all duration-300 hover:shadow-md"
-    >
-      <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+    <div className="bg-surface-container-low p-6 lg:p-8 rounded-xl shadow-xs border border-surface-container-high sticky top-24">
+      {/* Form Header */}
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-surface-container-high">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">Apply for Leave</h2>
-          <p className="text-xs text-gray-500">
-            Submit request for Manager review. Working days automatically exclude weekends and statutory public holidays.
-          </p>
+          <h2 className="font-headline-md text-on-surface tracking-tight">Apply for Leave</h2>
+          <p className="text-body-sm text-on-surface-variant">Submit new request to line manager</p>
         </div>
-
-        {/* Quick Date Presets Bar */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 sm:pt-0">
-          <button
-            type="button"
-            onClick={applySingleDayPreset}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-700 transition hover:bg-gray-100 active:scale-95"
-          >
-            Today (1d)
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPreset(0, 1)}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-700 transition hover:bg-gray-100 active:scale-95"
-          >
-            Tomorrow (1d)
-          </button>
-          <button
-            type="button"
-            onClick={applyNextWeekPreset}
-            className="rounded-lg border border-brand/30 bg-brand/5 px-2.5 py-1 text-[11px] font-semibold text-brand-dark transition hover:bg-brand/10 active:scale-95"
-          >
-            Next Week (Mon–Fri)
-          </button>
+        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+          <CalendarDaysIcon className="h-5 w-5" />
         </div>
       </div>
 
-      <div className="space-y-5">
-        {/* 1. Leave Type Selector */}
-        <div>
-          <label
-            htmlFor="leave_type"
-            className="block text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1"
-          >
+      <form action={action} className="flex flex-col gap-space-md">
+        {/* Quick Date Presets Bar */}
+        <div className="flex items-center justify-between gap-1.5 flex-wrap">
+          <span className="text-label-sm text-on-surface-variant font-medium">Quick Presets:</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={applySingleDayPreset}
+              className="px-2.5 py-1 rounded-lg border border-outline-variant/40 bg-surface text-label-sm text-on-surface font-medium hover:bg-surface-container transition-all active:scale-95"
+            >
+              Today (1d)
+            </button>
+            <button
+              type="button"
+              onClick={() => applyPreset(0, 1)}
+              className="px-2.5 py-1 rounded-lg border border-outline-variant/40 bg-surface text-label-sm text-on-surface font-medium hover:bg-surface-container transition-all active:scale-95"
+            >
+              Tomorrow (1d)
+            </button>
+            <button
+              type="button"
+              onClick={applyNextWeekPreset}
+              className="px-2.5 py-1 rounded-lg border border-primary/30 bg-primary/10 text-label-sm text-primary font-semibold hover:bg-primary/20 transition-all active:scale-95"
+            >
+              Next Week (Mon–Fri)
+            </button>
+          </div>
+        </div>
+
+        {/* 1. Leave Category Selection */}
+        <div className="flex flex-col gap-space-xs">
+          <label htmlFor="leave_type" className="text-body-sm font-medium text-on-surface">
             Leave Category
           </label>
-          <select
-            id="leave_type"
-            name="leave_type"
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-3 text-sm font-semibold text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
-          >
-            {leaveTypes.map((lt) => {
-              const bal = balances.find((b) => b.leaveType.code === lt.code);
-              const carriedNote = bal && bal.carriedForward > 0 ? ` (incl. +${bal.carriedForward}d carried)` : "";
-              return (
-                <option key={lt.code} value={lt.code}>
-                  {lt.name} — {bal ? `${bal.remaining} days available${carriedNote}` : `${lt.annual_days} days entitlement`}
-                </option>
-              );
-            })}
-          </select>
+          <div className="relative">
+            <select
+              id="leave_type"
+              name="leave_type"
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="w-full h-12 px-4 rounded-xl bg-surface text-on-surface text-body-md focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer border border-surface-container-high"
+            >
+              {leaveTypes.map((lt) => {
+                const bal = balances.find((b) => b.leaveType.code === lt.code);
+                const available = bal ? bal.remaining : lt.annual_days;
+                return (
+                  <option key={lt.code} value={lt.code}>
+                    {lt.name} ({available} Days Available)
+                  </option>
+                );
+              })}
+            </select>
+          </div>
         </div>
 
-        {/* 2. Date Pickers Grid */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor="start_date"
-              className="block text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1"
-            >
+        {/* 2. Date Range Pickers */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+          <div className="flex flex-col gap-space-xs">
+            <label htmlFor="start_date" className="text-body-sm font-medium text-on-surface">
               Start Date
             </label>
-            <input
-              id="start_date"
-              name="start_date"
-              type="date"
-              required
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                if (endDate < e.target.value) {
-                  setEndDate(e.target.value);
-                }
-              }}
-              className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 tabular-nums shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
-            />
+            <div className="relative">
+              <input
+                id="start_date"
+                name="start_date"
+                type="date"
+                required
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  if (endDate < e.target.value) {
+                    setEndDate(e.target.value);
+                  }
+                }}
+                className="w-full h-12 px-4 rounded-xl bg-surface text-on-surface text-body-md focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer border border-surface-container-high"
+              />
+            </div>
           </div>
 
-          <div>
-            <label
-              htmlFor="end_date"
-              className="block text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1"
-            >
+          <div className="flex flex-col gap-space-xs">
+            <label htmlFor="end_date" className="text-body-sm font-medium text-on-surface">
               End Date
             </label>
-            <input
-              id="end_date"
-              name="end_date"
-              type="date"
-              required
-              min={startDate}
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-2.5 text-sm text-gray-900 tabular-nums shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
-            />
+            <div className="relative">
+              <input
+                id="end_date"
+                name="end_date"
+                type="date"
+                required
+                min={startDate}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full h-12 px-4 rounded-xl bg-surface text-on-surface text-body-md focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer border border-surface-container-high"
+              />
+            </div>
           </div>
         </div>
 
-
-        {/* 4. Live Leave Balance Simulator */}
-        {selectedBalance && (
-          <div
-            className={`rounded-xl border p-4 transition-all duration-200 ${
-              exceedsBalance
-                ? "border-red-300 bg-red-50/60"
-                : "border-emerald-200 bg-emerald-50/40"
-            }`}
-          >
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-bold text-gray-800">
-                Balance Simulation ({selectedBalance.leaveType.name})
-                {selectedBalance.carriedForward > 0 && (
-                  <span className="ml-1.5 font-normal text-emerald-700 text-[11px]">
-                    (includes +{selectedBalance.carriedForward}d carried over)
-                  </span>
-                )}
+        {/* 3. Balance Simulation Banner */}
+        <div
+          className={`p-4 rounded-xl flex items-start gap-space-sm border transition-all ${
+            exceedsBalance
+              ? "bg-[#FFDAD6]/40 border-[#FFB2B9] text-[#93000A]"
+              : "bg-primary-container/10 border-primary/20 text-on-surface"
+          }`}
+        >
+          {exceedsBalance ? (
+            <ExclamationTriangleIcon className="h-5 w-5 text-[#BA1A1A] shrink-0 mt-0.5" />
+          ) : (
+            <InformationCircleIcon className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+          )}
+          <div className="text-body-sm leading-relaxed">
+            {exceedsBalance ? (
+              <span>
+                <span className="font-semibold text-[#BA1A1A]">Insufficient Balance:</span> This request requires{" "}
+                <strong className="font-bold">{workingDays} working days</strong>, but only{" "}
+                <strong className="font-bold">{currentAvailable} days</strong> are available. Shortfall is{" "}
+                <strong className="font-bold">{workingDays - currentAvailable} days</strong>.
               </span>
-              {exceedsBalance ? (
-                <span className="flex items-center gap-1 text-[11px] font-bold text-red-700">
-                  <ExclamationTriangleIcon className="h-3.5 w-3.5 text-red-600" />
-                  Shortfall: {workingDays - currentAvailable} days
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-800">
-                  <CheckCircleIcon className="h-3.5 w-3.5 text-emerald-600" />
-                  Sufficient Balance
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div className="rounded-lg bg-white p-2.5 border border-gray-200/70 shadow-2xs">
-                <span className="text-[10px] text-gray-400 uppercase font-semibold block">
-                  Current
-                </span>
-                <span className="text-base font-bold text-gray-900 tabular-nums">
-                  {currentAvailable}d
-                </span>
-              </div>
-
-              <div className="rounded-lg bg-white p-2.5 border border-gray-200/70 shadow-2xs">
-                <span className="text-[10px] text-gray-400 uppercase font-semibold block">
-                  Deduction
-                </span>
-                <span className="text-base font-bold text-brand-dark tabular-nums">
-                  -{workingDays}d
-                </span>
-              </div>
-
-              <div
-                className={`rounded-lg p-2.5 border shadow-2xs ${
-                  exceedsBalance
-                    ? "bg-red-100/60 border-red-200 text-red-900"
-                    : "bg-white border-gray-200/70 text-emerald-800"
-                }`}
-              >
-                <span className="text-[10px] uppercase font-semibold block opacity-70">
-                  Projected
-                </span>
-                <span className="text-base font-bold tabular-nums">
-                  {projectedRemaining}d
-                </span>
-              </div>
-            </div>
-
-            {/* Visual Balance Bar */}
-            <div className="mt-3">
-              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${
-                    exceedsBalance ? "bg-red-500" : "bg-emerald-500"
-                  }`}
-                  style={{
-                    width: `${Math.max(
-                      0,
-                      Math.min(
-                        100,
-                        (projectedRemaining / selectedBalance.entitled) * 100
-                      )
-                    )}%`,
-                  }}
-                />
-              </div>
-            </div>
+            ) : (
+              <span>
+                <span className="font-medium text-primary">Simulation:</span> This request will deduct{" "}
+                <strong className="text-on-surface font-semibold">{workingDays} working days</strong>. Remaining
+                balance will drop from {currentAvailable} to{" "}
+                <strong className="text-on-surface font-semibold">{projectedRemaining} days</strong>.
+              </span>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* 5. Handover / Relief Colleague Selector with Live Clash Checking */}
-        <div>
-          <label
-            htmlFor="handover_email"
-            className="block text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1"
-          >
-            Handover / Relief Colleague
+        {/* 4. Designated Relief Colleague */}
+        <div className="flex flex-col gap-space-xs">
+          <label htmlFor="handover_email" className="text-body-sm font-medium text-on-surface">
+            Designated Relief Colleague
           </label>
           <div className="relative">
             <select
@@ -340,9 +326,9 @@ export function LeaveRequestForm({
               name="handover_email"
               value={selectedHandover}
               onChange={(e) => setSelectedHandover(e.target.value)}
-              className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] px-4 py-3 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
+              className="w-full h-12 px-4 rounded-xl bg-surface text-on-surface text-body-md focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer border border-surface-container-high"
             >
-              <option value="">— Optional: select team relief colleague —</option>
+              <option value="">Select covering team member...</option>
               {reliefOptions.map((member) => (
                 <option key={member.email} value={member.email}>
                   {member.full_name || member.email} ({member.email})
@@ -353,26 +339,23 @@ export function LeaveRequestForm({
 
           {/* Live Handover Availability Feedback */}
           {selectedHandover && (
-            <div className="mt-2">
+            <div className="mt-1">
               {handoverClash ? (
-                <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 animate-in fade-in">
-                  <ExclamationTriangleIcon className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 rounded-xl border border-[#FDE68A] bg-[#FEF3C7] p-3 text-xs text-[#92400E]">
+                  <ExclamationTriangleIcon className="h-4 w-4 text-[#F59E0B] shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold">Relief Clash Alert: </span>
                     <span>
                       {handoverClash.colleagueName} has an {handoverClash.status} leave scheduled from{" "}
                       <strong>{handoverClash.startDate}</strong> to <strong>{handoverClash.endDate}</strong> during this period.
                     </span>
-                    <span className="block text-[11px] text-amber-700 mt-0.5">
-                      Consider coordinating coverage or choosing an alternate relief colleague.
-                    </span>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-800 animate-in fade-in">
-                  <CheckCircleIcon className="h-4 w-4 text-emerald-600 shrink-0" />
+                <div className="flex items-center gap-2 rounded-xl border border-[#C4ECD0] bg-[#C4ECD0]/30 px-3 py-2 text-xs text-[#003317]">
+                  <CheckCircleIcon className="h-4 w-4 text-[#00A859] shrink-0" />
                   <span>
-                    <strong>{selectedColleague?.full_name || selectedHandover}</strong> is active with no conflicting leave during these dates.
+                    <strong>{selectedColleague?.full_name || selectedHandover}</strong> is available with no conflicting leave.
                   </span>
                 </div>
               )}
@@ -380,17 +363,14 @@ export function LeaveRequestForm({
           )}
         </div>
 
-        {/* 6. Reason / Handover Notes */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label
-              htmlFor="reason"
-              className="block text-xs font-semibold uppercase tracking-wider text-gray-600"
-            >
-              Reason / Handover Brief
+        {/* 5. Handover Brief & Notes Textarea */}
+        <div className="flex flex-col gap-space-xs">
+          <div className="flex justify-between items-center">
+            <label htmlFor="reason" className="text-body-sm font-medium text-on-surface">
+              Handover Brief &amp; Notes
             </label>
-            <span className="text-[11px] text-gray-400">
-              {reason.length} / 300 chars
+            <span className="text-label-sm text-on-surface-variant">
+              {reason.length ? `${reason.length} / 300` : "Optional"}
             </span>
           </div>
           <textarea
@@ -400,18 +380,41 @@ export function LeaveRequestForm({
             maxLength={300}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Brief reason or critical operational items delegated to relief colleague…"
-            className="block w-full rounded-2xl border border-black/10 bg-[#F2F2F7] p-4 text-sm text-gray-900 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] transition-all duration-200 placeholder:text-gray-400 hover:bg-[#EBEBF0] focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/15 focus:outline-none"
+            placeholder="Provide brief instructions or pending task references for your relief colleague..."
+            className="w-full p-4 rounded-xl bg-surface text-on-surface text-body-md focus:outline-none focus:ring-2 focus:ring-primary resize-none border border-surface-container-high placeholder:text-outline"
           />
         </div>
 
-        {/* 7. Action Notifications */}
+        {/* 6. Emergency Reachability Checkbox */}
+        <div className="flex items-center gap-3 pt-1">
+          <input
+            id="emergency"
+            name="emergency_reachable"
+            type="checkbox"
+            checked={emergencyReachable}
+            onChange={(e) => setEmergencyReachable(e.target.checked)}
+            className="w-5 h-5 rounded text-primary focus:ring-primary accent-primary cursor-pointer"
+          />
+          <label htmlFor="emergency" className="text-body-sm text-on-surface select-none cursor-pointer">
+            I can be reached via emergency phone number while away
+          </label>
+        </div>
+
+        {/* Draft Notification */}
+        {draftNotice && (
+          <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3.5 py-2.5 text-xs font-medium text-primary">
+            <CheckCircleIcon className="h-4 w-4 shrink-0" />
+            <span>{draftNotice}</span>
+          </div>
+        )}
+
+        {/* Action Notifications */}
         {state.error && (
           <div
             role="alert"
-            className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-semibold text-red-700 animate-in fade-in"
+            className="flex items-start gap-2 rounded-xl border border-[#FFB2B9] bg-[#FFDAD6] p-3.5 text-xs font-semibold text-[#93000A]"
           >
-            <ExclamationTriangleIcon className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+            <ExclamationTriangleIcon className="h-4 w-4 text-[#BA1A1A] shrink-0 mt-0.5" />
             <span>{state.error}</span>
           </div>
         )}
@@ -419,24 +422,33 @@ export function LeaveRequestForm({
         {state.success && (
           <div
             role="status"
-            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-semibold text-emerald-800 animate-in fade-in"
+            className="flex items-center gap-2 rounded-xl border border-[#A8D0B5] bg-[#C4ECD0] p-3.5 text-xs font-semibold text-[#003317]"
           >
-            <CheckCircleIcon className="h-4 w-4 text-emerald-600 shrink-0" />
+            <CheckCircleIcon className="h-4 w-4 text-[#006D38] shrink-0" />
             <span>{state.success}</span>
           </div>
         )}
 
-        {/* 8. Submit Button */}
-        <button
-          type="submit"
-          disabled={pending || workingDays === 0 || exceedsBalance}
-          className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-xs transition-all duration-200 hover:bg-brand-dark hover:shadow-md hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
-        >
-          {pending
-            ? "Submitting Leave Request…"
-            : `Submit Request (${workingDays} Working Day${workingDays === 1 ? "" : "s"})`}
-        </button>
-      </div>
-    </form>
+        {/* 7. Action Buttons */}
+        <div className="flex items-center gap-space-md pt-2">
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            className="flex-1 py-3.5 px-5 rounded-xl border border-outline-variant text-on-surface font-medium hover:bg-surface-container transition-all active:scale-95 text-body-md"
+          >
+            Save as Draft
+          </button>
+          <button
+            type="submit"
+            disabled={pending || workingDays === 0 || exceedsBalance}
+            className="flex-1 py-3.5 px-5 rounded-xl bg-primary text-on-primary font-medium hover:opacity-95 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-body-md"
+          >
+            {pending
+              ? "Submitting Request…"
+              : `Submit Request (${workingDays}d)`}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

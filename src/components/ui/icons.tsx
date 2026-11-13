@@ -1169,3 +1169,100 @@ export const BellIcon = makeIcon(bellAnim, (v, controls, props) => (
     <path d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
   </motion.svg>
 ));
+
+// 33. HeartIcon (Compassionate / Health)
+const heartAnim = {
+  default: {
+    heart: {
+      initial: { scale: 1 },
+      animate: {
+        scale: [1, 1.18, 0.95, 1.1, 1],
+        transformOrigin: "center",
+        transition: { duration: 0.6, ease: "easeInOut" },
+      },
+    },
+  } satisfies Record<string, Variants>,
+} as const;
+
+export const HeartIcon = makeIcon(heartAnim, (v, controls, props) => (
+  <motion.svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    variants={v.heart}
+    initial="initial"
+    animate={controls}
+    {...props}
+  >
+    <path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+  </motion.svg>
+));
+
+// 34. AcademicCapIcon (Study Leave)
+const capAnim = {
+  default: {
+    cap: {
+      initial: { y: 0, rotate: 0 },
+      animate: {
+        y: [0, -2, 0],
+        rotate: [0, -3, 3, 0],
+        transformOrigin: "center",
+        transition: { duration: 0.5, ease: "easeInOut" },
+      },
+    },
+  } satisfies Record<string, Variants>,
+} as const;
+
+export const AcademicCapIcon = makeIcon(capAnim, (v, controls, props) => (
+  <motion.svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    variants={v.cap}
+    initial="initial"
+    animate={controls}
+    {...props}
+  >
+    <path d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342" />
+  </motion.svg>
+));
+
+// 35. FirstAidIcon (Sick Leave / Medical)
+const aidAnim = {
+  default: {
+    aid: {
+      initial: { scale: 1 },
+      animate: {
+        scale: [1, 1.08, 1],
+        transformOrigin: "center",
+        transition: { duration: 0.4, ease: "easeInOut" },
+      },
+    },
+  } satisfies Record<string, Variants>,
+} as const;
+
+export const FirstAidIcon = makeIcon(aidAnim, (v, controls, props) => (
+  <motion.svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    variants={v.aid}
+    initial="initial"
+    animate={controls}
+    {...props}
+  >
+    <path d="M9 3.75H15M12 6.75V3.75M3.75 8.25A2.25 2.25 0 0 1 6 6h12a2.25 2.25 0 0 1 2.25 2.25v10.5A2.25 2.25 0 0 1 18 21H6a2.25 2.25 0 0 1-2.25-2.25V8.25ZM9.75 13.5h4.5M12 11.25v4.5" />
+  </motion.svg>
+));

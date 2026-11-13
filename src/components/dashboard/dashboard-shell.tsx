@@ -12,41 +12,46 @@ import { TeamManagement } from "@/components/team/team-management";
 import { ChangePasswordModal } from "@/components/dashboard/change-password-modal";
 import { LeaveRadialStackedCard } from "@/components/dashboard/leave-radial-stacked";
 import { OvertimeReceiptModal } from "@/components/overtime/overtime-receipt-modal";
-import { reviewLeaveRequest, cancelLeaveRequest } from "@/app/actions/leave";
-import { reviewOvertimeRequest, cancelOvertimeRequest } from "@/app/actions/overtime";
+import { cancelLeaveRequest } from "@/app/actions/leave";
+import { cancelOvertimeRequest } from "@/app/actions/overtime";
 import { signOut } from "@/app/login/actions";
+import { getKenyanHolidays } from "@/lib/leave/holidays";
 import {
   CalendarIcon,
+  CalendarDaysIcon,
   ClockIcon,
   UsersIcon,
   ChartBarIcon,
-  CogIcon,
   CheckCircleIcon,
   XCircleIcon,
-  InformationCircleIcon,
   MagnifyingGlassIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   UserIcon,
-  ShieldCheckIcon,
-  BuildingOfficeIcon,
   KeyIcon,
   BellIcon,
   TrashIcon,
+  FirstAidIcon,
+  HeartIcon,
+  AcademicCapIcon,
 } from "@/components/ui/icons";
+
+function formatLeaveDate(dateStr: string) {
+  try {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    if (!y || !m || !d) return dateStr;
+    const date = new Date(y, m - 1, d);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return dateStr;
+  }
+}
 
 const STATUS_BADGE: Record<string, string> = {
   pending: "bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]",
   approved: "bg-[#C4ECD0] text-[#003317] border border-[#A8D0B5]",
   rejected: "bg-[#FFDAD6] text-[#93000A] border border-[#FFB2B9]",
   cancelled: "bg-[#E2E2E2] text-[#3D4A3F] border border-[#BCCABC]",
-};
-
-const COLOR_ACCENT: Record<string, { bar: string; badge: string }> = {
-  emerald: { bar: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-800" },
-  amber: { bar: "bg-amber-500", badge: "bg-amber-50 text-amber-800" },
-  purple: { bar: "bg-purple-500", badge: "bg-purple-50 text-purple-800" },
-  blue: { bar: "bg-blue-500", badge: "bg-blue-50 text-blue-800" },
 };
 
 type Props = {
@@ -90,12 +95,44 @@ export function DashboardShell({
   const [expandedOvertimeId, setExpandedOvertimeId] = useState<string | null>(null);
   const [overtimeSearchQuery, setOvertimeSearchQuery] = useState("");
   const [prefillOvertimeClaim, setPrefillOvertimeClaim] = useState<OvertimeRecord | null>(null);
+  const [selectedLeaveCategory, setSelectedLeaveCategory] = useState<string | null>(null);
 
-  const memberMap = new Map(teamMembers.map((m) => [m.email.toLowerCase(), m]));
-  const leaveTypeMap = new Map(leaveTypes.map((t) => [t.code, t]));
+  const nextPublicHoliday = useMemo(() => {
+    try {
+      const year = new Date().getFullYear();
+      const holidaysMap = getKenyanHolidays(year);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const sortedDates = Array.from(holidaysMap.keys()).sort();
+      const upcoming = sortedDates.find((d) => d >= todayStr);
+      if (upcoming) {
+        const name = holidaysMap.get(upcoming);
+        const [y, m, d] = upcoming.split("-").map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        const formatted = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        return `${name} (${formatted})`;
+      }
+      const nextYearHolidays = getKenyanHolidays(year + 1);
+      const nextYearSorted = Array.from(nextYearHolidays.keys()).sort();
+      if (nextYearSorted.length > 0) {
+        const first = nextYearSorted[0];
+        const name = nextYearHolidays.get(first);
+        const [y, m, d] = first.split("-").map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        const formatted = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        return `${name} (${formatted})`;
+      }
+    } catch {
+      // fallback
+    }
+    return "Madaraka Day (Jun 1)";
+  }, []);
 
-  const myLeaveRequests = allLeaveRequests.filter(
-    (r) => r.user_email.toLowerCase() === currentUserEmail
+  const memberMap = useMemo(() => new Map(teamMembers.map((m) => [m.email.toLowerCase(), m])), [teamMembers]);
+  const leaveTypeMap = useMemo(() => new Map(leaveTypes.map((t) => [t.code, t])), [leaveTypes]);
+
+  const myLeaveRequests = useMemo(
+    () => allLeaveRequests.filter((r) => r.user_email.toLowerCase() === currentUserEmail),
+    [allLeaveRequests, currentUserEmail]
   );
   const filteredLeaveRequests = myLeaveRequests.filter((r) => {
     if (leaveStatusFilter !== "all" && r.status !== leaveStatusFilter) return false;
@@ -112,8 +149,9 @@ export function DashboardShell({
   });
   const pendingLeaveApprovals = allLeaveRequests.filter((r) => r.status === "pending");
 
-  const myOvertimeRecords = allOvertimeRecords.filter(
-    (r) => r.user_email.toLowerCase() === currentUserEmail
+  const myOvertimeRecords = useMemo(
+    () => allOvertimeRecords.filter((r) => r.user_email.toLowerCase() === currentUserEmail),
+    [allOvertimeRecords, currentUserEmail]
   );
   const filteredOvertimeRecords = myOvertimeRecords.filter((r) => {
     if (overtimeStatusFilter !== "all" && r.status !== overtimeStatusFilter) return false;
@@ -135,14 +173,17 @@ export function DashboardShell({
 
   // Load trashed notices from localStorage on client mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(`leave_trashed_notices_${currentUserEmail}`);
-      if (stored) {
-        setTrashedNoticeIds(JSON.parse(stored));
+    const timer = setTimeout(() => {
+      try {
+        const stored = localStorage.getItem(`leave_trashed_notices_${currentUserEmail}`);
+        if (stored) {
+          setTrashedNoticeIds(JSON.parse(stored));
+        }
+      } catch {
+        // Fallback silently if localStorage is restricted
       }
-    } catch {
-      // Fallback silently if localStorage is restricted
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [currentUserEmail]);
 
   function trashNotice(id: string) {
@@ -167,38 +208,35 @@ export function DashboardShell({
   }
 
   // Active notifications sent to the user
-  const allStaffNotices = useMemo(() => {
-    const leaveNotices = myLeaveRequests
-      .filter((r) => (r.status === "approved" || r.status === "rejected") && r.reviewed_at)
-      .map((r) => ({
-        id: `leave-${r.id}`,
-        type: "Leave" as const,
-        status: r.status as "approved" | "rejected",
-        title: `${leaveTypeMap.get(r.leave_type)?.name || r.leave_type} (${r.start_date} to ${r.end_date})`,
-        detail: `${r.working_days} working day(s)`,
-        reviewedBy: r.reviewed_by || "F. Mbuthia (Manager)",
-        reviewedAt: r.reviewed_at || "",
-        note: r.reviewer_note || (r.status === "approved" ? "Approved by manager." : "Declined by manager."),
-      }));
+  const leaveNotices = myLeaveRequests
+    .filter((r) => (r.status === "approved" || r.status === "rejected") && r.reviewed_at)
+    .map((r) => ({
+      id: `leave-${r.id}`,
+      type: "Leave" as const,
+      status: r.status as "approved" | "rejected",
+      title: `${leaveTypeMap.get(r.leave_type)?.name || r.leave_type} (${r.start_date} to ${r.end_date})`,
+      detail: `${r.working_days} working day(s)`,
+      reviewedBy: r.reviewed_by || "Line Manager",
+      reviewedAt: r.reviewed_at || "",
+      note: r.reviewer_note || (r.status === "approved" ? "Approved by manager." : "Declined by manager."),
+    }));
 
-    const overtimeNotices = myOvertimeRecords
-      .filter((r) => (r.status === "approved" || r.status === "rejected") && r.reviewed_at)
-      .map((r) => ({
-        id: `ot-${r.id}`,
-        type: "Overtime" as const,
-        status: r.status as "approved" | "rejected",
-        title: `Overtime on ${r.overtime_date} (${r.task_summary})`,
-        detail: `${r.hours} hours • ${r.compensatory_choice.toUpperCase()}`,
-        reviewedBy: r.reviewed_by || "F. Mbuthia (Manager)",
-        reviewedAt: r.reviewed_at || "",
-        note: r.reviewer_note || (r.status === "approved" ? "Approved by manager." : "Declined by manager."),
-      }));
+  const overtimeNotices = myOvertimeRecords
+    .filter((r) => (r.status === "approved" || r.status === "rejected") && r.reviewed_at)
+    .map((r) => ({
+      id: `ot-${r.id}`,
+      type: "Overtime" as const,
+      status: r.status as "approved" | "rejected",
+      title: `Overtime on ${r.overtime_date} (${r.task_summary})`,
+      detail: `${r.hours} hours • ${r.compensatory_choice.toUpperCase()}`,
+      reviewedBy: r.reviewed_by || "Line Manager",
+      reviewedAt: r.reviewed_at || "",
+      note: r.reviewer_note || (r.status === "approved" ? "Approved by manager." : "Declined by manager."),
+    }));
 
-    const combined = [...leaveNotices, ...overtimeNotices].filter(
-      (n) => !trashedNoticeIds.includes(n.id)
-    );
-    return combined.slice().sort((a, b) => b.reviewedAt.localeCompare(a.reviewedAt));
-  }, [myLeaveRequests, myOvertimeRecords, leaveTypeMap, trashedNoticeIds]);
+  const allStaffNotices = [...leaveNotices, ...overtimeNotices]
+    .filter((n) => !trashedNoticeIds.includes(n.id))
+    .sort((a, b) => b.reviewedAt.localeCompare(a.reviewedAt));
 
   const unreadCount = allStaffNotices.length;
 
@@ -382,7 +420,7 @@ export function DashboardShell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-8 px-4 sm:px-6 lg:px-8 py-8">
         {!schemaReady && (
           <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             <p className="font-semibold">Notice: Database Setup</p>
@@ -394,261 +432,388 @@ export function DashboardShell({
 
         {/* TAB 1: LEAVE REQUESTS */}
         {activeTab === "leave" && (
-          <div className="space-y-8">
-            {/* My Leave Balances */}
-            <section>
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-                    My Leave Balances ({currentYear})
-                  </h1>
-                  <p className="text-xs text-gray-500">
-                    Annual allowance breakdown and active leave timeline
-                  </p>
+          <div className="flex flex-col w-full">
+            {/* Top Stats Bar / Welcome Section */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-space-xl gap-space-md">
+              <div>
+                <div className="text-label-sm uppercase tracking-wider text-on-surface-variant font-medium mb-1">
+                  Employee Self-Service &bull; FY {currentYear}/{currentYear + 1}
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 font-medium">
-                    Working days (Mon–Fri)
-                  </span>
-                </div>
+                <h1 className="font-headline-xl text-on-surface tracking-tight">
+                  Leave Dashboard &amp; Request Portal
+                </h1>
               </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {myBalances.map(({ leaveType, entitled, baseEntitled, carriedForward, approved, pending, remaining }) => {
-                  const todayStr = new Date().toISOString().slice(0, 10);
-                  const activeLeave = myLeaveRequests.find(
-                    (r) =>
-                      r.status === "approved" &&
-                      r.leave_type === leaveType.code &&
-                      r.start_date <= todayStr &&
-                      r.end_date >= todayStr
-                  );
-                  const upcomingLeave = myLeaveRequests
-                    .filter(
-                      (r) =>
-                        (r.status === "approved" || r.status === "pending") &&
-                        r.leave_type === leaveType.code &&
-                        r.end_date >= todayStr
-                    )
-                    .sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
-
-                  return (
-                    <LeaveRadialStackedCard
-                      key={leaveType.code}
-                      leaveType={leaveType}
-                      entitled={entitled}
-                      baseEntitled={baseEntitled}
-                      carriedForward={carriedForward}
-                      approved={approved}
-                      pending={pending}
-                      remaining={remaining}
-                      activeLeaveRequest={activeLeave}
-                      upcomingLeaveRequest={upcomingLeave}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* Apply for Leave Form with Smart Date Range & Clash Check */}
-            <LeaveRequestForm
-              currentUserEmail={currentUserEmail}
-              leaveTypes={leaveTypes}
-              balances={myBalances}
-              teamMembers={teamMembers}
-              existingRequests={allLeaveRequests}
-            />
-
-
-
-            {/* My Leave Requests Table */}
-            <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">My Leave History</h2>
-                  <p className="text-xs text-gray-500">Track status, handover details, and manager reviews.</p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search leaves…"
-                      value={leaveSearchQuery}
-                      onChange={(e) => setLeaveSearchQuery(e.target.value)}
-                      className="rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-3 text-xs text-gray-900 shadow-2xs transition focus:border-brand focus:outline-none"
-                    />
+              {nextPublicHoliday && (
+                <div className="flex items-center gap-space-sm">
+                  <div className="bg-surface-container-high px-space-md py-3 rounded-xl flex items-center gap-space-xs border border-surface-container-highest">
+                    <CalendarDaysIcon className="h-5 w-5 text-primary shrink-0" />
+                    <span className="text-body-md font-medium text-on-surface">
+                      Next Public Holiday: {nextPublicHoliday}
+                    </span>
                   </div>
-
-                  <div className="flex items-center gap-1">
-                    {(["all", "pending", "approved", "rejected"] as const).map((status) => (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => setLeaveStatusFilter(status)}
-                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize transition ${
-                          leaveStatusFilter === status
-                            ? "bg-brand text-white shadow-2xs"
-                            : "border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
-                        }`}
-                      >
-                        {status}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {filteredLeaveRequests.length === 0 ? (
-                <p className="py-6 text-center text-sm text-gray-500">
-                  {leaveStatusFilter === "all" && !leaveSearchQuery
-                    ? "You have not submitted any leave requests yet."
-                    : "No leave requests match your search or filter."}
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
-                        <th className="py-2.5 pr-2 w-6"></th>
-                        <th className="py-2.5 pr-4">Type</th>
-                        <th className="px-3 py-2.5">Start</th>
-                        <th className="px-3 py-2.5">End</th>
-                        <th className="px-3 py-2.5">Working Days</th>
-                        <th className="px-3 py-2.5">Relief Colleague</th>
-                        <th className="px-3 py-2.5">Status</th>
-                        <th className="px-3 py-2.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {filteredLeaveRequests.map((r) => {
-                        const type = leaveTypeMap.get(r.leave_type);
-                        const handover = memberMap.get(r.handover_email?.toLowerCase() || "");
-                        const isExpanded = expandedLeaveId === r.id;
-
-                        return (
-                          <tr key={r.id} className="group">
-                            <td colSpan={8} className="p-0">
-                              <div className="hover:bg-gray-50/60 transition flex flex-col">
-                                <div className="flex items-center w-full px-2 py-3">
-                                  <div className="w-6 shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => setExpandedLeaveId(isExpanded ? null : r.id)}
-                                      className="rounded p-1 text-gray-400 hover:text-gray-700 transition"
-                                      title={isExpanded ? "Collapse details" : "Expand details"}
-                                    >
-                                      {isExpanded ? (
-                                        <ChevronUpIcon className="h-3.5 w-3.5" />
-                                      ) : (
-                                        <ChevronDownIcon className="h-3.5 w-3.5" />
-                                      )}
-                                    </button>
-                                  </div>
-
-                                  <div className="w-1/3 pr-4">
-                                    <span className="font-semibold text-gray-900 block">
-                                      {type?.name ?? r.leave_type}
-                                    </span>
-                                    {r.reviewer_note && (r.status === "approved" || r.status === "rejected") && (
-                                      <p className={`mt-0.5 text-[11px] leading-tight truncate ${
-                                        r.status === "approved" ? "text-emerald-700 font-medium" : "text-red-600 font-medium"
-                                      }`} title={r.reviewer_note}>
-                                        <span className="font-bold">Note: </span>
-                                        {r.reviewer_note}
-                                      </p>
-                                    )}
-                                  </div>
-
-                                  <div className="w-24 px-3 tabular-nums font-medium text-gray-700">{r.start_date}</div>
-                                  <div className="w-24 px-3 tabular-nums font-medium text-gray-700">{r.end_date}</div>
-                                  <div className="w-24 px-3 font-semibold tabular-nums text-gray-900">{r.working_days}d</div>
-
-                                  <div className="flex-1 px-3 text-gray-600 truncate">
-                                    {handover ? handover.full_name : r.handover_email || "—"}
-                                  </div>
-
-                                  <div className="w-28 px-3">
-                                    <span
-                                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                                        STATUS_BADGE[r.status] ?? "bg-gray-100 text-gray-700"
-                                      }`}
-                                    >
-                                      {r.status.toUpperCase()}
-                                    </span>
-                                  </div>
-
-                                  <div className="w-20 px-3 text-right">
-                                    {r.status === "pending" && (
-                                      <form action={cancelLeaveRequest} className="inline">
-                                        <input type="hidden" name="request_id" value={r.id} />
-                                        <button
-                                          type="submit"
-                                          className="text-xs text-red-600 hover:text-red-800 font-semibold active:scale-95 transition"
-                                        >
-                                          Cancel
-                                        </button>
-                                      </form>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Expanded Detailed View */}
-                                {isExpanded && (
-                                  <div className="bg-gray-50/80 px-8 py-3.5 border-t border-gray-100 text-xs animate-in fade-in">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                      <div>
-                                        <span className="text-[10px] uppercase font-bold text-gray-400 block mb-0.5">
-                                          Reason &amp; Handover Brief:
-                                        </span>
-                                        <p className="text-gray-800 bg-white p-2.5 rounded-lg border border-gray-200">
-                                          {r.reason || "No specific handover notes recorded."}
-                                        </p>
-                                      </div>
-
-                                      <div>
-                                        <span className="text-[10px] uppercase font-bold text-gray-400 block mb-0.5">
-                                          Manager Authorization &amp; Remarks:
-                                        </span>
-                                        <div className="bg-white p-2.5 rounded-lg border border-gray-200 space-y-1">
-                                          <div className="flex items-center justify-between text-[11px]">
-                                            <span className="text-gray-500">Reviewer:</span>
-                                            <span className="font-semibold text-gray-900">
-                                              {r.reviewed_by || "F. Mbuthia (Manager)"}
-                                            </span>
-                                          </div>
-                                          {r.reviewed_at && (
-                                            <div className="flex items-center justify-between text-[11px]">
-                                              <span className="text-gray-500">Decision Date:</span>
-                                              <span className="tabular-nums text-gray-700">{r.reviewed_at.slice(0, 10)}</span>
-                                            </div>
-                                          )}
-                                          {r.reviewer_note && (
-                                            <div className="pt-1 border-t border-gray-100 text-gray-700">
-                                              <span className="font-semibold text-gray-800">Remarks: </span>
-                                              <span>{r.reviewer_note}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="mt-2 text-[10px] text-gray-400 text-right">
-                                      Submitted: {r.created_at ? r.created_at.slice(0, 19).replace("T", " ") : "—"}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
                 </div>
               )}
-            </section>
+            </div>
+
+            {/* Main Grid: Two-Column Airy Layout (7 cols / 5 cols) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
+              {/* LEFT COLUMN: Circular Leave Balance Widgets (7 Columns) */}
+              <div className="lg:col-span-7 flex flex-col gap-space-lg">
+                {/* Section Header */}
+                <div className="flex justify-between items-end">
+                  <div>
+                    <h2 className="font-headline-md text-on-surface">Available Balances</h2>
+                    <p className="text-body-md text-on-surface-variant">Real-time quota tracking across enterprise categories</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById("leave-history-section");
+                      el?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className="text-body-sm font-medium text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>View Accrual History</span>
+                    <ChevronDownIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Balance Cards Bento Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+                  {myBalances.map(({ leaveType, entitled, baseEntitled, carriedForward, approved, pending, remaining }, idx) => {
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    const activeLeave = myLeaveRequests.find(
+                      (r) =>
+                        r.status === "approved" &&
+                        r.leave_type === leaveType.code &&
+                        r.start_date <= todayStr &&
+                        r.end_date >= todayStr
+                    );
+                    const upcomingLeave = myLeaveRequests
+                      .filter(
+                        (r) =>
+                          (r.status === "approved" || r.status === "pending") &&
+                          r.leave_type === leaveType.code &&
+                          r.end_date >= todayStr
+                      )
+                      .sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
+
+                    return (
+                      <LeaveRadialStackedCard
+                        key={leaveType.code}
+                        categoryIndex={idx + 1}
+                        leaveType={leaveType}
+                        entitled={entitled}
+                        baseEntitled={baseEntitled}
+                        carriedForward={carriedForward}
+                        approved={approved}
+                        pending={pending}
+                        remaining={remaining}
+                        activeLeaveRequest={activeLeave}
+                        upcomingLeaveRequest={upcomingLeave}
+                        onSelectType={(code) => setSelectedLeaveCategory(code)}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Recent Requests History Preview */}
+                <div className="bg-surface-container-low p-6 lg:p-7 rounded-xl shadow-xs border border-surface-container-high mt-space-sm">
+                  <div className="flex justify-between items-center mb-5">
+                    <h3 className="font-headline-sm text-on-surface">Recent Leave Activity</h3>
+                    <span className="text-label-sm bg-surface-container px-3 py-1 rounded-full text-on-surface-variant font-medium">
+                      Showing Last {Math.min(3, myLeaveRequests.length)} Requests
+                    </span>
+                  </div>
+
+                  {myLeaveRequests.length === 0 ? (
+                    <p className="text-body-sm text-on-surface-variant py-4 text-center">
+                      You have not submitted any leave requests yet.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {myLeaveRequests.slice(0, 3).map((r) => {
+                        const type = leaveTypeMap.get(r.leave_type);
+                        const isApproved = r.status === "approved";
+                        const isPending = r.status === "pending";
+                        const isRejected = r.status === "rejected";
+
+                        return (
+                          <div
+                            key={r.id}
+                            className="flex items-center justify-between p-4 bg-surface rounded-xl border border-surface-container-high hover:border-outline-variant/40 transition-colors"
+                          >
+                            <div className="flex items-center gap-3.5">
+                              <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                                  r.leave_type.toLowerCase().includes("sick")
+                                    ? "bg-secondary-container text-on-secondary-container"
+                                    : r.leave_type.toLowerCase().includes("compassionate")
+                                    ? "bg-tertiary-fixed text-on-tertiary-fixed-variant"
+                                    : r.leave_type.toLowerCase().includes("study")
+                                    ? "bg-primary-fixed text-on-primary-fixed"
+                                    : "bg-primary-container/20 text-primary"
+                                }`}
+                              >
+                                {r.leave_type.toLowerCase().includes("sick") ? (
+                                  <FirstAidIcon className="h-5 w-5" />
+                                ) : r.leave_type.toLowerCase().includes("compassionate") ? (
+                                  <HeartIcon className="h-5 w-5" />
+                                ) : r.leave_type.toLowerCase().includes("study") ? (
+                                  <AcademicCapIcon className="h-5 w-5" />
+                                ) : (
+                                  <CalendarDaysIcon className="h-5 w-5" />
+                                )}
+                              </div>
+                              <div>
+                                <div className="font-medium text-body-md text-on-surface">
+                                  {type?.name || r.leave_type} ({r.working_days} Day{r.working_days === 1 ? "" : "s"})
+                                </div>
+                                <div className="text-body-sm text-on-surface-variant">
+                                  {formatLeaveDate(r.start_date)} &ndash; {formatLeaveDate(r.end_date)}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={`px-3 py-1 rounded-full text-label-sm font-semibold ${
+                                  isApproved
+                                    ? "bg-[#C4ECD0] text-[#003317]"
+                                    : isPending
+                                    ? "bg-[#FEF3C7] text-[#92400E]"
+                                    : isRejected
+                                    ? "bg-[#FFDAD6] text-[#93000A]"
+                                    : "bg-surface-container-high text-on-surface-variant"
+                                }`}
+                              >
+                                {r.status.toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* My Full Leave History Table with Search & Status Filters */}
+                <section
+                  id="leave-history-section"
+                  className="bg-surface-container-low p-6 lg:p-7 rounded-xl shadow-xs border border-surface-container-high"
+                >
+                  <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2 className="font-headline-sm text-on-surface">My Leave History</h2>
+                      <p className="text-body-sm text-on-surface-variant">Track status, handover details, and manager reviews.</p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="relative">
+                        <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-on-surface-variant" />
+                        <input
+                          type="text"
+                          placeholder="Search leaves…"
+                          value={leaveSearchQuery}
+                          onChange={(e) => setLeaveSearchQuery(e.target.value)}
+                          className="rounded-lg border border-surface-container-high bg-surface py-1.5 pl-8 pr-3 text-xs text-on-surface shadow-2xs transition focus:border-primary focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {(["all", "pending", "approved", "rejected"] as const).map((status) => (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={() => setLeaveStatusFilter(status)}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize transition ${
+                              leaveStatusFilter === status
+                                ? "bg-primary text-on-primary shadow-2xs"
+                                : "border border-outline-variant/30 bg-surface text-on-surface-variant hover:bg-surface-container"
+                            }`}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {filteredLeaveRequests.length === 0 ? (
+                    <p className="py-8 text-center text-body-sm text-on-surface-variant">
+                      {leaveStatusFilter === "all" && !leaveSearchQuery
+                        ? "You have not submitted any leave requests yet."
+                        : "No leave requests match your search or filter."}
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-surface-container-high bg-surface">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-surface-container-high text-on-surface-variant uppercase tracking-wider font-semibold bg-surface-container-low/60">
+                            <th className="py-2.5 pr-2 pl-3 w-6"></th>
+                            <th className="py-2.5 pr-4">Type</th>
+                            <th className="px-3 py-2.5">Start</th>
+                            <th className="px-3 py-2.5">End</th>
+                            <th className="px-3 py-2.5">Working Days</th>
+                            <th className="px-3 py-2.5">Relief Colleague</th>
+                            <th className="px-3 py-2.5">Status</th>
+                            <th className="px-3 py-2.5 text-right pr-4">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-surface-container-high">
+                          {filteredLeaveRequests.map((r) => {
+                            const type = leaveTypeMap.get(r.leave_type);
+                            const handover = memberMap.get(r.handover_email?.toLowerCase() || "");
+                            const isExpanded = expandedLeaveId === r.id;
+
+                            return (
+                              <tr key={r.id} className="group">
+                                <td colSpan={8} className="p-0">
+                                  <div className="hover:bg-surface-container-low/50 transition flex flex-col">
+                                    <div className="flex items-center w-full px-3 py-3">
+                                      <div className="w-6 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => setExpandedLeaveId(isExpanded ? null : r.id)}
+                                          className="rounded p-1 text-on-surface-variant hover:text-on-surface transition cursor-pointer"
+                                          title={isExpanded ? "Collapse details" : "Expand details"}
+                                        >
+                                          {isExpanded ? (
+                                            <ChevronUpIcon className="h-3.5 w-3.5" />
+                                          ) : (
+                                            <ChevronDownIcon className="h-3.5 w-3.5" />
+                                          )}
+                                        </button>
+                                      </div>
+
+                                      <div className="w-1/3 pr-4">
+                                        <span className="font-semibold text-on-surface block">
+                                          {type?.name ?? r.leave_type}
+                                        </span>
+                                        {r.reviewer_note && (r.status === "approved" || r.status === "rejected") && (
+                                          <p
+                                            className={`mt-0.5 text-[11px] leading-tight truncate ${
+                                              r.status === "approved"
+                                                ? "text-primary font-medium"
+                                                : "text-[#BA1A1A] font-medium"
+                                            }`}
+                                            title={r.reviewer_note}
+                                          >
+                                            <span className="font-bold">Note: </span>
+                                            {r.reviewer_note}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      <div className="w-24 px-3 tabular-nums font-medium text-on-surface-variant">
+                                        {r.start_date}
+                                      </div>
+                                      <div className="w-24 px-3 tabular-nums font-medium text-on-surface-variant">
+                                        {r.end_date}
+                                      </div>
+                                      <div className="w-24 px-3 font-semibold tabular-nums text-on-surface">
+                                        {r.working_days}d
+                                      </div>
+
+                                      <div className="flex-1 px-3 text-on-surface-variant truncate">
+                                        {handover ? handover.full_name : r.handover_email || "—"}
+                                      </div>
+
+                                      <div className="w-28 px-3">
+                                        <span
+                                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                                            STATUS_BADGE[r.status] ?? "bg-surface-container text-on-surface"
+                                          }`}
+                                        >
+                                          {r.status.toUpperCase()}
+                                        </span>
+                                      </div>
+
+                                      <div className="w-20 px-3 text-right pr-4">
+                                        {r.status === "pending" && (
+                                          <form action={cancelLeaveRequest} className="inline">
+                                            <input type="hidden" name="request_id" value={r.id} />
+                                            <button
+                                              type="submit"
+                                              className="text-xs text-[#BA1A1A] hover:underline font-semibold active:scale-95 transition cursor-pointer"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </form>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Expanded Detailed View */}
+                                    {isExpanded && (
+                                      <div className="bg-surface-container-low/80 px-8 py-3.5 border-t border-surface-container-high text-xs">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                          <div>
+                                            <span className="text-[10px] uppercase font-bold text-on-surface-variant block mb-0.5">
+                                              Reason &amp; Handover Brief:
+                                            </span>
+                                            <p className="text-on-surface bg-surface p-2.5 rounded-lg border border-surface-container-high">
+                                              {r.reason || "No specific handover notes recorded."}
+                                            </p>
+                                          </div>
+
+                                          <div>
+                                            <span className="text-[10px] uppercase font-bold text-on-surface-variant block mb-0.5">
+                                              Manager Authorization &amp; Remarks:
+                                            </span>
+                                            <div className="bg-surface p-2.5 rounded-lg border border-surface-container-high space-y-1">
+                                              <div className="flex items-center justify-between text-[11px]">
+                                                <span className="text-on-surface-variant">Reviewer:</span>
+                                                <span className="font-semibold text-on-surface">
+                                                  {r.reviewed_by || "Line Manager"}
+                                                </span>
+                                              </div>
+                                              {r.reviewed_at && (
+                                                <div className="flex items-center justify-between text-[11px]">
+                                                  <span className="text-on-surface-variant">Decision Date:</span>
+                                                  <span className="tabular-nums text-on-surface-variant">
+                                                    {r.reviewed_at.slice(0, 10)}
+                                                  </span>
+                                                </div>
+                                              )}
+                                              {r.reviewer_note && (
+                                                <div className="pt-1 border-t border-surface-container-high text-on-surface">
+                                                  <span className="font-semibold text-on-surface">Remarks: </span>
+                                                  <span>{r.reviewer_note}</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="mt-2 text-[10px] text-on-surface-variant text-right">
+                                          Submitted: {r.created_at ? r.created_at.slice(0, 19).replace("T", " ") : "—"}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              </div>
+
+              {/* RIGHT COLUMN: Intuitive 'Apply for Leave' Form (5 Columns) */}
+              <div className="lg:col-span-5">
+                <LeaveRequestForm
+                  currentUserEmail={currentUserEmail}
+                  leaveTypes={leaveTypes}
+                  balances={myBalances}
+                  teamMembers={teamMembers}
+                  existingRequests={allLeaveRequests}
+                  externalSelectedType={selectedLeaveCategory}
+                />
+              </div>
+            </div>
           </div>
         )}
 
