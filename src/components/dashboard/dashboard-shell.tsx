@@ -458,28 +458,6 @@ export function DashboardShell({
         {/* TAB 1: LEAVE REQUESTS */}
         {activeTab === "leave" && (
           <div className="flex flex-col w-full">
-            {/* Top Stats Bar / Welcome Section */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-space-xl gap-space-md">
-              <div>
-                <div className="text-label-sm uppercase tracking-wider text-on-surface-variant font-medium mb-1">
-                  Employee Self-Service &bull; FY {currentYear}/{currentYear + 1}
-                </div>
-                <h1 className="font-headline-xl text-on-surface tracking-tight">
-                  Leave Dashboard &amp; Request Portal
-                </h1>
-              </div>
-              {nextPublicHoliday && (
-                <div className="flex items-center gap-space-sm">
-                  <div className="bg-surface-container-high px-space-md py-3 rounded-xl flex items-center gap-space-xs border border-surface-container-highest">
-                    <CalendarDaysIcon className="h-5 w-5 text-primary shrink-0" />
-                    <span className="text-body-md font-medium text-on-surface">
-                      Next Public Holiday: {nextPublicHoliday}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* Main Grid: Two-Column Airy Layout (7 cols / 5 cols) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
               {/* LEFT COLUMN: Circular Leave Balance Widgets (7 Columns) */}
