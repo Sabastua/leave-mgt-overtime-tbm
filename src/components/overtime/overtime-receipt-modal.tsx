@@ -309,7 +309,7 @@ export function OvertimeReceiptModal({
         <button
           type="button"
           onClick={handleCloseClick}
-          autofocus
+          autoFocus
           className="px-4 py-2.5 rounded-xl bg-surface hover:bg-surface-container-high text-on-surface text-body-sm font-medium transition-all cursor-pointer"
         >
           Close
