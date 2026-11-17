@@ -25,7 +25,6 @@ import { signOut } from "@/app/login/actions";
 import { getKenyanHolidays } from "@/lib/leave/holidays";
 import {
   CalendarIcon,
-  CalendarDaysIcon,
   ClockIcon,
   UsersIcon,
   ChartBarIcon,
@@ -38,9 +37,6 @@ import {
   KeyIcon,
   BellIcon,
   TrashIcon,
-  FirstAidIcon,
-  HeartIcon,
-  AcademicCapIcon,
 } from "@/components/ui/icons";
 
 function formatLeaveDate(dateStr: string) {
@@ -546,35 +542,12 @@ export function DashboardShell({
                             key={r.id}
                             className="flex items-center justify-between p-4 bg-surface rounded-xl border border-surface-container-high hover:border-outline-variant/40 transition-colors"
                           >
-                            <div className="flex items-center gap-3.5">
-                              <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                                  r.leave_type.toLowerCase().includes("sick")
-                                    ? "bg-secondary-container text-on-secondary-container"
-                                    : r.leave_type.toLowerCase().includes("compassionate")
-                                    ? "bg-tertiary-fixed text-on-tertiary-fixed-variant"
-                                    : r.leave_type.toLowerCase().includes("study")
-                                    ? "bg-primary-fixed text-on-primary-fixed"
-                                    : "bg-primary-container/20 text-primary"
-                                }`}
-                              >
-                                {r.leave_type.toLowerCase().includes("sick") ? (
-                                  <FirstAidIcon className="h-5 w-5" />
-                                ) : r.leave_type.toLowerCase().includes("compassionate") ? (
-                                  <HeartIcon className="h-5 w-5" />
-                                ) : r.leave_type.toLowerCase().includes("study") ? (
-                                  <AcademicCapIcon className="h-5 w-5" />
-                                ) : (
-                                  <CalendarDaysIcon className="h-5 w-5" />
-                                )}
+                            <div>
+                              <div className="font-medium text-body-md text-on-surface">
+                                {type?.name || r.leave_type} ({r.working_days} Day{r.working_days === 1 ? "" : "s"})
                               </div>
-                              <div>
-                                <div className="font-medium text-body-md text-on-surface">
-                                  {type?.name || r.leave_type} ({r.working_days} Day{r.working_days === 1 ? "" : "s"})
-                                </div>
-                                <div className="text-body-sm text-on-surface-variant">
-                                  {formatLeaveDate(r.start_date)} &ndash; {formatLeaveDate(r.end_date)}
-                                </div>
+                              <div className="text-body-sm text-on-surface-variant">
+                                {formatLeaveDate(r.start_date)} &ndash; {formatLeaveDate(r.end_date)}
                               </div>
                             </div>
 
@@ -828,21 +801,10 @@ export function DashboardShell({
               {/* Card 1: Approved Overtime */}
               <div className="flex flex-col bg-surface-container-low rounded-xl p-6 shadow-sm border border-surface-container-high/60 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-                <div className="flex items-center justify-between mb-4">
+                <div className="mb-4">
                   <span className="text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">
                     Approved Overtime
                   </span>
-                  <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center text-primary">
-                    {/* Schedule Icon */}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="w-5 h-5"
-                    >
-                      <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
-                    </svg>
-                  </div>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="font-headline-lg text-on-surface tabular-nums">
@@ -852,16 +814,7 @@ export function DashboardShell({
                     hrs
                   </span>
                 </div>
-                <div className="mt-3 flex items-center gap-2 text-body-sm text-primary">
-                  {/* Trending Up Icon */}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="w-4 h-4 shrink-0"
-                  >
-                    <path d="m16 6 2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" />
-                  </svg>
+                <div className="mt-3 text-body-sm text-primary">
                   <span>+12.4 hrs vs last month</span>
                 </div>
               </div>
@@ -869,21 +822,10 @@ export function DashboardShell({
               {/* Card 2: Pending Approvals */}
               <div className="flex flex-col bg-surface-container-low rounded-xl p-6 shadow-sm border border-surface-container-high/60 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#009dd3]/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-                <div className="flex items-center justify-between mb-4">
+                <div className="mb-4">
                   <span className="text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">
                     Pending Approvals
                   </span>
-                  <div className="w-10 h-10 rounded-xl bg-[#009dd3]/10 flex items-center justify-center text-[#00668a]">
-                    {/* Hourglass Top Icon */}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="w-5 h-5"
-                    >
-                      <path d="m6 2 .01 6L10 12l-3.99 4.01L6 22h12v-6l-4-4 4-3.99V2H6zm10 14.5V20H8v-3.5l4-4 4 4z" />
-                    </svg>
-                  </div>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="font-headline-lg text-on-surface tabular-nums">
@@ -893,16 +835,7 @@ export function DashboardShell({
                     hrs
                   </span>
                 </div>
-                <div className="mt-3 flex items-center gap-2 text-body-sm text-on-surface-variant">
-                  {/* Pending Icon */}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="w-4 h-4 shrink-0"
-                  >
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-5-9c.83 0 1.5.67 1.5 1.5S7.83 14 7 14s-1.5-.67-1.5-1.5S6.17 11 7 11zm5 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5zm5 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z" />
-                  </svg>
+                <div className="mt-3 text-body-sm text-on-surface-variant">
                   <span>Awaiting line manager sign-off</span>
                 </div>
               </div>
@@ -910,21 +843,10 @@ export function DashboardShell({
               {/* Card 3: Total Disbursed */}
               <div className="flex flex-col bg-surface-container-low rounded-xl p-6 shadow-sm border border-surface-container-high/60 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-                <div className="flex items-center justify-between mb-4">
+                <div className="mb-4">
                   <span className="text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">
                     Total Disbursed
                   </span>
-                  <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center text-primary">
-                    {/* Payments Icon */}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="w-5 h-5"
-                    >
-                      <path d="M19 14V6c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-9-1c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-6v11c0 1.1-.9 2-2 2H4v-2h17V7h2z" />
-                    </svg>
-                  </div>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-body-lg text-on-surface-variant font-medium">
@@ -936,16 +858,7 @@ export function DashboardShell({
                     )}
                   </span>
                 </div>
-                <div className="mt-3 flex items-center gap-2 text-body-sm text-primary">
-                  {/* Check Circle Icon */}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="w-4 h-4 shrink-0"
-                  >
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                  </svg>
+                <div className="mt-3 text-body-sm text-primary">
                   <span>Processed for August Payroll</span>
                 </div>
               </div>

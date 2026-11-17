@@ -4,14 +4,6 @@ import { useMemo } from "react";
 import { motion } from "motion/react";
 import type { LeaveType, LeaveRequest } from "@/lib/leave/types";
 import { calculateWorkingDays } from "@/lib/leave/types";
-import {
-  CalendarDaysIcon,
-  ClockIcon,
-  HeartIcon,
-  AcademicCapIcon,
-  FirstAidIcon,
-  DocumentTextIcon,
-} from "@/components/ui/icons";
 
 function formatLeaveDate(dateStr: string) {
   try {
@@ -114,8 +106,6 @@ export function LeaveRadialStackedCard({
     if (code.includes("annual")) {
       return {
         glowClass: "bg-primary/5 group-hover:bg-primary/10",
-        iconContainer: "bg-primary-container/20 text-primary",
-        icon: <CalendarDaysIcon className="h-5 w-5" />,
         ringColorClass: "text-primary",
         percentColorClass: "text-primary",
         footerLeft: carriedForward > 0 ? `+${carriedForward}d carried over` : `Expires Dec 31, ${currentYear}`,
@@ -126,8 +116,6 @@ export function LeaveRadialStackedCard({
     if (code.includes("sick")) {
       return {
         glowClass: "bg-secondary/5 group-hover:bg-secondary/10",
-        iconContainer: "bg-secondary-container text-on-secondary-container",
-        icon: <FirstAidIcon className="h-5 w-5" />,
         ringColorClass: "text-secondary",
         percentColorClass: "text-secondary",
         footerLeft: "Requires cert > 3 days",
@@ -138,8 +126,6 @@ export function LeaveRadialStackedCard({
     if (code.includes("compassionate")) {
       return {
         glowClass: "bg-tertiary-container/5 group-hover:bg-tertiary-container/10",
-        iconContainer: "bg-tertiary-fixed text-on-tertiary-fixed-variant",
-        icon: <HeartIcon className="h-5 w-5" />,
         ringColorClass: "text-tertiary-container",
         percentColorClass: "text-tertiary-container",
         footerLeft: "Immediate Family",
@@ -150,8 +136,6 @@ export function LeaveRadialStackedCard({
     if (code.includes("study")) {
       return {
         glowClass: "bg-primary-fixed/20 group-hover:bg-primary-fixed/30",
-        iconContainer: "bg-primary-fixed text-on-primary-fixed",
-        icon: <AcademicCapIcon className="h-5 w-5" />,
         ringColorClass: "text-[#2CB34A]",
         percentColorClass: "text-primary",
         footerLeft: "HR Pre-Approval Req.",
@@ -162,8 +146,6 @@ export function LeaveRadialStackedCard({
 
     return {
       glowClass: "bg-primary/5 group-hover:bg-primary/10",
-      iconContainer: "bg-surface-container-high text-on-surface",
-      icon: <DocumentTextIcon className="h-5 w-5" />,
       ringColorClass: "text-primary",
       percentColorClass: "text-primary",
       footerLeft: "Standard Policy",
@@ -186,20 +168,13 @@ export function LeaveRadialStackedCard({
 
       <div>
         {/* Card Header: Category & Type */}
-        <div className="flex justify-between items-start mb-5">
-          <div>
-            <span className="text-label-sm uppercase text-on-surface-variant font-medium tracking-wide">
-              Category {catNum}
-            </span>
-            <h3 className="font-headline-sm text-on-surface tracking-tight mt-0.5">
-              {leaveType.name}
-            </h3>
-          </div>
-          <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${config.iconContainer}`}
-          >
-            {config.icon}
-          </div>
+        <div className="mb-5">
+          <span className="text-label-sm uppercase text-on-surface-variant font-medium tracking-wide">
+            Category {catNum}
+          </span>
+          <h3 className="font-headline-sm text-on-surface tracking-tight mt-0.5">
+            {leaveType.name}
+          </h3>
         </div>
 
         {/* Circular Progress & Metric Representation */}
@@ -245,9 +220,8 @@ export function LeaveRadialStackedCard({
               Taken YTD: <span className="font-semibold text-on-surface">{annualApproved} Days</span>
             </div>
             {annualPending > 0 && (
-              <div className="text-body-sm text-[#F59E0B] font-medium flex items-center gap-1">
-                <ClockIcon className="h-3 w-3 shrink-0" />
-                <span>{annualPending}d Pending</span>
+              <div className="text-body-sm text-[#F59E0B] font-medium">
+                {annualPending}d Pending
               </div>
             )}
             <div className={`text-body-sm font-semibold mt-1 ${config.percentColorClass}`}>

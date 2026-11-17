@@ -10,7 +10,6 @@ import {
 import { calculateWorkingDaysDetailed } from "@/lib/leave/holidays";
 import type { AllowedUser } from "@/lib/auth/allowed-users";
 import {
-  CalendarDaysIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
@@ -175,14 +174,9 @@ export function LeaveRequestForm({
   return (
     <div className="bg-surface-container-low p-6 lg:p-8 rounded-xl shadow-xs border border-surface-container-high sticky top-24">
       {/* Form Header */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-surface-container-high">
-        <div>
-          <h2 className="font-headline-md text-on-surface tracking-tight">Apply for Leave</h2>
-          <p className="text-body-sm text-on-surface-variant">Submit new request to line manager</p>
-        </div>
-        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-          <CalendarDaysIcon className="h-5 w-5" />
-        </div>
+      <div className="mb-6 pb-4 border-b border-surface-container-high">
+        <h2 className="font-headline-md text-on-surface tracking-tight">Apply for Leave</h2>
+        <p className="text-body-sm text-on-surface-variant">Submit new request to line manager</p>
       </div>
 
       <form action={action} className="flex flex-col gap-space-md">
