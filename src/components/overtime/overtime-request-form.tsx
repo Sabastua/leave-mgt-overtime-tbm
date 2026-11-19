@@ -5,15 +5,12 @@ import { submitOvertimeRequest, type OvertimeActionState } from "@/app/actions/o
 import { CheckCircleIcon, InformationCircleIcon } from "@/components/ui/icons";
 import {
   BASE_HOURLY_RATE,
-  DEFAULT_DAILY_RATE,
   STANDARD_DAY_HOURS,
-  ENTERPRISE_TIER_LABEL,
   PAYE_WITHHOLDING_RATE,
   detectDateRateCategory,
   formatKes,
   parseOvertimeRecordMeta,
   type OvertimeMultiplier,
-  type OvertimeRateBasis,
   type OvertimeRecord,
   type OvertimeTimeMode,
 } from "@/lib/overtime/types";
@@ -97,13 +94,6 @@ export function OvertimeRequestForm({
   const [endTime, setEndTime] = useState("21:30");
   const [breakMinutes, setBreakMinutes] = useState(0);
 
-  // Rate / Amount Paid Basis ("hourly" | "daily" | "custom_amount")
-  const [rateBasis, setRateBasis] = useState<OvertimeRateBasis>("hourly");
-  const [hourlyRateInput, setHourlyRateInput] = useState(String(BASE_HOURLY_RATE));
-  const [dailyRateInput, setDailyRateInput] = useState(String(DEFAULT_DAILY_RATE));
-  const [prorateDailyByHours, setProrateDailyByHours] = useState(false);
-  const [customAmountInput, setCustomAmountInput] = useState("8437.50");
-
   // Multiplier & Task Details
   const [multiplier, setMultiplier] = useState<OvertimeMultiplier>(initialDateInfo.multiplier);
   const [taskSummary, setTaskSummary] = useState("Core Banking Migration Sprint");
@@ -118,14 +108,6 @@ export function OvertimeRequestForm({
         setMultiplier(meta.multiplier);
         setTaskSummary(meta.projectTitle);
         setDateWorked(today);
-        setRateBasis(meta.rateBasis);
-        if (meta.rateBasis === "daily") {
-          setDailyRateInput(String(meta.unitRateKes));
-        } else if (meta.rateBasis === "custom_amount") {
-          setCustomAmountInput(String(meta.payoutKes));
-        } else {
-          setHourlyRateInput(String(meta.unitRateKes));
-        }
         if (meta.timeRange && meta.timeRange.includes("–")) {
           const parts = meta.timeRange.match(/(\d{1,2}:\d{2})\s*–\s*(\d{1,2}:\d{2})/);
           if (parts) {
@@ -157,31 +139,8 @@ export function OvertimeRequestForm({
       : "";
 
   // Derived monetary calculation
-  const parsedHourlyRate = Math.max(0, parseFloat(hourlyRateInput) || 0);
-  const parsedDailyRate = Math.max(0, parseFloat(dailyRateInput) || 0);
-  const parsedCustomAmount = Math.max(0, parseFloat(customAmountInput) || 0);
-
-  const activeUnitRate =
-    rateBasis === "daily"
-      ? parsedDailyRate
-      : rateBasis === "custom_amount"
-      ? parsedHours > 0
-        ? Math.round((parsedCustomAmount / parsedHours) * 100) / 100
-        : parsedCustomAmount
-      : parsedHourlyRate;
-
-  const estimatedPayout =
-    rateBasis === "custom_amount"
-      ? parsedCustomAmount
-      : rateBasis === "daily"
-      ? prorateDailyByHours
-        ? Math.round((parsedHours / STANDARD_DAY_HOURS) * parsedDailyRate * multiplier * 100) / 100
-        : Math.round(parsedDailyRate * multiplier * 100) / 100
-      : Math.round(parsedHours * parsedHourlyRate * multiplier * 100) / 100;
-
+  const estimatedPayout = Math.round(parsedHours * BASE_HOURLY_RATE * multiplier * 100) / 100;
   const netAfterTax = Math.round(estimatedPayout * (1 - PAYE_WITHHOLDING_RATE) * 100) / 100;
-  const effectiveHourlyRate =
-    parsedHours > 0 ? Math.round((estimatedPayout / parsedHours) * 100) / 100 : 0;
 
   const dateCategoryInfo = detectDateRateCategory(dateWorked);
 
@@ -238,7 +197,7 @@ export function OvertimeRequestForm({
         ? "Flat Day/Shift Allowance"
         : "Night Shift Support";
 
-    const ticketRef = `${baseRef}|PAY:${estimatedPayout}|RATE:${activeUnitRate}|BASIS:${rateBasis}${
+    const ticketRef = `${baseRef}|PAY:${estimatedPayout}|RATE:${BASE_HOURLY_RATE}|BASIS:hourly${
       formattedTimeRange ? `|TIME:${formattedTimeRange}` : ""
     }|MULT:${multiplier.toFixed(1)}`;
 
@@ -296,8 +255,8 @@ export function OvertimeRequestForm({
       <form action={action} className="flex flex-col gap-5">
         <input type="hidden" name="hours" value={String(parsedHours)} />
         <input type="hidden" name="time_range" value={formattedTimeRange} />
-        <input type="hidden" name="rate_basis" value={rateBasis} />
-        <input type="hidden" name="unit_rate" value={String(activeUnitRate)} />
+        <input type="hidden" name="rate_basis" value="hourly" />
+        <input type="hidden" name="unit_rate" value={String(BASE_HOURLY_RATE)} />
         <input type="hidden" name="payout_kes" value={String(estimatedPayout)} />
         <input type="hidden" name="multiplier" value={multiplier.toFixed(1)} />
         <input type="hidden" name="compensatory_choice" value="paid" />
@@ -577,234 +536,11 @@ export function OvertimeRequestForm({
           )}
         </div>
 
-        {/* 3. Amount Paid & Rate Basis (Per Hour | Per Day | Fixed Amount) */}
-        <div className="flex flex-col gap-2.5">
-          <div className="flex items-center justify-between">
-            <label className="text-label-md font-medium text-on-surface">
-              3. Amount Paid / Rate Basis
-            </label>
-            <span className="text-label-sm text-primary font-medium">
-              {ENTERPRISE_TIER_LABEL}
-            </span>
-          </div>
-
-          {/* 3-Tab Switch for Rate Basis */}
-          <div className="grid grid-cols-3 gap-1 bg-surface-container p-1 rounded-xl">
-            {(
-              [
-                { id: "hourly", label: "Hourly Rate" },
-                { id: "daily", label: "Day Rate" },
-                { id: "custom_amount", label: "Exact Amount" },
-              ] as const
-            ).map((tab) => {
-              const active = rateBasis === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    if (tab.id === "custom_amount" && rateBasis !== "custom_amount") {
-                      setCustomAmountInput(String(estimatedPayout));
-                    }
-                    setRateBasis(tab.id);
-                  }}
-                  className={`py-2 px-2 rounded-lg text-label-md font-medium transition-all cursor-pointer ${
-                    active
-                      ? "bg-surface text-on-surface shadow-xs"
-                      : "text-on-surface-variant hover:text-on-surface"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Basis A: Hourly Rate Input */}
-          {rateBasis === "hourly" && (
-            <div className="p-3.5 rounded-xl bg-surface-container flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <label
-                  htmlFor="ot-hourly-rate"
-                  className="text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold"
-                >
-                  Hourly Rate (KES / hr)
-                </label>
-                <div className="flex items-center gap-1">
-                  {[1000, 1250, 1500, 2000].map((presetRate) => (
-                    <button
-                      key={presetRate}
-                      type="button"
-                      onClick={() => setHourlyRateInput(String(presetRate))}
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
-                        parsedHourlyRate === presetRate
-                          ? "bg-primary text-on-primary"
-                          : "bg-surface text-on-surface-variant hover:bg-surface-container-high"
-                      }`}
-                    >
-                      {formatKes(presetRate)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="relative flex items-center">
-                <span className="absolute left-3.5 text-on-surface-variant text-body-sm font-medium pointer-events-none">
-                  KES
-                </span>
-                <input
-                  id="ot-hourly-rate"
-                  type="number"
-                  step="50"
-                  min="100"
-                  value={hourlyRateInput}
-                  onChange={(e) => setHourlyRateInput(e.target.value)}
-                  className="ot-field w-full h-10 bg-surface pl-12 pr-14 rounded-lg text-on-surface text-body-md font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-                <span className="absolute right-3.5 text-on-surface-variant text-label-sm pointer-events-none">
-                  / hr
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Basis B: Daily Rate (Amount Paid for the Day) */}
-          {rateBasis === "daily" && (
-            <div className="p-3.5 rounded-xl bg-surface-container flex flex-col gap-2.5">
-              <div className="flex items-center justify-between">
-                <label
-                  htmlFor="ot-daily-rate"
-                  className="text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold"
-                >
-                  Day Rate (KES / day)
-                </label>
-                <div className="flex items-center gap-1">
-                  {[5000, 10000, 15000, 20000].map((presetDay) => (
-                    <button
-                      key={presetDay}
-                      type="button"
-                      onClick={() => setDailyRateInput(String(presetDay))}
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
-                        parsedDailyRate === presetDay
-                          ? "bg-primary text-on-primary"
-                          : "bg-surface text-on-surface-variant hover:bg-surface-container-high"
-                      }`}
-                    >
-                      {formatKes(presetDay)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="relative flex items-center">
-                <span className="absolute left-3.5 text-on-surface-variant text-body-sm font-medium pointer-events-none">
-                  KES
-                </span>
-                <input
-                  id="ot-daily-rate"
-                  type="number"
-                  step="500"
-                  min="500"
-                  value={dailyRateInput}
-                  onChange={(e) => setDailyRateInput(e.target.value)}
-                  className="ot-field w-full h-10 bg-surface pl-12 pr-16 rounded-lg text-on-surface text-body-md font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-                <span className="absolute right-3.5 text-on-surface-variant text-label-sm pointer-events-none">
-                  / day
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-on-surface-variant pt-0.5">
-                <span>Calculation method:</span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setProrateDailyByHours(false)}
-                    className={`px-2 py-0.5 rounded font-medium cursor-pointer ${
-                      !prorateDailyByHours
-                        ? "bg-primary text-on-primary"
-                        : "bg-surface text-on-surface-variant"
-                    }`}
-                  >
-                    Full Day Rate
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setProrateDailyByHours(true)}
-                    className={`px-2 py-0.5 rounded font-medium cursor-pointer ${
-                      prorateDailyByHours
-                        ? "bg-primary text-on-primary"
-                        : "bg-surface text-on-surface-variant"
-                    }`}
-                  >
-                    Prorate ({parsedHours}h / 8h)
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Basis C: Direct / Custom Total Amount Paid for the Day or Time */}
-          {rateBasis === "custom_amount" && (
-            <div className="p-3.5 rounded-xl bg-surface-container flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <label
-                  htmlFor="ot-custom-amount"
-                  className="text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold"
-                >
-                  Amount Paid for Day / Shift (KES)
-                </label>
-                <div className="flex items-center gap-1">
-                  {[2500, 5000, 10000, 15000].map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setCustomAmountInput(String(amt))}
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
-                        parsedCustomAmount === amt
-                          ? "bg-primary text-on-primary"
-                          : "bg-surface text-on-surface-variant hover:bg-surface-container-high"
-                      }`}
-                    >
-                      {formatKes(amt)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="relative flex items-center">
-                <span className="absolute left-3.5 text-on-surface-variant text-body-sm font-medium pointer-events-none">
-                  KES
-                </span>
-                <input
-                  id="ot-custom-amount"
-                  type="number"
-                  step="100"
-                  min="0"
-                  value={customAmountInput}
-                  onChange={(e) => setCustomAmountInput(e.target.value)}
-                  placeholder="Enter total amount paid"
-                  className="ot-field w-full h-10 bg-surface pl-12 pr-4 rounded-lg text-on-surface text-body-md font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-              <div className="text-[11px] text-on-surface-variant flex justify-between">
-                <span>Effective hourly equivalent:</span>
-                <span className="font-semibold text-on-surface tabular-nums">
-                  KES {formatKes(effectiveHourlyRate, true)} / hr
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 4. Multiplier Selector (shown when using Hourly or Daily Rate, or for tagging shift category) */}
+        {/* 3. Multiplier Selector */}
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <label className="text-label-md font-medium text-on-surface">
-              Overtime Multiplier Category
-            </label>
-            {rateBasis === "custom_amount" && (
-              <span className="text-[11px] text-on-surface-variant">
-                Tags shift category
-              </span>
-            )}
-          </div>
+          <label className="text-label-md font-medium text-on-surface">
+            3. Overtime Multiplier Category
+          </label>
           <div className="grid grid-cols-4 gap-1.5">
             {MULTIPLIER_OPTIONS.map((opt) => {
               const isSelected = multiplier === opt.value;
@@ -867,23 +603,8 @@ export function OvertimeRequestForm({
 
           <div className="flex items-baseline justify-between gap-2 flex-wrap">
             <span className="text-body-sm text-on-surface-variant tabular-nums">
-              {rateBasis === "custom_amount" ? (
-                <>
-                  Direct Payout &bull; {parsedHours} hrs (KES{" "}
-                  {formatKes(effectiveHourlyRate)}/hr)
-                </>
-              ) : rateBasis === "daily" ? (
-                <>
-                  KES {formatKes(parsedDailyRate)}/day{" "}
-                  {prorateDailyByHours ? `× (${parsedHours}/8h)` : ""} ×{" "}
-                  <span id="current-mult">{multiplier.toFixed(1)}x</span>
-                </>
-              ) : (
-                <>
-                  KES {formatKes(parsedHourlyRate)}/hr × {parsedHours} hrs ×{" "}
-                  <span id="current-mult">{multiplier.toFixed(1)}x</span>
-                </>
-              )}
+              KES {formatKes(BASE_HOURLY_RATE)}/hr × {parsedHours} hrs ×{" "}
+              <span id="current-mult">{multiplier.toFixed(1)}x</span>
             </span>
             <span
               className="font-headline-lg text-primary tabular-nums"
