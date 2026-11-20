@@ -38,7 +38,7 @@ export async function submitOvertimeRequest(
 
   const overtimeDate = String(formData.get("overtime_date") ?? "").trim();
   const hours = parseFloat(String(formData.get("hours") ?? "0"));
-  const rawTaskSummary = String(formData.get("task_summary") ?? "").trim();
+  const rawTaskSummary = String(formData.get("task_summary") ?? "").trim() || "Overtime Hours";
   const rawTicketRef = String(formData.get("ticket_ref") ?? "").trim();
   const timeRange = String(formData.get("time_range") ?? "").trim();
   const rateBasisRaw = String(formData.get("rate_basis") ?? "hourly").trim();
@@ -92,9 +92,6 @@ export async function submitOvertimeRequest(
   }
   if (isNaN(hours) || hours <= 0 || hours > 24) {
     return { error: "Please specify valid overtime hours (between 0.5 and 24)." };
-  }
-  if (!rawTaskSummary) {
-    return { error: "Please enter a project or task reference." };
   }
 
   const year = overtimeDate.slice(0, 4) || String(new Date().getFullYear());

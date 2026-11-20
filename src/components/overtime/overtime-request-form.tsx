@@ -6,8 +6,6 @@ import { CheckCircleIcon, InformationCircleIcon } from "@/components/ui/icons";
 import {
   BASE_HOURLY_RATE,
   STANDARD_DAY_HOURS,
-  PAYE_WITHHOLDING_RATE,
-  formatKes,
   parseOvertimeRecordMeta,
   type OvertimeRecord,
   type OvertimeTimeMode,
@@ -83,8 +81,6 @@ export function OvertimeRequestForm({
   const [endTime, setEndTime] = useState("21:30");
   const [breakMinutes, setBreakMinutes] = useState(0);
 
-  // Task Details
-  const [taskSummary, setTaskSummary] = useState("Core Banking Migration Sprint");
   const [isPrefilled, setIsPrefilled] = useState(false);
 
   // Sync prefilled claim when user repeats a historical claim
@@ -93,7 +89,6 @@ export function OvertimeRequestForm({
       const meta = parseOvertimeRecordMeta(prefillClaim);
       const timer = setTimeout(() => {
         setHours(String(prefillClaim.hours));
-        setTaskSummary(meta.projectTitle);
         setDateWorked(today);
         if (meta.timeRange && meta.timeRange.includes("–")) {
           const parts = meta.timeRange.match(/(\d{1,2}:\d{2})\s*–\s*(\d{1,2}:\d{2})/);
@@ -125,9 +120,7 @@ export function OvertimeRequestForm({
       ? "Full Day (08:00–17:00)"
       : "";
 
-  // Derived monetary calculation
-  const estimatedPayout = Math.round(parsedHours * BASE_HOURLY_RATE * 100) / 100;
-  const netAfterTax = Math.round(estimatedPayout * (1 - PAYE_WITHHOLDING_RATE) * 100) / 100;
+  const payoutKes = Math.round(parsedHours * BASE_HOURLY_RATE * 100) / 100;
 
   function handleDateChange(newDate: string) {
     setDateWorked(newDate);
@@ -171,7 +164,7 @@ export function OvertimeRequestForm({
     const year = dateWorked.slice(0, 4) || String(new Date().getFullYear());
     const baseRef = `OT-${year}-${Math.floor(100 + Math.random() * 900)}`;
 
-    const ticketRef = `${baseRef}|PAY:${estimatedPayout}|RATE:${BASE_HOURLY_RATE}|BASIS:hourly${
+    const ticketRef = `${baseRef}|PAY:${payoutKes}|RATE:${BASE_HOURLY_RATE}|BASIS:hourly${
       formattedTimeRange ? `|TIME:${formattedTimeRange}` : ""
     }|MULT:1.0`;
 
@@ -181,7 +174,7 @@ export function OvertimeRequestForm({
       user_email: currentUserEmail,
       overtime_date: dateWorked,
       hours: parsedHours,
-      task_summary: `${taskSummary || "Core Banking Migration Sprint"}\nOvertime Support${
+      task_summary: `Overtime Hours\nOvertime Support${
         formattedTimeRange ? ` • ${formattedTimeRange}` : ""
       }`,
       ticket_ref: ticketRef,
@@ -203,7 +196,7 @@ export function OvertimeRequestForm({
       <div className="mb-5">
         <h2 className="font-headline-md text-on-surface">Quick Overtime Log</h2>
         <p className="text-body-sm text-on-surface-variant">
-          Log shift hours or time window &amp; day/hourly payout
+          Log date and overtime hours worked
         </p>
       </div>
 
@@ -213,7 +206,7 @@ export function OvertimeRequestForm({
           <div className="flex items-center gap-2">
             <InformationCircleIcon className="h-4 w-4 text-primary shrink-0" />
             <span>
-              <strong className="text-primary">Template Loaded:</strong> Adjust date, time, or amount and submit.
+              <strong className="text-primary">Template Loaded:</strong> Adjust date or hours and submit.
             </span>
           </div>
           <button
@@ -231,9 +224,14 @@ export function OvertimeRequestForm({
         <input type="hidden" name="time_range" value={formattedTimeRange} />
         <input type="hidden" name="rate_basis" value="hourly" />
         <input type="hidden" name="unit_rate" value={String(BASE_HOURLY_RATE)} />
-        <input type="hidden" name="payout_kes" value={String(estimatedPayout)} />
+        <input type="hidden" name="payout_kes" value={String(payoutKes)} />
         <input type="hidden" name="multiplier" value="1.0" />
         <input type="hidden" name="compensatory_choice" value="paid" />
+        <input
+          type="hidden"
+          name="task_summary"
+          value={formattedTimeRange ? `Overtime (${formattedTimeRange})` : "Overtime Hours"}
+        />
 
         {/* 1. Date of Overtime */}
         <div className="flex flex-col gap-2">
@@ -490,57 +488,6 @@ export function OvertimeRequestForm({
           )}
         </div>
 
-        {/* 3. Reason / Project Tag */}
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="task_summary"
-            className="text-label-md font-medium text-on-surface"
-          >
-            3. Project / Task Reference
-          </label>
-          <input
-            id="task_summary"
-            name="task_summary"
-            type="text"
-            required
-            value={taskSummary}
-            onChange={(e) => setTaskSummary(e.target.value)}
-            placeholder="e.g. Core Banking Migration Sprint"
-            className="ot-field w-full h-11 bg-surface-container px-4 rounded-xl text-on-surface text-body-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:bg-white transition-all"
-          />
-        </div>
-
-        {/* Instant Cash Payout Summary Box */}
-        <div className="p-4 rounded-xl bg-primary-container/10 border border-primary/15 flex flex-col gap-2 mt-0.5">
-          <div className="flex items-center justify-between">
-            <span className="text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold">
-              Total Amount for Day / Time
-            </span>
-            <span className="text-label-sm text-primary font-semibold">
-              {formattedTimeRange ? formattedTimeRange : `${parsedHours} hrs`}
-            </span>
-          </div>
-
-          <div className="flex items-baseline justify-between gap-2 flex-wrap">
-            <span className="text-body-sm text-on-surface-variant tabular-nums">
-              KES {formatKes(BASE_HOURLY_RATE)}/hr × {parsedHours} hrs
-            </span>
-            <span
-              className="font-headline-lg text-primary tabular-nums"
-              id="payout-result"
-            >
-              KES {formatKes(estimatedPayout, true)}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-primary/15 text-[11px] text-on-surface-variant">
-            <span>Est. Net Disbursed (after 30% PAYE):</span>
-            <span className="font-semibold text-on-surface tabular-nums">
-              KES {formatKes(netAfterTax, true)}
-            </span>
-          </div>
-        </div>
-
         {/* Error / Success Messages */}
         {state.error && (
           <div
@@ -580,20 +527,12 @@ export function OvertimeRequestForm({
         <button
           type="submit"
           disabled={pending || parsedHours <= 0}
-          className="w-full h-12 bg-primary hover:bg-primary/90 text-on-primary font-medium rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 mt-1 cursor-pointer active:scale-[0.99] disabled:opacity-50"
+          className="w-full h-12 bg-primary hover:bg-primary/90 text-on-primary font-medium rounded-xl transition-all shadow-sm flex items-center justify-center mt-1 cursor-pointer active:scale-[0.99] disabled:opacity-50"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="w-[18px] h-[18px]"
-          >
-            <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
-          </svg>
           <span>
             {pending
-              ? "Submitting Claim…"
-              : `Submit Claim (${parsedHours}h • KES ${formatKes(estimatedPayout)})`}
+              ? "Submitting Hours…"
+              : `Log Overtime (${parsedHours} hrs)`}
           </span>
         </button>
       </form>
