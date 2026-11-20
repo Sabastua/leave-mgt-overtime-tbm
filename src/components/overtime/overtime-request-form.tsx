@@ -7,10 +7,8 @@ import {
   BASE_HOURLY_RATE,
   STANDARD_DAY_HOURS,
   PAYE_WITHHOLDING_RATE,
-  detectDateRateCategory,
   formatKes,
   parseOvertimeRecordMeta,
-  type OvertimeMultiplier,
   type OvertimeRecord,
   type OvertimeTimeMode,
 } from "@/lib/overtime/types";
@@ -24,13 +22,6 @@ type Props = {
   onClearPrefill?: () => void;
   onOpenVoucher?: (record: OvertimeRecord) => void;
 };
-
-const MULTIPLIER_OPTIONS: { value: OvertimeMultiplier; label: string; tag: string }[] = [
-  { value: 1.0, label: "1.0x", tag: "Flat Rate" },
-  { value: 1.5, label: "1.5x", tag: "Standard" },
-  { value: 2.0, label: "2.0x", tag: "Weekend" },
-  { value: 2.5, label: "2.5x", tag: "Holiday" },
-];
 
 const QUICK_HOURS_CHIPS = [2, 4, 4.5, 6, 8, 12];
 
@@ -81,11 +72,9 @@ export function OvertimeRequestForm({
   );
 
   const today = new Date().toISOString().slice(0, 10);
-  const initialDateInfo = detectDateRateCategory(today);
 
-  // Date & auto-detected category
+  // Date
   const [dateWorked, setDateWorked] = useState(today);
-  const [autoDetectedNote, setAutoDetectedNote] = useState<string | null>(null);
 
   // Duration / Time Mode ("hours" | "time_range" | "full_day")
   const [timeMode, setTimeMode] = useState<OvertimeTimeMode>("hours");
@@ -94,8 +83,7 @@ export function OvertimeRequestForm({
   const [endTime, setEndTime] = useState("21:30");
   const [breakMinutes, setBreakMinutes] = useState(0);
 
-  // Multiplier & Task Details
-  const [multiplier, setMultiplier] = useState<OvertimeMultiplier>(initialDateInfo.multiplier);
+  // Task Details
   const [taskSummary, setTaskSummary] = useState("Core Banking Migration Sprint");
   const [isPrefilled, setIsPrefilled] = useState(false);
 
@@ -105,7 +93,6 @@ export function OvertimeRequestForm({
       const meta = parseOvertimeRecordMeta(prefillClaim);
       const timer = setTimeout(() => {
         setHours(String(prefillClaim.hours));
-        setMultiplier(meta.multiplier);
         setTaskSummary(meta.projectTitle);
         setDateWorked(today);
         if (meta.timeRange && meta.timeRange.includes("–")) {
@@ -139,16 +126,11 @@ export function OvertimeRequestForm({
       : "";
 
   // Derived monetary calculation
-  const estimatedPayout = Math.round(parsedHours * BASE_HOURLY_RATE * multiplier * 100) / 100;
+  const estimatedPayout = Math.round(parsedHours * BASE_HOURLY_RATE * 100) / 100;
   const netAfterTax = Math.round(estimatedPayout * (1 - PAYE_WITHHOLDING_RATE) * 100) / 100;
-
-  const dateCategoryInfo = detectDateRateCategory(dateWorked);
 
   function handleDateChange(newDate: string) {
     setDateWorked(newDate);
-    const detected = detectDateRateCategory(newDate);
-    setMultiplier(detected.multiplier);
-    setAutoDetectedNote(`Auto-set to ${detected.badgeText}`);
   }
 
   function handleSelectQuickDate(offsetDays: number) {
@@ -188,18 +170,10 @@ export function OvertimeRequestForm({
     if (!onOpenVoucher) return;
     const year = dateWorked.slice(0, 4) || String(new Date().getFullYear());
     const baseRef = `OT-${year}-${Math.floor(100 + Math.random() * 900)}`;
-    const subtitle =
-      multiplier === 2.5
-        ? "Emergency Deployment"
-        : multiplier === 2.0
-        ? "Weekend Maintenance"
-        : multiplier === 1.0
-        ? "Flat Day/Shift Allowance"
-        : "Night Shift Support";
 
     const ticketRef = `${baseRef}|PAY:${estimatedPayout}|RATE:${BASE_HOURLY_RATE}|BASIS:hourly${
       formattedTimeRange ? `|TIME:${formattedTimeRange}` : ""
-    }|MULT:${multiplier.toFixed(1)}`;
+    }|MULT:1.0`;
 
     onOpenVoucher({
       id: baseRef,
@@ -207,7 +181,7 @@ export function OvertimeRequestForm({
       user_email: currentUserEmail,
       overtime_date: dateWorked,
       hours: parsedHours,
-      task_summary: `${taskSummary || "Core Banking Migration Sprint"}\n${subtitle} (${multiplier.toFixed(1)}x)${
+      task_summary: `${taskSummary || "Core Banking Migration Sprint"}\nOvertime Support${
         formattedTimeRange ? ` • ${formattedTimeRange}` : ""
       }`,
       ticket_ref: ticketRef,
@@ -258,30 +232,17 @@ export function OvertimeRequestForm({
         <input type="hidden" name="rate_basis" value="hourly" />
         <input type="hidden" name="unit_rate" value={String(BASE_HOURLY_RATE)} />
         <input type="hidden" name="payout_kes" value={String(estimatedPayout)} />
-        <input type="hidden" name="multiplier" value={multiplier.toFixed(1)} />
+        <input type="hidden" name="multiplier" value="1.0" />
         <input type="hidden" name="compensatory_choice" value="paid" />
 
-        {/* 1. Date of Overtime + Smart Day Detection */}
+        {/* 1. Date of Overtime */}
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <label
-              htmlFor="overtime_date"
-              className="text-label-md font-medium text-on-surface"
-            >
-              1. Date of Overtime
-            </label>
-            <span
-              className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                dateCategoryInfo.category === "holiday"
-                  ? "bg-amber-100 text-amber-900"
-                  : dateCategoryInfo.category === "weekend"
-                  ? "bg-[#009dd3]/15 text-[#00668a]"
-                  : "bg-primary-container/15 text-primary"
-              }`}
-            >
-              {dateCategoryInfo.badgeText}
-            </span>
-          </div>
+          <label
+            htmlFor="overtime_date"
+            className="text-label-md font-medium text-on-surface"
+          >
+            1. Date of Overtime
+          </label>
           <input
             id="overtime_date"
             name="overtime_date"
@@ -291,32 +252,25 @@ export function OvertimeRequestForm({
             onChange={(e) => handleDateChange(e.target.value)}
             className="ot-field w-full h-11 bg-surface-container px-4 rounded-xl text-on-surface text-body-md tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/50 focus:bg-white transition-all"
           />
-          <div className="flex items-center justify-between gap-1.5 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleSelectQuickDate(0)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
-                  dateWorked === today
-                    ? "bg-primary text-on-primary"
-                    : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-                }`}
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectQuickDate(-1)}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition cursor-pointer"
-              >
-                Yesterday
-              </button>
-            </div>
-            {autoDetectedNote && (
-              <span className="text-[11px] text-primary font-medium">
-                {autoDetectedNote}
-              </span>
-            )}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleSelectQuickDate(0)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer ${
+                dateWorked === today
+                  ? "bg-primary text-on-primary"
+                  : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+              }`}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectQuickDate(-1)}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition cursor-pointer"
+            >
+              Yesterday
+            </button>
           </div>
         </div>
 
@@ -536,47 +490,13 @@ export function OvertimeRequestForm({
           )}
         </div>
 
-        {/* 3. Multiplier Selector */}
-        <div className="flex flex-col gap-2">
-          <label className="text-label-md font-medium text-on-surface">
-            3. Overtime Multiplier Category
-          </label>
-          <div className="grid grid-cols-4 gap-1.5">
-            {MULTIPLIER_OPTIONS.map((opt) => {
-              const isSelected = multiplier === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setMultiplier(opt.value)}
-                  className={`py-2.5 px-1.5 rounded-xl text-body-sm font-medium transition-all text-center cursor-pointer ${
-                    isSelected
-                      ? "bg-primary text-on-primary shadow-xs"
-                      : "bg-surface-container text-on-surface hover:bg-surface-container-high"
-                  }`}
-                >
-                  {opt.label}
-                  <br />
-                  <span
-                    className={`text-[10px] ${
-                      isSelected ? "opacity-85" : "opacity-65"
-                    }`}
-                  >
-                    {opt.tag}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 5. Reason / Project Tag */}
+        {/* 3. Reason / Project Tag */}
         <div className="flex flex-col gap-2">
           <label
             htmlFor="task_summary"
             className="text-label-md font-medium text-on-surface"
           >
-            Project / Task Reference
+            3. Project / Task Reference
           </label>
           <input
             id="task_summary"
@@ -603,8 +523,7 @@ export function OvertimeRequestForm({
 
           <div className="flex items-baseline justify-between gap-2 flex-wrap">
             <span className="text-body-sm text-on-surface-variant tabular-nums">
-              KES {formatKes(BASE_HOURLY_RATE)}/hr × {parsedHours} hrs ×{" "}
-              <span id="current-mult">{multiplier.toFixed(1)}x</span>
+              KES {formatKes(BASE_HOURLY_RATE)}/hr × {parsedHours} hrs
             </span>
             <span
               className="font-headline-lg text-primary tabular-nums"
