@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useTransition } from "react";
 import type { LeaveType, LeaveRequest, LeaveBalanceSummary } from "@/lib/leave/types";
 import {
   formatKes,
@@ -85,6 +85,7 @@ export function DashboardShell({
   const [activeTab, setActiveTab] = useState<
     "leave" | "overtime" | "calendar" | "admin" | "team"
   >("leave");
+  const [isSigningOut, startSignOutTransition] = useTransition();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
@@ -330,14 +331,37 @@ export function DashboardShell({
             >
               Password
             </button>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-xs font-medium text-[#3D4A3F] transition hover:bg-[#E8E8E8] cursor-pointer"
-              >
-                Sign out
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={() => startSignOutTransition(() => signOut())}
+              disabled={isSigningOut}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-xs font-medium text-[#3D4A3F] transition hover:bg-[#E8E8E8] cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+            >
+              {isSigningOut && (
+                <svg
+                  className="h-3.5 w-3.5 animate-spin text-[#00A859]"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                  />
+                </svg>
+              )}
+              <span>{isSigningOut ? "Signing out…" : "Sign out"}</span>
+            </button>
           </div>
         </div>
 
@@ -1447,6 +1471,42 @@ export function DashboardShell({
                     Close
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Sign-out Lazy Loader Overlay */}
+        {isSigningOut && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#F9F9F9]/80 backdrop-blur-xs animate-in fade-in"
+          >
+            <div className="flex flex-col items-center gap-3.5 rounded-xl border border-[#E5E7EB] bg-white px-8 py-7 shadow-lg">
+              <svg
+                className="h-8 w-8 animate-spin text-[#00A859]"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="3.5"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-[#1A1C1C]">Signing you out…</p>
+                <p className="mt-0.5 text-xs text-[#3D4A3F]">Ending your Safaricom session</p>
               </div>
             </div>
           </div>
