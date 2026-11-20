@@ -3,8 +3,6 @@
 import { useState, useMemo, useEffect } from "react";
 import type { LeaveType, LeaveRequest, LeaveBalanceSummary } from "@/lib/leave/types";
 import {
-  DEMO_OVERTIME_RECORDS,
-  computeOvertimeStats,
   formatKes,
   parseOvertimeRecordMeta,
   type OvertimeRecord,
@@ -156,25 +154,17 @@ export function DashboardShell({
     [allOvertimeRecords, currentUserEmail]
   );
 
-  // Use real records when available; fall back to showcase ledger entries so the ledger and vouchers work out-of-the-box
-  const usingDemoOvertime = myOvertimeRecords.length === 0;
-  const effectiveOvertimeRecords = useMemo(
-    () => (usingDemoOvertime ? DEMO_OVERTIME_RECORDS : myOvertimeRecords),
-    [usingDemoOvertime, myOvertimeRecords]
-  );
-  const effectiveOvertimeStats = useMemo(
-    () => (usingDemoOvertime ? computeOvertimeStats(DEMO_OVERTIME_RECORDS) : myOvertimeStats),
-    [usingDemoOvertime, myOvertimeStats]
-  );
-
   const filteredOvertimeRecords = useMemo(
     () =>
-      effectiveOvertimeRecords.filter((r) => {
+      myOvertimeRecords.filter((r) => {
         if (overtimeStatusFilter !== "all" && r.status !== overtimeStatusFilter) return false;
         return true;
       }),
-    [effectiveOvertimeRecords, overtimeStatusFilter]
+    [myOvertimeRecords, overtimeStatusFilter]
   );
+
+  const approvedOvertimeCount = myOvertimeRecords.filter((r) => r.status === "approved").length;
+  const pendingOvertimeCount = myOvertimeRecords.filter((r) => r.status === "pending").length;
 
   const OVERTIME_PAGE_SIZE = 4;
   const totalOvertimePages = Math.max(
@@ -808,14 +798,16 @@ export function DashboardShell({
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="font-headline-lg text-on-surface tabular-nums">
-                    {(usingDemoOvertime ? 64.5 : effectiveOvertimeStats.totalHoursApproved).toFixed(1)}
+                    {myOvertimeStats.totalHoursApproved.toFixed(1)}
                   </span>
                   <span className="text-body-lg text-on-surface-variant font-medium">
                     hrs
                   </span>
                 </div>
                 <div className="mt-3 text-body-sm text-primary">
-                  <span>+12.4 hrs vs last month</span>
+                  <span>
+                    {approvedOvertimeCount} approved claim{approvedOvertimeCount === 1 ? "" : "s"} ({currentYear})
+                  </span>
                 </div>
               </div>
 
@@ -829,14 +821,16 @@ export function DashboardShell({
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="font-headline-lg text-on-surface tabular-nums">
-                    {effectiveOvertimeStats.totalHoursPending.toFixed(1)}
+                    {myOvertimeStats.totalHoursPending.toFixed(1)}
                   </span>
                   <span className="text-body-lg text-on-surface-variant font-medium">
                     hrs
                   </span>
                 </div>
                 <div className="mt-3 text-body-sm text-on-surface-variant">
-                  <span>Awaiting line manager sign-off</span>
+                  <span>
+                    {pendingOvertimeCount} claim{pendingOvertimeCount === 1 ? "" : "s"} awaiting line manager sign-off
+                  </span>
                 </div>
               </div>
 
@@ -853,13 +847,13 @@ export function DashboardShell({
                     KES
                   </span>
                   <span className="font-headline-lg text-on-surface tabular-nums">
-                    {formatKes(
-                      usingDemoOvertime ? 128450 : effectiveOvertimeStats.totalDisbursedKes
-                    )}
+                    {formatKes(myOvertimeStats.totalDisbursedKes)}
                   </span>
                 </div>
                 <div className="mt-3 text-body-sm text-primary">
-                  <span>Processed for August Payroll</span>
+                  <span>
+                    {myOvertimeStats.paidHoursApproved.toFixed(1)}h paid &bull; ~{(myOvertimeStats.toilHoursApproved / 8).toFixed(1)} TOIL days
+                  </span>
                 </div>
               </div>
             </div>
@@ -1069,22 +1063,20 @@ export function DashboardShell({
                                         </svg>
                                         <span>Voucher</span>
                                       </button>
-                                      {!record.id.startsWith("demo-") && (
-                                        <form action={cancelOvertimeRequest} className="inline">
-                                          <input
-                                            type="hidden"
-                                            name="record_id"
-                                            value={record.id}
-                                          />
-                                          <button
-                                            type="submit"
-                                            title="Cancel pending claim"
-                                            className="px-2 py-1 text-label-sm text-error hover:underline font-medium cursor-pointer"
-                                          >
-                                            Cancel
-                                          </button>
-                                        </form>
-                                      )}
+                                      <form action={cancelOvertimeRequest} className="inline">
+                                        <input
+                                          type="hidden"
+                                          name="record_id"
+                                          value={record.id}
+                                        />
+                                        <button
+                                          type="submit"
+                                          title="Cancel pending claim"
+                                          className="px-2 py-1 text-label-sm text-error hover:underline font-medium cursor-pointer"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </form>
                                     </>
                                   ) : (
                                     <button
@@ -1109,59 +1101,54 @@ export function DashboardShell({
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 mt-4 border-t border-surface-container text-body-sm text-on-surface-variant">
                   <span>
                     Showing {paginatedOvertimeRecords.length} of{" "}
-                    {usingDemoOvertime && overtimeStatusFilter === "all"
-                      ? 28
-                      : filteredOvertimeRecords.length}{" "}
-                    total payout entries
+                    {filteredOvertimeRecords.length} total payout entries
                   </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOvertimePage((p) => Math.max(1, p - 1))
-                      }
-                      disabled={safeOvertimePage <= 1}
-                      className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      Previous
-                    </button>
-                    {Array.from(
-                      { length: Math.max(3, totalOvertimePages) },
-                      (_, idx) => idx + 1
-                    ).map((pageNum) => {
-                      const isCurrent = safeOvertimePage === pageNum;
-                      return (
-                        <button
-                          key={pageNum}
-                          type="button"
-                          onClick={() => {
-                            if (pageNum <= totalOvertimePages) {
-                              setOvertimePage(pageNum);
-                            }
-                          }}
-                          className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                            isCurrent
-                              ? "bg-primary text-on-primary font-medium"
-                              : "bg-surface-container hover:bg-surface-container-high text-on-surface"
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOvertimePage((p) =>
-                          Math.min(totalOvertimePages, p + 1)
-                        )
-                      }
-                      disabled={safeOvertimePage >= totalOvertimePages}
-                      className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      Next
-                    </button>
-                  </div>
+                  {totalOvertimePages > 1 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOvertimePage((p) => Math.max(1, p - 1))
+                        }
+                        disabled={safeOvertimePage <= 1}
+                        className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+                      {Array.from(
+                        { length: totalOvertimePages },
+                        (_, idx) => idx + 1
+                      ).map((pageNum) => {
+                        const isCurrent = safeOvertimePage === pageNum;
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setOvertimePage(pageNum)}
+                            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                              isCurrent
+                                ? "bg-primary text-on-primary font-medium"
+                                : "bg-surface-container hover:bg-surface-container-high text-on-surface"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOvertimePage((p) =>
+                            Math.min(totalOvertimePages, p + 1)
+                          )
+                        }
+                        disabled={safeOvertimePage >= totalOvertimePages}
+                        className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1205,7 +1192,7 @@ export function DashboardShell({
         {/* Printable Overtime Receipt Modal */}
         <OvertimeReceiptModal
           record={selectedReceiptRecord}
-          allRecords={effectiveOvertimeRecords}
+          allRecords={myOvertimeRecords}
           employeeName={currentMember.full_name || currentUserEmail}
           onClose={() => setSelectedReceiptRecord(null)}
         />
