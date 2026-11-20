@@ -2,9 +2,7 @@
 
 import { useEffect, useId, useRef } from "react";
 import {
-  formatKes,
   parseOvertimeRecordMeta,
-  PAYE_WITHHOLDING_RATE,
   type OvertimeRecord,
 } from "@/lib/overtime/types";
 
@@ -104,9 +102,10 @@ export function OvertimeReceiptModal({
     meta: parseOvertimeRecordMeta(r),
   }));
 
-  const grossTotal = itemizedRows.reduce((sum, item) => sum + item.meta.payoutKes, 0);
-  const withholdingTax = Math.round(grossTotal * PAYE_WITHHOLDING_RATE * 100) / 100;
-  const netDisbursed = Math.round((grossTotal - withholdingTax) * 100) / 100;
+  const totalHoursLogged = itemizedRows.reduce(
+    (sum, item) => sum + (Number(item.record.hours) || 0),
+    0
+  );
 
   const displayEmployeeName =
     employeeName && !employeeName.includes("@") ? employeeName : "Alex Kiprop";
@@ -142,7 +141,7 @@ export function OvertimeReceiptModal({
               Safaricom PLC Enterprise
             </h3>
             <p className="text-label-sm text-primary-fixed-dim uppercase tracking-wider font-medium">
-              Official Remittance Advice &amp; Payment Voucher
+              Official Overtime Hours Authorization Summary
             </p>
           </div>
         </div>
@@ -193,10 +192,10 @@ export function OvertimeReceiptModal({
               Ref: <span id="modal-ref-id">{selectedMeta.refCode}</span>
             </div>
             <div className="text-body-sm text-on-surface-variant">
-              Issue Date: Oct 24, 2023
+              Date Worked: <span className="font-medium text-on-surface">{selectedMeta.formattedDate}</span>
             </div>
             <div className="text-body-sm text-on-surface-variant">
-              Payment Cycle: August Payroll Batch B
+              Status: <span className="font-medium text-on-surface capitalize">{record.status}</span>
             </div>
           </div>
         </div>
@@ -212,11 +211,7 @@ export function OvertimeReceiptModal({
                 <tr className="bg-surface-container text-label-sm text-on-surface-variant uppercase tracking-wider">
                   <th className="py-3 px-4 font-semibold">Reference</th>
                   <th className="py-3 px-4 font-semibold">Project / Task</th>
-                  <th className="py-3 px-4 font-semibold text-center">Hours</th>
-                  <th className="py-3 px-4 font-semibold text-center">Rate</th>
-                  <th className="py-3 px-4 font-semibold text-right">
-                    Amount (KES)
-                  </th>
+                  <th className="py-3 px-4 font-semibold text-right">Hours</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-container">
@@ -247,19 +242,8 @@ export function OvertimeReceiptModal({
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-center tabular-nums">
-                        {Number(itemRec.hours).toFixed(1)} hrs
-                      </td>
-                      <td className="py-3 px-4 text-center tabular-nums">
-                        <div className="font-medium text-on-surface">
-                          {meta.multiplier.toFixed(1)}x
-                        </div>
-                        <div className="text-[10px] text-on-surface-variant">
-                          {meta.rateBasisLabel}
-                        </div>
-                      </td>
                       <td className="py-3 px-4 text-right font-medium tabular-nums">
-                        {formatKes(meta.payoutKes, true)}
+                        {Number(itemRec.hours).toFixed(1)} hrs
                       </td>
                     </tr>
                   );
@@ -269,27 +253,14 @@ export function OvertimeReceiptModal({
           </div>
         </div>
 
-        {/* Financial Summary & Totals */}
+        {/* Hours Summary */}
         <div className="flex flex-col bg-surface-container-low p-4 rounded-xl gap-2">
-          <div className="flex justify-between text-body-sm text-on-surface-variant">
-            <span>Gross Overtime Payout</span>
-            <span className="font-medium text-on-surface tabular-nums">
-              KES {formatKes(grossTotal, true)}
-            </span>
-          </div>
-          <div className="flex justify-between text-body-sm text-on-surface-variant">
-            <span>Payroll Withholding Tax (PAYE 30%)</span>
-            <span className="font-medium text-error tabular-nums">
-              - KES {formatKes(withholdingTax, true)}
-            </span>
-          </div>
-          <div className="border-t border-surface-container my-1" />
           <div className="flex justify-between items-baseline">
             <span className="text-body-md font-bold text-on-surface">
-              Net Disbursed Amount
+              Total Hours Logged
             </span>
             <span className="font-headline-md text-primary tabular-nums">
-              KES {formatKes(netDisbursed, true)}
+              {totalHoursLogged.toFixed(1)} hrs
             </span>
           </div>
         </div>

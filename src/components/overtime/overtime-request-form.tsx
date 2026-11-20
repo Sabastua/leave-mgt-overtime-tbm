@@ -4,7 +4,6 @@ import { useActionState, useState, useEffect } from "react";
 import { submitOvertimeRequest, type OvertimeActionState } from "@/app/actions/overtime";
 import { CheckCircleIcon, InformationCircleIcon } from "@/components/ui/icons";
 import {
-  BASE_HOURLY_RATE,
   STANDARD_DAY_HOURS,
   parseOvertimeRecordMeta,
   type OvertimeRecord,
@@ -120,8 +119,6 @@ export function OvertimeRequestForm({
       ? "Full Day (08:00–17:00)"
       : "";
 
-  const payoutKes = Math.round(parsedHours * BASE_HOURLY_RATE * 100) / 100;
-
   function handleDateChange(newDate: string) {
     setDateWorked(newDate);
   }
@@ -164,9 +161,7 @@ export function OvertimeRequestForm({
     const year = dateWorked.slice(0, 4) || String(new Date().getFullYear());
     const baseRef = `OT-${year}-${Math.floor(100 + Math.random() * 900)}`;
 
-    const ticketRef = `${baseRef}|PAY:${payoutKes}|RATE:${BASE_HOURLY_RATE}|BASIS:hourly${
-      formattedTimeRange ? `|TIME:${formattedTimeRange}` : ""
-    }|MULT:1.0`;
+    const ticketRef = formattedTimeRange ? `${baseRef}|TIME:${formattedTimeRange}` : baseRef;
 
     onOpenVoucher({
       id: baseRef,
@@ -174,9 +169,7 @@ export function OvertimeRequestForm({
       user_email: currentUserEmail,
       overtime_date: dateWorked,
       hours: parsedHours,
-      task_summary: `Overtime Hours\nOvertime Support${
-        formattedTimeRange ? ` • ${formattedTimeRange}` : ""
-      }`,
+      task_summary: formattedTimeRange ? `Overtime (${formattedTimeRange})` : "Overtime Hours",
       ticket_ref: ticketRef,
       compensatory_choice: "paid",
       status: "pending",
@@ -222,10 +215,6 @@ export function OvertimeRequestForm({
       <form action={action} className="flex flex-col gap-5">
         <input type="hidden" name="hours" value={String(parsedHours)} />
         <input type="hidden" name="time_range" value={formattedTimeRange} />
-        <input type="hidden" name="rate_basis" value="hourly" />
-        <input type="hidden" name="unit_rate" value={String(BASE_HOURLY_RATE)} />
-        <input type="hidden" name="payout_kes" value={String(payoutKes)} />
-        <input type="hidden" name="multiplier" value="1.0" />
         <input type="hidden" name="compensatory_choice" value="paid" />
         <input
           type="hidden"

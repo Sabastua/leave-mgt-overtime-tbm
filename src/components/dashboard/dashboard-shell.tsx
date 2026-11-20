@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect, useTransition } from "react";
 import type { LeaveType, LeaveRequest, LeaveBalanceSummary } from "@/lib/leave/types";
 import {
-  formatKes,
   parseOvertimeRecordMeta,
   type OvertimeRecord,
   type OvertimeStats,
@@ -811,7 +810,7 @@ export function DashboardShell({
         {activeTab === "overtime" && (
           <div className="flex flex-col w-full gap-8">
             {/* Top Summary Metric Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
               {/* Card 1: Approved Overtime */}
               <div className="flex flex-col bg-surface-container-low rounded-xl p-6 shadow-sm border border-surface-container-high/60 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
@@ -857,29 +856,6 @@ export function DashboardShell({
                   </span>
                 </div>
               </div>
-
-              {/* Card 3: Total Disbursed */}
-              <div className="flex flex-col bg-surface-container-low rounded-xl p-6 shadow-sm border border-surface-container-high/60 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-                <div className="mb-4">
-                  <span className="text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">
-                    Total Disbursed
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-body-lg text-on-surface-variant font-medium">
-                    KES
-                  </span>
-                  <span className="font-headline-lg text-on-surface tabular-nums">
-                    {formatKes(myOvertimeStats.totalDisbursedKes)}
-                  </span>
-                </div>
-                <div className="mt-3 text-body-sm text-primary">
-                  <span>
-                    {myOvertimeStats.paidHoursApproved.toFixed(1)}h paid &bull; ~{(myOvertimeStats.toilHoursApproved / 8).toFixed(1)} TOIL days
-                  </span>
-                </div>
-              </div>
             </div>
 
             {/* Main Content Grid */}
@@ -900,10 +876,10 @@ export function DashboardShell({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div>
                     <h2 className="font-headline-md text-on-surface">
-                      Overtime Claims Ledger
+                      Overtime Log Ledger
                     </h2>
                     <p className="text-body-md text-on-surface-variant">
-                      Track disbursement statuses and download disbursement vouchers
+                      Track approval statuses and download overtime summaries
                     </p>
                   </div>
 
@@ -945,7 +921,7 @@ export function DashboardShell({
                       <tr className="border-b border-surface-container text-label-md text-on-surface-variant uppercase tracking-wider">
                         <th className="py-4 px-4 font-semibold">Ref &amp; Date</th>
                         <th className="py-4 px-4 font-semibold">Project / Task</th>
-                        <th className="py-4 px-4 font-semibold">Hours &amp; Rate</th>
+                        <th className="py-4 px-4 font-semibold">Hours</th>
                         <th className="py-4 px-4 font-semibold">Status</th>
                         <th className="py-4 px-4 font-semibold text-right">
                           Actions
@@ -998,21 +974,8 @@ export function DashboardShell({
                               </td>
 
                               <td className="py-5 px-4 tabular-nums">
-                                <div className="font-medium">
-                                  {Number(record.hours).toFixed(1)} hrs (
-                                  {meta.multiplier.toFixed(1)}x)
-                                </div>
-                                <div className="text-[11px] text-on-surface-variant">
-                                  {meta.rateBasisLabel}
-                                </div>
-                                <div
-                                  className={`text-body-sm font-semibold mt-0.5 ${
-                                    isApproved
-                                      ? "text-primary"
-                                      : "text-on-surface"
-                                  }`}
-                                >
-                                  KES {formatKes(meta.payoutKes)}
+                                <div className="font-medium text-on-surface">
+                                  {Number(record.hours).toFixed(1)} hrs
                                 </div>
                               </td>
 
@@ -1020,7 +983,7 @@ export function DashboardShell({
                                 {isApproved ? (
                                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-container/10 text-primary text-label-sm font-medium">
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                    Disbursed
+                                    Approved
                                   </span>
                                 ) : isPending ? (
                                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#009dd3]/10 text-[#00668a] text-label-sm font-medium">
@@ -1125,7 +1088,7 @@ export function DashboardShell({
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 mt-4 border-t border-surface-container text-body-sm text-on-surface-variant">
                   <span>
                     Showing {paginatedOvertimeRecords.length} of{" "}
-                    {filteredOvertimeRecords.length} total payout entries
+                    {filteredOvertimeRecords.length} total entries
                   </span>
                   {totalOvertimePages > 1 && (
                     <div className="flex items-center gap-2">
@@ -1428,12 +1391,8 @@ export function DashboardShell({
                     <strong className="tabular-nums text-gray-900">{myOvertimeStats.totalHoursApproved.toFixed(1)}h</strong>
                   </div>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500">Paid Payroll Hours:</span>
-                    <strong className="tabular-nums text-blue-700">{myOvertimeStats.paidHoursApproved.toFixed(1)}h</strong>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500">TOIL Rest Days Banked:</span>
-                    <strong className="tabular-nums text-purple-700">~{(myOvertimeStats.toilHoursApproved / 8).toFixed(1)} days</strong>
+                    <span className="text-gray-500">Pending Approval Hours:</span>
+                    <strong className="tabular-nums text-amber-700">{myOvertimeStats.totalHoursPending.toFixed(1)}h</strong>
                   </div>
                 </div>
 
