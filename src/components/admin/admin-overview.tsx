@@ -5,6 +5,7 @@ import type { LeaveRequest, LeaveType } from "@/lib/leave/types";
 import type { OvertimeRecord } from "@/lib/overtime/types";
 import type { AllowedUser } from "@/lib/auth/allowed-users";
 import { computeUserBalances } from "@/lib/leave/types";
+import { predictNextLeaveAndImpact } from "@/lib/leave/predictions";
 import { reviewLeaveRequest, batchReviewLeaveRequests, updateCarryForward } from "@/app/actions/leave";
 import { reviewOvertimeRequest, batchReviewOvertimeRequests } from "@/app/actions/overtime";
 import {
@@ -723,6 +724,43 @@ export function AdminOverview({
   const activeDutyCount = activeMembers.length - currentActiveLeaves.length;
   const capacityPercent = activeMembers.length > 0 ? Math.round((activeDutyCount / activeMembers.length) * 100) : 100;
 
+  // Next Leave Likelihood & Operational Impact Predictions
+  const nextLeavePredictions = useMemo(
+    () =>
+      predictNextLeaveAndImpact({
+        teamMembers,
+        leaveRequests,
+        leaveTypes,
+        overtimeRecords,
+        currentYear,
+        minOnDutyStaff,
+        minCapacityThreshold,
+      }),
+    [
+      teamMembers,
+      leaveRequests,
+      leaveTypes,
+      overtimeRecords,
+      currentYear,
+      minOnDutyStaff,
+      minCapacityThreshold,
+    ]
+  );
+
+  const [selectedPredictionEmail, setSelectedPredictionEmail] = useState<string | null>(null);
+  const [showAllPredictions, setShowAllPredictions] = useState(false);
+
+  const focusedPrediction = useMemo(() => {
+    if (nextLeavePredictions.length === 0) return null;
+    if (selectedPredictionEmail) {
+      const found = nextLeavePredictions.find(
+        (p) => p.member.email.toLowerCase() === selectedPredictionEmail.toLowerCase()
+      );
+      if (found) return found;
+    }
+    return nextLeavePredictions[0];
+  }, [nextLeavePredictions, selectedPredictionEmail]);
+
   return (
     <div className="space-y-8">
       {/* Top Executive Header & Segmented View Switcher */}
@@ -1068,6 +1106,344 @@ export function AdminOverview({
               )}
             </div>
           )}
+
+      {/* Predictive Next Leave & Operational Impact Intelligence */}
+      {focusedPrediction && (
+        <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-brand shadow-2xs">
+                <ArrowTrendingUpIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base font-bold text-gray-900">
+                    Next Leave Likelihood &amp; Operational Impact Predictor
+                  </h2>
+                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 ring-1 ring-emerald-600/20">
+                    Workforce Intelligence
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Evaluates unspent leave quota, carry-forward expiry, overtime fatigue, and days since last rest to suggest who is most likely to take leave next and the impact on team operations
+                </p>
+              </div>
+            </div>
+
+            {nextLeavePredictions.length > 4 && (
+              <button
+                type="button"
+                onClick={() => setShowAllPredictions((s) => !s)}
+                className="self-start sm:self-auto rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+              >
+                {showAllPredictions
+                  ? "Show Top 4 Candidates"
+                  : `View All ${nextLeavePredictions.length} Members`}
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+            {/* Left Column: Ranked Next-Leave Candidates (5 Cols) */}
+            <div className="lg:col-span-5 space-y-2.5">
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                <span>Ranked Candidates (Click to Inspect Impact)</span>
+                <span>Likelihood</span>
+              </div>
+
+              {(showAllPredictions
+                ? nextLeavePredictions
+                : nextLeavePredictions.slice(0, 4)
+              ).map((pred) => {
+                const isSelected =
+                  pred.member.email.toLowerCase() ===
+                  focusedPrediction.member.email.toLowerCase();
+                const isTopCandidate = pred.rank === 1;
+
+                return (
+                  <button
+                    key={pred.member.email}
+                    type="button"
+                    onClick={() => setSelectedPredictionEmail(pred.member.email)}
+                    className={`w-full text-left rounded-xl p-3.5 border transition-all cursor-pointer ${
+                      isSelected
+                        ? "border-brand bg-emerald-50/40 shadow-xs ring-2 ring-brand/15"
+                        : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/60"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+                            isTopCandidate
+                              ? "bg-brand text-white shadow-2xs"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          #{pred.rank}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-gray-900 text-xs truncate">
+                              {pred.member.full_name || pred.member.email}
+                            </span>
+                            {isTopCandidate && (
+                              <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800">
+                                Most Likely Next
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-gray-500 truncate">
+                            {pred.predictedLeaveType} &bull; {pred.predictedWindow}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span
+                          className={`text-sm font-bold tabular-nums ${
+                            pred.likelihoodScore >= 75
+                              ? "text-emerald-700"
+                              : pred.likelihoodScore >= 55
+                              ? "text-amber-700"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {pred.likelihoodScore}%
+                        </span>
+                        <span className="block text-[10px] font-semibold text-gray-400">
+                          {pred.likelihoodLabel}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Likelihood Progress Bar */}
+                    <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          pred.likelihoodScore >= 75
+                            ? "bg-brand"
+                            : pred.likelihoodScore >= 55
+                            ? "bg-amber-500"
+                            : "bg-blue-500"
+                        }`}
+                        style={{ width: `${pred.likelihoodScore}%` }}
+                      />
+                    </div>
+
+                    {/* Quick Signal Chips */}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span className="rounded-md bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
+                        {pred.metrics.annualRemaining}d balance left
+                      </span>
+                      {pred.metrics.recentOvertimeHours > 0 && (
+                        <span className="rounded-md bg-purple-50 px-2 py-0.5 font-medium text-purple-700">
+                          {pred.metrics.recentOvertimeHours.toFixed(1)}h OT logged
+                        </span>
+                      )}
+                      <span
+                        className={`rounded-md px-2 py-0.5 font-semibold ${
+                          pred.impact.severity === "critical"
+                            ? "bg-rose-100 text-rose-800"
+                            : pred.impact.severity === "high"
+                            ? "bg-amber-100 text-amber-800"
+                            : pred.impact.severity === "moderate"
+                            ? "bg-blue-50 text-blue-700"
+                            : "bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        {pred.impact.severity.toUpperCase()} IMPACT
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right Column: Detailed Likelihood Reasons & Operational Impact Breakdown (7 Cols) */}
+            <div className="lg:col-span-7 rounded-2xl border border-gray-200 bg-gray-50/50 p-5 space-y-5">
+              {/* Candidate Summary Banner */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between bg-white p-4 rounded-xl border border-gray-200/80 shadow-2xs">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="rounded-lg bg-brand/10 px-2 py-0.5 text-[11px] font-bold text-brand">
+                      Rank #{focusedPrediction.rank} Candidate
+                    </span>
+                    <h3 className="text-sm font-bold text-gray-900">
+                      {focusedPrediction.member.full_name ||
+                        focusedPrediction.member.email}
+                    </h3>
+                    {focusedPrediction.member.role === "approver" && (
+                      <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+                        Approver / Manager
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {focusedPrediction.member.email}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="font-semibold text-gray-800">
+                      Predicted: {focusedPrediction.predictedLeaveType} (~
+                      {focusedPrediction.predictedDurationDays} working days)
+                    </span>
+                    <span className="text-gray-400">&bull;</span>
+                    <span className="text-brand font-semibold">
+                      Window: {focusedPrediction.predictedWindow}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex sm:flex-col items-center sm:items-end justify-between gap-1 shrink-0">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-bold ${
+                      focusedPrediction.impact.severity === "critical"
+                        ? "bg-rose-100 text-rose-800 ring-1 ring-rose-600/20"
+                        : focusedPrediction.impact.severity === "high"
+                        ? "bg-amber-100 text-amber-800 ring-1 ring-amber-600/20"
+                        : focusedPrediction.impact.severity === "moderate"
+                        ? "bg-blue-100 text-blue-800 ring-1 ring-blue-600/20"
+                        : "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-600/20"
+                    }`}
+                  >
+                    {focusedPrediction.impact.severityLabel}
+                  </span>
+                  <span className="text-[11px] text-gray-500 tabular-nums">
+                    Likelihood:{" "}
+                    <strong className="text-gray-900">
+                      {focusedPrediction.likelihoodScore}% (
+                      {focusedPrediction.likelihoodLabel})
+                    </strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* 1. Why They Are Likely to Go Next */}
+              <div className="bg-white p-4 rounded-xl border border-gray-200/80">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2.5">
+                  1. Why {focusedPrediction.member.full_name || "This Member"} Is Most Likely Next
+                </h4>
+                <ul className="space-y-1.5 text-xs text-gray-700">
+                  {focusedPrediction.reasons.map((reason, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <CheckCircleIcon className="h-4 w-4 text-brand shrink-0 mt-0.5" />
+                      <span>{reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* 2. Projected Operational Impact Breakdown (3 KPI Tiles) */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2.5">
+                  2. Projected Impact If Leave Occurs
+                </h4>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {/* Tile A: Team Staffing Capacity */}
+                  <div className="rounded-xl bg-white p-3.5 border border-gray-200/80">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                      On-Duty Capacity Drop
+                    </span>
+                    <div className="mt-1 flex items-baseline gap-1.5 tabular-nums">
+                      <span className="text-sm font-bold text-gray-700">
+                        {focusedPrediction.impact.currentCapacityPercent}%
+                      </span>
+                      <span className="text-gray-400">&rarr;</span>
+                      <span
+                        className={`text-lg font-bold ${
+                          focusedPrediction.impact.breachesMinStaffing
+                            ? "text-rose-600"
+                            : "text-brand"
+                        }`}
+                      >
+                        {focusedPrediction.impact.projectedCapacityPercent}%
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      {focusedPrediction.impact.currentOnDutyCount} &rarr;{" "}
+                      {focusedPrediction.impact.projectedOnDutyCount} of{" "}
+                      {activeMembers.length} staff on duty
+                    </p>
+                  </div>
+
+                  {/* Tile B: Overtime & Project Coverage Impact */}
+                  <div className="rounded-xl bg-white p-3.5 border border-gray-200/80">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                      Workload &amp; OT Shift
+                    </span>
+                    <div className="mt-1 text-lg font-bold text-purple-700 tabular-nums">
+                      ~{focusedPrediction.impact.estimatedReplacementOtHours}h OT
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-500 truncate">
+                      {focusedPrediction.impact.keyProjectsAffected.length > 0
+                        ? `Affects: ${focusedPrediction.impact.keyProjectsAffected.join(", ")}`
+                        : "Standard operational support"}
+                    </p>
+                  </div>
+
+                  {/* Tile C: Handover & Relief Clash Check */}
+                  <div className="rounded-xl bg-white p-3.5 border border-gray-200/80">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                      Handover Dependencies
+                    </span>
+                    <div
+                      className={`mt-1 text-sm font-bold ${
+                        focusedPrediction.impact.handoverConflicts.length > 0
+                          ? "text-rose-600"
+                          : "text-emerald-700"
+                      }`}
+                    >
+                      {focusedPrediction.impact.handoverConflicts.length > 0
+                        ? `${focusedPrediction.impact.handoverConflicts.length} Coverage Clash`
+                        : "0 Handover Clashes"}
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      {focusedPrediction.impact.recommendedReliefColleague
+                        ? `Best backup: ${focusedPrediction.impact.recommendedReliefColleague.name}`
+                        : "Assign peer relief"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Impact Narrative & Handover Conflicts Alert */}
+                <div className="mt-3 rounded-xl bg-white p-3.5 border border-gray-200/80 text-xs text-gray-700 space-y-2">
+                  <p className="font-medium leading-relaxed">
+                    <strong className="text-gray-900">Impact Summary: </strong>
+                    {focusedPrediction.impact.summary}
+                  </p>
+                  {focusedPrediction.impact.handoverConflicts.length > 0 && (
+                    <div className="rounded-lg bg-rose-50 p-2.5 border border-rose-200 text-rose-800 text-[11px]">
+                      <strong className="block font-bold mb-0.5">
+                        Active Relief Conflicts Detected:
+                      </strong>
+                      <ul className="list-disc list-inside space-y-0.5">
+                        {focusedPrediction.impact.handoverConflicts.map((c, i) => (
+                          <li key={i}>{c}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 3. Recommended Manager Mitigation Actions */}
+              <div className="rounded-xl bg-emerald-50/70 p-4 border border-emerald-200/70">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-900 mb-2">
+                  3. Recommended Mitigation &amp; Coverage Plan
+                </h4>
+                <ul className="space-y-1.5 text-xs text-emerald-950">
+                  {focusedPrediction.impact.mitigationSteps.map((step, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <ShieldCheckIcon className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Currently On Leave & Ongoing Progress */}
       <section className="rounded-2xl bg-white p-6 shadow-xs ring-1 ring-black/5">
