@@ -766,9 +766,6 @@ export function AdminOverview({
       <div className="space-y-4">
         <div className="flex flex-col gap-4 rounded-3xl bg-white p-5 shadow-xs ring-1 ring-black/5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand text-white font-bold text-sm shadow-xs">
-              M
-            </span>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold tracking-tight text-gray-900">Admin Metrics &amp; Executive Suite</h1>
